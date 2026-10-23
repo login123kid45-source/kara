@@ -1,0 +1,221 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User preferences, adaptive mode settings, bond level, and soap discipline counter for KARA.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name for personalized addressing.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "preferredMode": {
+          "type": "string",
+          "description": "Current active KARA persona mode.",
+          "enum": ["regular", "bratty", "uncensored", "romantic", "parent"],
+          "minLength": 4,
+          "maxLength": 16
+        },
+        "autoAdaptMode": {
+          "type": "boolean",
+          "description": "Whether KARA automatically switches modes based on conversational context."
+        },
+        "soapWashCount": {
+          "type": "integer",
+          "description": "Total number of times Parent Mode washed the user's mouth with soap."
+        },
+        "bondLevel": {
+          "type": "integer",
+          "description": "Long-term emotional bond score from 1 to 100."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of profile creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last profile update."
+        }
+      },
+      "required": ["uid", "displayName", "preferredMode", "autoAdaptMode", "soapWashCount", "bondLevel", "createdAt", "updatedAt"]
+    },
+    "MemoryItem": {
+      "title": "MemoryItem",
+      "description": "Persistent long-term memory and learned preference node for a user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique memory ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the memory node.",
+          "enum": ["preference", "fact", "emotion", "bond"],
+          "minLength": 4,
+          "maxLength": 16
+        },
+        "content": {
+          "type": "string",
+          "description": "Distilled memory fact or preference.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "importance": {
+          "type": "integer",
+          "description": "Importance weight from 1 to 5."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when memory was learned."
+        }
+      },
+      "required": ["id", "userId", "category", "content", "importance", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Single conversational turn in KARA's persistent thread.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique message ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "role": {
+          "type": "string",
+          "description": "Sender role.",
+          "enum": ["user", "assistant"],
+          "minLength": 4,
+          "maxLength": 12
+        },
+        "content": {
+          "type": "string",
+          "description": "Message text content.",
+          "minLength": 1,
+          "maxLength": 8000
+        },
+        "mode": {
+          "type": "string",
+          "description": "Active KARA mode for this message.",
+          "enum": ["regular", "bratty", "uncensored", "romantic", "parent"],
+          "minLength": 4,
+          "maxLength": 16
+        },
+        "emotionDetected": {
+          "type": "string",
+          "description": "Detected emotional tone of the turn.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "soapTriggered": {
+          "type": "boolean",
+          "description": "Whether this message triggered Parent Mode soap discipline."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when message was sent."
+        }
+      },
+      "required": ["id", "userId", "role", "content", "mode", "emotionDetected", "soapTriggered", "createdAt"]
+    },
+    "SoapIncident": {
+      "title": "SoapIncident",
+      "description": "Record of a Parent Mode soap-washing disciplinary action.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique incident ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "offendingWord": {
+          "type": "string",
+          "description": "Sanitized offending word that triggered soap mode.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "scoldingMessage": {
+          "type": "string",
+          "description": "KARA's humorous parental lecture.",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "resolved": {
+          "type": "boolean",
+          "description": "Whether the user finished scrubbing with soap."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when soap discipline started."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when soap incident was updated."
+        }
+      },
+      "required": ["id", "userId", "offendingWord", "scoldingMessage", "resolved", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores isolated user profile, mode preferences, bond score, and soap counter."
+    },
+    "/users/{userId}/memories/{memoryId}": {
+      "schema": { "$ref": "#/entities/MemoryItem" },
+      "description": "Stores persistent long-term memory facts and preferences for the user."
+    },
+    "/users/{userId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Stores persistent conversation history messages for the user."
+    },
+    "/users/{userId}/soapIncidents/{incidentId}": {
+      "schema": { "$ref": "#/entities/SoapIncident" },
+      "description": "Stores Parent Mode mouth-washing soap discipline incidents."
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "KARA — Adaptive Emotional AI & Studio",
+  "description": "An emotionally intelligent, adaptive AI companion with dynamic personas (Regular, Bratty, Uncensored, Romantic, and Parent Mode with soap-washing discipline), persistent memory, Google Workspace integration, and multimodal studio.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

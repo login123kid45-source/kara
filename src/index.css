@@ -1,0 +1,432 @@
+@import "tailwindcss";
+
+:root,
+[data-kara-theme="minimalist-slate"] {
+  --kara-bg-app: #090D14;
+  --kara-bg-chat: #111621;
+  --kara-bg-header: #151B28;
+  --kara-bg-banner: #0E131D;
+  --kara-bg-composer: #0C1018;
+  --kara-bg-input: #161D2B;
+  --kara-bg-ai-bubble: #161E2E;
+  --kara-bg-card: #0D121C;
+  --kara-bg-chip: #161E2C;
+  --kara-text-primary: #F1F5F9;
+  --kara-text-secondary: #94A3B8;
+  --kara-text-muted: #64748B;
+  --kara-border: rgba(148, 163, 184, 0.18);
+  --kara-border-strong: rgba(56, 189, 248, 0.42);
+  --kara-accent: #38BDF8;
+  --kara-accent-secondary: #818CF8;
+  --kara-user-bubble-bg: linear-gradient(135deg, #38BDF8 0%, #6366F1 100%);
+  --kara-user-bubble-text: #060911;
+  --kara-send-btn-bg: linear-gradient(135deg, #38BDF8 0%, #6366F1 100%);
+  --kara-send-btn-text: #060911;
+  --kara-chat-shadow: 0 20px 50px -15px rgba(2, 6, 23, 0.7);
+  --kara-chat-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+[data-kara-theme="cyber-neon"] {
+  --kara-bg-app: #04050C;
+  --kara-bg-chat: #070A17;
+  --kara-bg-header: #0B1024;
+  --kara-bg-banner: #060915;
+  --kara-bg-composer: #050812;
+  --kara-bg-input: #0D132A;
+  --kara-bg-ai-bubble: #0D142C;
+  --kara-bg-card: #070B1A;
+  --kara-bg-chip: #0F1734;
+  --kara-text-primary: #ECFEFF;
+  --kara-text-secondary: #7DD3FC;
+  --kara-text-muted: #38BDF8;
+  --kara-border: rgba(0, 240, 255, 0.26);
+  --kara-border-strong: rgba(244, 63, 248, 0.55);
+  --kara-accent: #00F0FF;
+  --kara-accent-secondary: #F43FF8;
+  --kara-user-bubble-bg: linear-gradient(135deg, #00F0FF 0%, #D946EF 100%);
+  --kara-user-bubble-text: #04050C;
+  --kara-send-btn-bg: linear-gradient(135deg, #00F0FF 0%, #D946EF 100%);
+  --kara-send-btn-text: #04050C;
+  --kara-chat-shadow: 0 0 42px -10px rgba(0, 240, 255, 0.25), 0 0 24px -12px rgba(217, 70, 239, 0.22);
+  --kara-chat-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+[data-kara-theme="vintage-paper"] {
+  --kara-bg-app: #EAE2D3;
+  --kara-bg-chat: #FAF5EC;
+  --kara-bg-header: #F1E9DA;
+  --kara-bg-banner: #EAE0CE;
+  --kara-bg-composer: #F1E9DA;
+  --kara-bg-input: #FFFDF9;
+  --kara-bg-ai-bubble: #FFFDF9;
+  --kara-bg-card: #F3ECE0;
+  --kara-bg-chip: #EAE1D0;
+  --kara-text-primary: #261F18;
+  --kara-text-secondary: #5C4E41;
+  --kara-text-muted: #857463;
+  --kara-border: rgba(110, 86, 62, 0.24);
+  --kara-border-strong: rgba(154, 91, 47, 0.5);
+  --kara-accent: #9A4E24;
+  --kara-accent-secondary: #7C3E1D;
+  --kara-user-bubble-bg: linear-gradient(135deg, #8C4A27 0%, #5E3019 100%);
+  --kara-user-bubble-text: #FFFDF9;
+  --kara-send-btn-bg: linear-gradient(135deg, #8C4A27 0%, #5E3019 100%);
+  --kara-send-btn-text: #FFFDF9;
+  --kara-chat-shadow: 0 18px 40px -15px rgba(74, 53, 32, 0.18);
+  --kara-chat-font: 'Georgia', 'Cambria', 'Plus Jakarta Sans', serif;
+}
+
+[data-kara-theme="velvet-dusk"] {
+  --kara-bg-app: #0C0714;
+  --kara-bg-chat: #150D22;
+  --kara-bg-header: #1C112E;
+  --kara-bg-banner: #120A1E;
+  --kara-bg-composer: #10091B;
+  --kara-bg-input: #221436;
+  --kara-bg-ai-bubble: #211334;
+  --kara-bg-card: #130B20;
+  --kara-bg-chip: #241538;
+  --kara-text-primary: #FAF5FF;
+  --kara-text-secondary: #D8B4FE;
+  --kara-text-muted: #A855F7;
+  --kara-border: rgba(244, 114, 182, 0.24);
+  --kara-border-strong: rgba(251, 113, 133, 0.5);
+  --kara-accent: #FB7185;
+  --kara-accent-secondary: #C084FC;
+  --kara-user-bubble-bg: linear-gradient(135deg, #FB7185 0%, #A855F7 100%);
+  --kara-user-bubble-text: #0C0714;
+  --kara-send-btn-bg: linear-gradient(135deg, #FB7185 0%, #A855F7 100%);
+  --kara-send-btn-text: #0C0714;
+  --kara-chat-shadow: 0 20px 50px -15px rgba(88, 28, 135, 0.38);
+  --kara-chat-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@layer base {
+  :root {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--kara-bg-app);
+    color: var(--kara-text-primary);
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.35s ease, color 0.35s ease;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Bricolage Grotesque', 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ==========================================================================
+   Theme-Driven Chat Interface Surfaces (CSS Variables)
+   ========================================================================== */
+.kara-app-shell {
+  background-color: var(--kara-bg-app);
+  color: var(--kara-text-primary);
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+.kara-app-topbar {
+  background-color: color-mix(in srgb, var(--kara-bg-header) 92%, transparent);
+  border-color: var(--kara-border);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.kara-chat-shell {
+  background-color: var(--kara-bg-chat);
+  border-color: var(--kara-border);
+  box-shadow: var(--kara-chat-shadow);
+  color: var(--kara-text-primary);
+  font-family: var(--kara-chat-font);
+  transition:
+    background-color 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.3s ease;
+}
+
+.kara-chat-header {
+  background-color: var(--kara-bg-header);
+  border-color: var(--kara-border);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.kara-chat-banner {
+  background-color: var(--kara-bg-banner);
+  border-color: var(--kara-border);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.kara-chat-composer {
+  background-color: var(--kara-bg-composer);
+  border-color: var(--kara-border);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.kara-chat-input {
+  background-color: var(--kara-bg-input);
+  border-color: var(--kara-border);
+  color: var(--kara-text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.kara-chat-input::placeholder {
+  color: var(--kara-text-muted);
+}
+
+.kara-chat-input:focus {
+  border-color: var(--kara-accent);
+}
+
+.kara-ai-bubble {
+  background-color: var(--kara-bg-ai-bubble);
+  border-color: var(--kara-border);
+  color: var(--kara-text-primary);
+  transition: background-color 0.35s ease, border-color 0.35s ease, color 0.3s ease;
+}
+
+.kara-user-bubble {
+  background: var(--kara-user-bubble-bg);
+  color: var(--kara-user-bubble-text);
+  transition: background 0.35s ease, color 0.3s ease;
+}
+
+.kara-send-btn {
+  background: var(--kara-send-btn-bg);
+  color: var(--kara-send-btn-text);
+}
+
+.kara-chat-subcard {
+  background-color: var(--kara-bg-card);
+  border-color: var(--kara-border);
+  color: var(--kara-text-primary);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.kara-chat-control-btn {
+  background-color: var(--kara-bg-chip);
+  border-color: var(--kara-border);
+  color: var(--kara-text-primary);
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.kara-chat-control-btn:hover {
+  border-color: var(--kara-accent);
+}
+
+/* Vintage Paper light-theme contrast adjustments inside the chat interface */
+[data-kara-theme="vintage-paper"] .kara-chat-shell .text-white,
+[data-kara-theme="vintage-paper"] .kara-chat-shell .text-neutral-100,
+[data-kara-theme="vintage-paper"] .kara-chat-shell .text-neutral-200,
+[data-kara-theme="vintage-paper"] .kara-app-topbar .text-white,
+[data-kara-theme="vintage-paper"] .kara-app-topbar .text-neutral-200 {
+  color: var(--kara-text-primary);
+}
+
+[data-kara-theme="vintage-paper"] .kara-chat-shell .text-neutral-300,
+[data-kara-theme="vintage-paper"] .kara-chat-shell .text-neutral-400 {
+  color: var(--kara-text-secondary);
+}
+
+[data-kara-theme="vintage-paper"] .kara-chat-shell .text-sky-300,
+[data-kara-theme="vintage-paper"] .kara-chat-shell .text-sky-400 {
+  color: var(--kara-accent);
+}
+
+[data-kara-theme="vintage-paper"] .kara-chat-shell .bg-neutral-900,
+[data-kara-theme="vintage-paper"] .kara-chat-shell .bg-neutral-900\/90,
+[data-kara-theme="vintage-paper"] .kara-chat-shell .bg-neutral-900\/70 {
+  background-color: var(--kara-bg-chip);
+  border-color: var(--kara-border);
+  color: var(--kara-text-primary);
+}
+
+/* Official Google Sign-In Material Button Styling */
+.gsi-material-button {
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  -webkit-appearance: none;
+  background-color: #131314;
+  background-image: none;
+  border: 1px solid #8e918f;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #e3e3e3;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  height: 38px;
+  letter-spacing: 0.25px;
+  outline: none;
+  overflow: hidden;
+  padding: 0 14px;
+  position: relative;
+  text-align: center;
+  transition: background-color 0.18s, border-color 0.18s, box-shadow 0.18s;
+  vertical-align: middle;
+  white-space: nowrap;
+  width: auto;
+}
+
+.gsi-material-button:hover {
+  border-color: #d2e3fc;
+  background-color: #1f2226;
+}
+
+.gsi-material-button .gsi-material-button-content-wrapper {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  height: 100%;
+  justify-content: space-between;
+  position: relative;
+  width: 100%;
+  gap: 10px;
+}
+
+.gsi-material-button .gsi-material-button-icon {
+  height: 18px;
+  min-width: 18px;
+  width: 18px;
+}
+
+.gsi-material-button .gsi-material-button-contents {
+  flex-grow: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   KARA Mode-Switcher Card CSS Transitions & Dynamic Persona Shimmer Effect
+   ========================================================================== */
+@keyframes karaPersonaShimmer {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.85;
+  }
+  75% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translateX(140%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes karaAmbientPulse {
+  0%, 100% {
+    opacity: 0.32;
+  }
+  50% {
+    opacity: 0.58;
+  }
+}
+
+.kara-mode-card {
+  position: relative;
+  overflow: hidden;
+  transition:
+    background-color 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kara-mode-card--regular {
+  --kara-shimmer-rgb: 56, 189, 248;
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 10px 34px -14px rgba(56, 189, 248, 0.22);
+}
+
+.kara-mode-card--bratty {
+  --kara-shimmer-rgb: 232, 121, 249;
+  border-color: rgba(232, 121, 249, 0.4);
+  box-shadow: 0 10px 34px -14px rgba(232, 121, 249, 0.25);
+}
+
+.kara-mode-card--uncensored {
+  --kara-shimmer-rgb: 251, 191, 36;
+  border-color: rgba(251, 191, 36, 0.4);
+  box-shadow: 0 10px 34px -14px rgba(251, 191, 36, 0.25);
+}
+
+.kara-mode-card--romantic {
+  --kara-shimmer-rgb: 251, 113, 133;
+  border-color: rgba(251, 113, 133, 0.42);
+  box-shadow: 0 10px 34px -14px rgba(251, 113, 133, 0.26);
+}
+
+.kara-mode-card--parent {
+  --kara-shimmer-rgb: 52, 211, 153;
+  border-color: rgba(52, 211, 153, 0.42);
+  box-shadow: 0 10px 34px -14px rgba(52, 211, 153, 0.25);
+}
+
+.kara-mode-ambient-glow {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 90% at 90% 10%,
+    rgba(var(--kara-shimmer-rgb, 56, 189, 248), 0.14) 0%,
+    rgba(var(--kara-shimmer-rgb, 56, 189, 248), 0.04) 45%,
+    transparent 80%
+  );
+  transition: background 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: karaAmbientPulse 5s ease-in-out infinite;
+}
+
+.kara-mode-shimmer-sweep {
+  pointer-events: none;
+  position: absolute;
+  inset: -20% -30%;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(var(--kara-shimmer-rgb, 56, 189, 248), 0.18) 45%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(var(--kara-shimmer-rgb, 56, 189, 248), 0.18) 55%,
+    transparent 75%
+  );
+  animation: karaPersonaShimmer 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.kara-mode-option-btn {
+  transition:
+    background-color 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.3s ease,
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kara-mode-option-btn:hover {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kara-mode-shimmer-sweep,
+  .kara-mode-ambient-glow {
+    animation: none;
+  }
+  .kara-mode-card,
+  .kara-mode-option-btn {
+    transition: none;
+  }
+}
+
