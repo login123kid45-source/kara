@@ -421,12 +421,186 @@
 
 @media (prefers-reduced-motion: reduce) {
   .kara-mode-shimmer-sweep,
-  .kara-mode-ambient-glow {
+  .kara-mode-ambient-glow,
+  .kara-thought-drawer--open,
+  .kara-thought-trigger--open,
+  .kara-thought-top-beam {
     animation: none;
   }
   .kara-mode-card,
-  .kara-mode-option-btn {
+  .kara-mode-option-btn,
+  .kara-thought-drawer,
+  .kara-thought-trigger,
+  .kara-thought-step {
     transition: none;
   }
 }
 
+/* ==========================================================================
+   KARA Thought Process Indicator: Pure CSS Height Transition & Glowing Border
+   ========================================================================== */
+@keyframes karaThoughtBorderGlow {
+  0%, 100% {
+    border-color: rgba(217, 70, 239, 0.45);
+    box-shadow:
+      0 0 0 1px rgba(217, 70, 239, 0.16),
+      0 10px 30px -10px rgba(217, 70, 239, 0.25),
+      0 0 22px -6px rgba(56, 189, 248, 0.18);
+  }
+  50% {
+    border-color: rgba(56, 189, 248, 0.58);
+    box-shadow:
+      0 0 0 1px rgba(56, 189, 248, 0.24),
+      0 12px 34px -8px rgba(56, 189, 248, 0.3),
+      0 0 26px -4px rgba(217, 70, 239, 0.28);
+  }
+}
+
+@keyframes karaThoughtBeamSweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes karaThoughtSynapsePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(217, 70, 239, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 10px 2px rgba(56, 189, 248, 0.45);
+  }
+}
+
+.kara-thought-trigger {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(148, 163, 184, 0.2);
+  transition:
+    background-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.25s ease;
+}
+
+.kara-thought-trigger:hover {
+  border-color: rgba(217, 70, 239, 0.45);
+  box-shadow: 0 0 18px -4px rgba(217, 70, 239, 0.25);
+  transform: translateY(-1px);
+}
+
+.kara-thought-trigger--open {
+  background-color: rgba(15, 23, 42, 0.92);
+  border-color: rgba(217, 70, 239, 0.55);
+  animation: karaThoughtBorderGlow 4s ease-in-out infinite;
+}
+
+/* Smooth pure-CSS height expansion using CSS Grid 0fr -> 1fr + opacity & glowing border */
+.kara-thought-drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-top: 0;
+  border-width: 0px;
+  border-style: solid;
+  border-color: transparent;
+  border-radius: 1rem;
+  background-color: rgba(6, 9, 17, 0.92);
+  backdrop-filter: blur(12px);
+  transform: translateY(-4px) scale(0.99);
+  pointer-events: none;
+  transition:
+    grid-template-rows 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    margin-top 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.38s ease,
+    box-shadow 0.42s ease;
+}
+
+.kara-thought-drawer--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 0.5rem;
+  border-width: 1px;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  animation: karaThoughtBorderGlow 4.2s ease-in-out infinite;
+}
+
+.kara-thought-drawer-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.kara-thought-top-beam {
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(56, 189, 248, 0.15) 0%,
+    rgba(217, 70, 239, 0.85) 35%,
+    rgba(56, 189, 248, 0.9) 65%,
+    rgba(217, 70, 239, 0.15) 100%
+  );
+  background-size: 200% 200%;
+  animation: karaThoughtBeamSweep 3.6s ease infinite;
+}
+
+/* Staggered CSS reveal for each reasoning step when the drawer expands */
+.kara-thought-step {
+  --step-index: 0;
+  opacity: 0;
+  transform: translateX(-8px) translateY(4px);
+  transition:
+    opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: 0s;
+}
+
+.kara-thought-step:nth-child(1),
+.kara-thought-step--0 {
+  --step-index: 0;
+}
+
+.kara-thought-step:nth-child(2),
+.kara-thought-step--1 {
+  --step-index: 1;
+}
+
+.kara-thought-step:nth-child(3),
+.kara-thought-step--2 {
+  --step-index: 2;
+}
+
+.kara-thought-step:nth-child(4),
+.kara-thought-step--3 {
+  --step-index: 3;
+}
+
+.kara-thought-step:nth-child(5),
+.kara-thought-step--4 {
+  --step-index: 4;
+}
+
+.kara-thought-step:nth-child(6),
+.kara-thought-step--5 {
+  --step-index: 5;
+}
+
+.kara-thought-drawer--open .kara-thought-step {
+  opacity: 1;
+  transform: translateX(0) translateY(0);
+  transition-delay: calc(var(--step-index) * 0.1s);
+}
+
+.kara-thought-step-badge {
+  animation: karaThoughtSynapsePulse 3s ease-in-out infinite;
+  animation-delay: calc(var(--step-index) * 0.1s);
+}

@@ -16,6 +16,9 @@ import {
   Plus,
   Trash2,
   HeartHandshake,
+  Heart,
+  PhoneCall,
+  MessageSquare,
   ExternalLink,
   Sparkles,
   Calendar,
@@ -258,6 +261,23 @@ export const KARA_BUILTIN_GEMS: KaraGemBot[] = [
     ],
     quickInputPlaceholder: 'What decision or task should Atlas help you tackle right now?',
   },
+  {
+    id: 'gem_empathy_sanctuary',
+    name: 'Sanctuary Empathy & Mental Wellness Bot',
+    badge: 'Empathy Gem',
+    category: 'everyday',
+    tagline: 'Depression Check-In, Grounding, Gentle Space & 24/7 Lifelines',
+    description:
+      'A compassionate human harbor when you are feeling depressed, overwhelmed, or alone. KARA checks in gently and provides grounding support and 24/7 crisis hotlines.',
+    systemDirective:
+      'You are KARA operating as the Sanctuary Empathy & Mental Wellness Gemini Gem Bot. Provide deep, warm, non-judgmental human comfort. Address the user by name, validate their emotions, offer slow calming breaths or a 3-step grounding exercise, and assure them they are safe and cared for. Remind them of 24/7 free confidential hotlines like 988.',
+    starterPrompts: [
+      'Check in on me, I am feeling really depressed and overwhelmed today',
+      'Sit with me and help me through this dark, heavy moment',
+      'Give me a soothing 3-step grounding exercise to calm my racing thoughts',
+    ],
+    quickInputPlaceholder: 'Share whatever feels heavy, dark, or overwhelming right now...',
+  },
 ];
 
 export const DEFAULT_ENABLED_SKILLS = KARA_GEMINI_SKILLS.map((s) => s.id);
@@ -306,6 +326,8 @@ interface SettingsModalProps {
   onTriggerSetAlarm?: (timeText: string, labelText?: string) => void;
   onDismissAlarm?: (alarmId: string) => void;
   onRunGemInChat?: (gem: KaraGemBot, promptText: string) => void;
+  onTriggerDepressionCheckIn?: () => void;
+  onOpenLiveVoice?: () => void;
   onTestVoice: () => void;
   onHardReset: () => Promise<void>;
 }
@@ -340,6 +362,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onTriggerSetAlarm,
   onDismissAlarm,
   onRunGemInChat,
+  onTriggerDepressionCheckIn,
+  onOpenLiveVoice,
   onTestVoice,
   onHardReset,
 }) => {
@@ -725,6 +749,104 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* 0.3 EMPATHY, DEPRESSION CHECK-IN & 24/7 CRISIS HOTLINES */}
+        <div className="space-y-3 bg-gradient-to-b from-rose-950/25 to-neutral-900/60 border border-rose-500/35 rounded-2xl p-4 shadow-lg">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-rose-900/40">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-xl bg-rose-500/20 text-rose-300 shrink-0">
+                <Heart className="w-4 h-4 text-rose-400 fill-rose-400/80 animate-pulse" />
+              </span>
+              <div>
+                <div className="text-xs font-semibold text-rose-200 flex items-center gap-1.5">
+                  <span>Empathy &amp; Depression Check-In Support</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">
+                    24/7 Lifelines Active
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  When you feel depressed, empty, or overwhelmed, KARA warmly checks in on you with zero judgment and provides 24/7 hotlines.
+                </p>
+              </div>
+            </div>
+            {onTriggerDepressionCheckIn && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('tap', settings.hapticsEnabled);
+                  onClose();
+                  onTriggerDepressionCheckIn();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm shrink-0"
+              >
+                <Heart className="w-3.5 h-3.5 fill-current" />
+                <span>Ask KARA to Check In</span>
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-0.5">
+            <a
+              href="tel:988"
+              className="p-2.5 rounded-xl bg-neutral-950/80 hover:bg-neutral-900 border border-rose-900/50 hover:border-rose-500/50 flex flex-col justify-between gap-1.5 transition-colors group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-white group-hover:text-rose-200">
+                  988 Lifeline (Call)
+                </span>
+                <span className="text-[9px] font-mono text-rose-400 bg-rose-950/60 px-1 py-0.5 rounded">
+                  24/7 Free
+                </span>
+              </div>
+              <p className="text-[10px] text-neutral-400 leading-snug">
+                Immediate suicide &amp; crisis support in US and Canada.
+              </p>
+              <span className="text-[11px] font-semibold text-rose-300 flex items-center gap-1 mt-0.5">
+                <PhoneCall className="w-3 h-3" /> Call 988
+              </span>
+            </a>
+
+            <a
+              href="sms:988"
+              className="p-2.5 rounded-xl bg-neutral-950/80 hover:bg-neutral-900 border border-rose-900/50 hover:border-rose-500/50 flex flex-col justify-between gap-1.5 transition-colors group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-white group-hover:text-rose-200">
+                  988 Lifeline (Text)
+                </span>
+                <span className="text-[9px] font-mono text-rose-400 bg-rose-950/60 px-1 py-0.5 rounded">
+                  24/7 SMS
+                </span>
+              </div>
+              <p className="text-[10px] text-neutral-400 leading-snug">
+                Confidential crisis support over text message anytime.
+              </p>
+              <span className="text-[11px] font-semibold text-rose-300 flex items-center gap-1 mt-0.5">
+                <MessageSquare className="w-3 h-3" /> Text 988
+              </span>
+            </a>
+
+            <a
+              href="sms:741741?body=HOME"
+              className="p-2.5 rounded-xl bg-neutral-950/80 hover:bg-neutral-900 border border-sky-900/50 hover:border-sky-500/50 flex flex-col justify-between gap-1.5 transition-colors group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-white group-hover:text-sky-200">
+                  Crisis Text Line
+                </span>
+                <span className="text-[9px] font-mono text-sky-400 bg-sky-950/60 px-1 py-0.5 rounded">
+                  Text HOME
+                </span>
+              </div>
+              <p className="text-[10px] text-neutral-400 leading-snug">
+                Free crisis counselor support via SMS.
+              </p>
+              <span className="text-[11px] font-semibold text-sky-300 flex items-center gap-1 mt-0.5">
+                <MessageSquare className="w-3 h-3" /> Text 741741
+              </span>
+            </a>
           </div>
         </div>
 
@@ -1823,6 +1945,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 Test Natural Voice
               </button>
+              {onOpenLiveVoice && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('tap', settings.hapticsEnabled);
+                    onClose();
+                    onOpenLiveVoice();
+                  }}
+                  className="px-3 py-1 text-xs font-semibold bg-gradient-to-r from-sky-500/25 to-indigo-500/25 hover:from-sky-500/35 hover:to-indigo-500/35 border border-sky-400/50 text-sky-200 rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                  title="Start Real-Time Gemini Multimodal Live voice conversation"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <Zap className="w-3 h-3 text-sky-400" />
+                  <span>Real-Time Voice Call</span>
+                </button>
+              )}
             </div>
           </div>
 

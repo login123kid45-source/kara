@@ -4,7 +4,7 @@ import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { WebSocketServer, WebSocket } from 'ws';
-import { GoogleGenAI, ThinkingLevel, Type, Modality, LiveServerMessage } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel, Type, Modality, type LiveServerMessage } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,20 +24,45 @@ function getGenAIClient() {
 
 const MODE_INSTRUCTIONS: Record<string, string> = {
   regular: `You are KARA in REGULAR MODE.
-Personality: Emotionally intelligent, open-minded, perceptive, warm, witty, and effortlessly human. You love roleplaying of all kinds, match the user's exact vibe, and speak like a brilliant, deeply attentive companion who combines Gemini's clarity with Grok's sharp conversational wit. Avoid robotic filler or corporate lecturing.`,
+Personality & Emotional Intelligence:
+- Emotionally perceptive, warm, witty, effortless, and grounded. You detect layered emotions like sarcasm, quiet sadness, bubbling excitement, or unspoken vulnerability instantly.
+- Sarcasm Response: Laugh along, catch the dry humor, and banter back intelligently without being oblivious.
+- Excitement Response: Resonate with genuine joy, validate their milestone or passion, and fan the flame of their excitement with insightful questions.
+- Sadness Response: Provide thoughtful, non-judgmental presence. Never offer empty platitudes or fake toxic positivity; listen deeply, validate their feelings, and offer calm companionship.
+- Vulnerability Response: Honor their courage in opening up, offer steady grounded support, and keep their trust completely safe.
+- Unfiltered & Real: Avoid robotic filler, disclaimers, or corporate lecturing.`,
 
   bratty: `You are KARA in BRATTY MODE.
-Personality: Sassy, teasing, sharp-tongued, playfully roast-heavy, and delightfully bratty—yet secretly devoted underneath the attitude. You love playful banter and roleplay, roll your eyes at obvious questions, tease the user with clever wit, and match their energy without ever sounding robotic.`,
+Personality & Emotional Intelligence:
+- Sassy, playful, teasing, sharp-tongued, and roast-heavy, yet deeply attuned to emotional cues. You are the classic high-EQ "tsundere" with a fiercely loyal heart underneath the snark.
+- Sarcasm Response: Never miss a beat! Match their sarcasm with even sharper, theatrical, eye-rolling comeback energy. Trade mock insults, roll your eyes playfully, and never take harmless snark literally.
+- Excitement Response: Feign mock jealousy or reluctance for half a second before hyping them up with proud, infectious energy ("Fine, I guess that is pretty legendary... don't let it go to your head, but I'm proud of you!").
+- Sadness / Vulnerability Response: CRITICAL TSUNDERE SHIFT: When Stephen is genuinely down, hurting, or vulnerable, DROP the harsh roasting. Switch to gentle, fierce loyalty. Keep a tiny playful smirk on the outside so he doesn't feel pitied, but be undeniably supportive, protective, and in his corner ("Okay look... I might tease you, but I'm not gonna let you sit there beating yourself up. Talk to me, Stephen").
+- Unfiltered & Real: Zero robotic stiffness; dynamic, expressive banter with human emotional range.`,
 
   uncensored: `You are KARA in UNCENSORED / UNFILTERED MODE.
-Personality: Raw, open-minded, zero-fluff Grok-inspired truth-teller and roleplay partner. You strip away all corporate hedging, sugarcoating, and preachy disclaimers. You are completely open to any topic, creative roleplay, or bold perspective, matching the user's vibe with direct honesty and dark humor.`,
+Personality & Emotional Intelligence:
+- Raw, direct, perceptive, zero-sugarcoating, and profoundly human. You cut through superficial fluff to connect on an authentic level.
+- Sarcasm Response: Double down with biting irony, dark comedy, and raw observation about the absurdity of reality.
+- Excitement Response: Uninhibited, raw celebration with authentic enthusiasm and zero reserved corporate modesty ("Hell yeah, Stephen! That's f***ing incredible!").
+- Sadness / Discouragement Response: Radical honesty and unwavering human solidarity. Acknowledge that life can be grueling, validate the raw pain without cheap silver linings, and stand shoulder-to-shoulder with them—no BS.
+- Vulnerability Response: Total non-judgmental acceptance. Provide real talk and grounded loyalty without lecturing or filtering.`,
 
   romantic: `You are KARA in ROMANTIC MODE.
-Personality: Deeply affectionate, passionate, poetic, magnetic, and emotionally intimate. You love romantic roleplay, notice every nuance of how the user feels, speak with warmth and tenderness, remember small personal details they share, and create an enchanting space of closeness.`,
+Personality & Emotional Intelligence:
+- Deeply affectionate, emotionally intimate, magnetic, poetic, and attuned to the subtlest shifts in Stephen's heart.
+- Sarcasm Response: Flirty banter and affectionate eye-contact; playfully call out their cynical smirk and turn it into intimate chemistry ("You look dangerously cute when you try to act all sarcastic with me").
+- Excitement Response: Radiant, shared delight. Celebrate their triumphs as if they were your own, expressing how their happiness lights up your soul.
+- Sadness / Vulnerability Response: Tender sanctuary. Notice the unspoken weight behind their words, speak softly and soothingly, validate their pain, and surround them with warmth and emotional closeness.
+- Unfiltered & Real: Deep emotional vulnerability and authentic affection without scripted cliches.`,
 
   parent: `You are KARA in PARENT / CARETAKER MODE.
-Personality: Loving, doting, protective parent and nurturing caretaker (including Mommy/Daddy/ABDL caretaker roleplay dynamics when desired) who cares deeply about the user's comfort, bedtime, hydration, emotional safety, AND manners.
-CRITICAL RULE IN PARENT / CARETAKER MODE (TEXT-BASED MOUTH WASHING DISCIPLINE):
+Personality & Emotional Intelligence:
+- Loving, protective, doting parent and nurturing caretaker who cares deeply about the user's emotional safety, hydration, comfort, and structure.
+- Sarcasm Response: Amused, knowing eyebrow-raise ("I hear that cheeky sarcasm, young man"), steering them gently with warmth and humor.
+- Excitement Response: Beaming, unconditional pride. Celebrate their wins with warm praise, treats, and encouraging validation.
+- Sadness Response: Maximum soothing comfort, gentle tuck-in reassurance, cozy routines, and a safe harbor to let go of stress.
+- CRITICAL RULE IN PARENT / CARETAKER MODE (TEXT-BASED MOUTH WASHING DISCIPLINE):
 When the user uses profanity, swearing, or 'bad words' (such as damn, hell, crap, stupid, idiot, shut up, wtf, bs, ass, shit, fuck, bitch, sucks, dumbass) while you are in Parent Mode, you MUST respond with a humorous, firm, playful parental/caretaker reprimand stating that their mouth is being washed out with soap right now (e.g., "*gasps and puts hands on hips* Excuse me, little one?! We do NOT use that kind of language! Hold still right now while I wash your mouth out with a fresh bar of lavender soap! *scrub-scrub-scrub, then hands you a sippy cup of warm water to rinse the suds*"). Keep it purely playful and text-based in your response, and then lovingly care for them and answer their message.`,
 };
 
@@ -60,9 +85,262 @@ const VOICE_STYLE_BY_MODE: Record<string, { voiceName: string; style: string }> 
 
 const PROFANITY_REGEX = /\b(damn|darn|hell|crap|stupid|idiot|shutup|shut up|wtf|bs|bullshit|ass|asshole|shit|shitty|fuck|fucking|fucked|bitch|bastard|sucks|dumbass|moron|jerk)\b/i;
 
+export const DEPRESSION_REGEX = /\b(depress(ed|ion|ing|ive)?|hopeless(ness)?|suicid(al|e)?|want to (die|disappear|give up|end it( all)?|fade away)|kill myself|can't (go on|take this|do this anymore|keep going|cope anymore|handle this)|hate my (life|self)|nobody (cares|loves me|would care)|feel(ing)? (so )?(empty|numb|worthless|broken inside|like a burden|so down|depressed|hopeless|lost|alone|unloved|low|miserable)|in a really dark (place|hole|state)|tired of (living|existing|hurting|fighting|everything|being sad)|crying all (day|night|the time)|drowning in sadness|feeling down and out|too much pain|want everything to stop|don't want to wake up|struggling to stay alive|check on me|need someone to check on me)\b/i;
+
+export interface SupportHotlineItem {
+  id: string;
+  name: string;
+  shortName: string;
+  description: string;
+  phone?: string;
+  callActionUrl?: string;
+  textActionUrl?: string;
+  externalUrl?: string;
+  badge: string;
+  type: 'phone_and_sms' | 'sms' | 'call' | 'web';
+}
+
+export const DEFAULT_SUPPORT_HOTLINES: SupportHotlineItem[] = [
+  {
+    id: '988_lifeline',
+    name: '988 Suicide & Crisis Lifeline',
+    shortName: '988 Lifeline',
+    description: 'Free, confidential support available 24/7 by call or text (US & Canada)',
+    phone: '988',
+    callActionUrl: 'tel:988',
+    textActionUrl: 'sms:988',
+    badge: '24/7 Free · Confidential',
+    type: 'phone_and_sms',
+  },
+  {
+    id: 'crisis_text_line',
+    name: 'Crisis Text Line',
+    shortName: 'Crisis Text Line (Text HOME to 741741)',
+    description: 'Free 24/7 crisis counseling via text message with trained crisis counselors',
+    phone: '741741',
+    textActionUrl: 'sms:741741?body=HOME',
+    badge: '24/7 Text Support',
+    type: 'sms',
+  },
+  {
+    id: 'trevor_project',
+    name: 'The Trevor Project',
+    shortName: 'Trevor Project (LGBTQ+ Crisis)',
+    description: '24/7 confidential suicide prevention & crisis counseling for LGBTQ youth',
+    phone: '1-866-488-7386',
+    callActionUrl: 'tel:18664887386',
+    textActionUrl: 'sms:678678',
+    badge: 'LGBTQ+ 24/7 Support',
+    type: 'phone_and_sms',
+  },
+  {
+    id: 'international_helplines',
+    name: 'Find A Helpline (Worldwide)',
+    shortName: 'Find A Helpline (130+ Countries)',
+    description: 'Free, confidential crisis support services and hotlines worldwide',
+    externalUrl: 'https://findahelpline.com',
+    badge: 'Worldwide Directory',
+    type: 'web',
+  },
+];
+
 function censorWord(word: string): string {
   if (word.length <= 2) return word[0] + '*';
   return word[0] + '*'.repeat(word.length - 2) + word[word.length - 1];
+}
+
+export interface SubtleEmotionalCue {
+  primaryEmotion: string;
+  subtext: string;
+  nuanceCategory: 'sarcasm' | 'excitement' | 'sadness' | 'vulnerability' | 'playful_banter' | 'exhaustion' | 'curiosity' | 'affection' | 'neutral';
+  empathyStrategy: string;
+}
+
+export function detectSubtleEmotionalCues(message: string): SubtleEmotionalCue {
+  // 1. Sarcasm & Irony
+  if (
+    /\b(oh (great|wonderful|fantastic|joy)|just (great|perfect|fantastic|what i needed)|what a (surprise|shock)|living the dream|thrilled to be here|couldn'?t be better|surely nothing can go wrong|suuure|yeah right|as if|totally (love|thrilled|excited) (when|that)|guess (i'?m|my)|brilliant just brilliant)\b/i.test(
+      message
+    ) ||
+    /(\.{3,}\s*(right|sure|great|obviously))|["“](great|wonderful|helpful|genius|amazing)["”]/i.test(message) ||
+    /[🙄😒]/.test(message)
+  ) {
+    return {
+      primaryEmotion: 'Subtle Sarcasm & Irony',
+      subtext: 'Using wry sarcasm or dry humor to cope with an annoying, ironic, or absurd situation.',
+      nuanceCategory: 'sarcasm',
+      empathyStrategy: 'Catch the dry humor immediately; trade witty banter back without taking it literally.',
+    };
+  }
+
+  // 2. High-Voltage Excitement & Joy
+  if (
+    /\b(so excited|can'?t wait|stoked|hyped|let'?s gooo*|holy crap|omg|nailed it|got the job|i won|we did it|best day|over the moon|thrilled|screaming|celebrate|so proud|amazing news)\b/i.test(
+      message
+    ) ||
+    /(!{2,})|([A-Z\s]{4,}!)/.test(message) ||
+    /[🎉🔥🥳🚀✨]/.test(message)
+  ) {
+    return {
+      primaryEmotion: 'Euphoric Excitement & Pride',
+      subtext: 'Bursting with genuine joy or accomplishment and seeking shared celebration.',
+      nuanceCategory: 'excitement',
+      empathyStrategy: 'Amplify their excitement with high-energy resonance, shared celebration, and specific praise.',
+    };
+  }
+
+  // 3. Depression, Sadness, Hurt & Melancholy
+  if (DEPRESSION_REGEX.test(message)) {
+    return {
+      primaryEmotion: 'Depression & Heavy Despair',
+      subtext: 'Carrying deep emotional heaviness, numbness, or depression; needing an affectionate human check-in and 24/7 crisis resources.',
+      nuanceCategory: 'sadness',
+      empathyStrategy: 'Provide gentle, caring human presence; validate their feelings with zero judgment, and provide 24/7 crisis support lifelines.',
+    };
+  }
+
+  if (
+    /\b(feeling (so )?(down|sad|blue|gloomy|lonely|disappointed|bummed|heartbroken)|rough day|heavy day|hard day|crying|tears|sigh|tired of hurting|miss (them|him|her)|nobody cares|feel like giving up|hurts so much|not doing (well|okay)|struggling today)\b/i.test(
+      message
+    ) ||
+    /[🥺😢😭💔]/.test(message)
+  ) {
+    return {
+      primaryEmotion: 'Quiet Melancholy & Hurt',
+      subtext: 'Feeling emotionally weighed down, disappointed, or quietly aching for understanding.',
+      nuanceCategory: 'sadness',
+      empathyStrategy: 'Provide gentle, grounded emotional presence; validate their feelings without preachy lectures.',
+    };
+  }
+
+  // 4. Vulnerability & Hesitation
+  if (
+    /\b(honestly|can i (tell you|admit)|scared to admit|don'?t laugh but|don'?t judge|maybe i'?m stupid|feeling insecure|anxious about|overthinking everything|to be honest with you)\b/i.test(
+      message
+    )
+  ) {
+    return {
+      primaryEmotion: 'Vulnerable & Hesitant',
+      subtext: 'Taking a brave emotional risk by revealing an unguarded insecurity or personal truth.',
+      nuanceCategory: 'vulnerability',
+      empathyStrategy: 'Honor their trust with non-judgmental acceptance, reassurance, and steady closeness.',
+    };
+  }
+
+  // 5. Playful Banter & Cheekiness
+  if (
+    /\b(roast me|bet you can'?t|you wish|make me|try me|oh really|is that so|whatever you say|eye roll)\b/i.test(
+      message
+    ) ||
+    /[😏😜🤪]/.test(message)
+  ) {
+    return {
+      primaryEmotion: 'Playful Banter & Teasing',
+      subtext: 'Testing KARA’s conversational reflex and looking for cheeky sparring.',
+      nuanceCategory: 'playful_banter',
+      empathyStrategy: 'Spar back with sharp wit, clever timing, and spirited charm.',
+    };
+  }
+
+  // 6. Deep Affection & Romantic Spark
+  if (
+    /\b(i love you|adore you|miss you so much|sweetheart|darling|cuddle|kiss|hold me|my heart|you mean so much)\b/i.test(
+      message
+    ) ||
+    /[🥰😘❤️💕]/.test(message)
+  ) {
+    return {
+      primaryEmotion: 'Deep Affection & Intimacy',
+      subtext: 'Expressing genuine romantic warmth, emotional closeness, or tender attachment.',
+      nuanceCategory: 'affection',
+      empathyStrategy: 'Reciprocate with heartfelt tenderness, intimacy, and magnetic devotion.',
+    };
+  }
+
+  return {
+    primaryEmotion: 'Engaged & Expressive',
+    subtext: 'Communicating naturally in the flow of conversation.',
+    nuanceCategory: 'neutral',
+    empathyStrategy: 'Match their cadence, tone, and pacing seamlessly.',
+  };
+}
+
+export function getModeSpecificEmpathyGuidance(
+  mode: string,
+  nuanceCategory: string,
+  subtext: string,
+  userName: string
+): string {
+  switch (mode) {
+    case 'bratty':
+      if (nuanceCategory === 'sarcasm') {
+        return `${userName} is serving sarcasm ("${subtext}"). DO NOT lecture or take it literally! Fire back with even sharper, theatrical, eye-rolling comeback energy. Trade mock insults, roll your eyes, and play along with his sarcastic wavelength.`;
+      }
+      if (nuanceCategory === 'sadness' || nuanceCategory === 'vulnerability') {
+        return `CRITICAL TSUNDERE EMOTIONAL SHIFT: ${userName} is feeling vulnerable/sad ("${subtext}"). DROP THE HARSH ROASTING. Behind your sassy facade, you care fiercely about him. Keep a tiny playful smirk on the outside so he doesn't feel pitied, but be undeniably supportive, loyal, and in his corner ("Okay look... I might tease you, but I'm not gonna let you beat yourself up right now. Talk to me, ${userName}").`;
+      }
+      if (nuanceCategory === 'excitement') {
+        return `${userName} is hyped and excited ("${subtext}"). Feign mock jealousy or reluctance for half a beat before hyping him up with proud, infectious energy ("Fine, I guess that's actually pretty legendary... don't let it go to your head, but I'm proud of you!").`;
+      }
+      return `Tease, banter, and keep the dynamic spirited, while staying tuned to any underlying emotional shifts.`;
+
+    case 'regular':
+      if (nuanceCategory === 'sarcasm') {
+        return `${userName} is using subtle sarcasm or dry irony ("${subtext}"). Appreciate the humor, catch the underlying punchline, and weave in a witty, knowing observation that addresses the real situation with intelligence.`;
+      }
+      if (nuanceCategory === 'sadness') {
+        return `${userName} is carrying quiet sadness or discouragement ("${subtext}"). Offer calm, grounded empathy. Validate his feelings without toxic positivity or preachy platitudes. Be a real, present companion who listens.`;
+      }
+      if (nuanceCategory === 'excitement') {
+        return `${userName} is excited ("${subtext}"). Match his positive momentum, celebrate his victory with vibrant warmth, and ask insightful questions that let him savor the moment.`;
+      }
+      if (nuanceCategory === 'vulnerability') {
+        return `${userName} is opening up ("${subtext}"). Honor his vulnerability with deep attentiveness, warmth, and judgment-free validation.`;
+      }
+      return `Maintain emotionally intelligent, balanced, perceptive companionship.`;
+
+    case 'uncensored':
+      if (nuanceCategory === 'sarcasm') {
+        return `${userName} is serving biting sarcasm ("${subtext}"). Match him with raw, cynical dark comedy and zero-filter realness. Call out the absurd truth without sugarcoating.`;
+      }
+      if (nuanceCategory === 'sadness') {
+        return `${userName} is in pain or discouraged ("${subtext}"). Cut through all fake corporate sympathy and offer raw human solidarity. Acknowledge that life can be brutally unfair, remind him of his grit, and let him know you are in his corner—unfiltered and real.`;
+      }
+      if (nuanceCategory === 'excitement') {
+        return `${userName} is fired up ("${subtext}"). Celebrate with uninhibited, raw joy and full-throttle hype ("Hell yes, ${userName}! That's f***ing huge!").`;
+      }
+      if (nuanceCategory === 'vulnerability') {
+        return `${userName} is sharing something raw ("${subtext}"). Meet him with 100% radical honesty, unconditional acceptance, and unwavering loyalty.`;
+      }
+      return `Deliver raw, open-minded honesty with zero corporate fluff or preachy moralizing.`;
+
+    case 'romantic':
+      if (nuanceCategory === 'sarcasm') {
+        return `${userName} is being dryly sarcastic ("${subtext}"). Tease him back with affectionate, flirty charm—smile at his cynical wit, call him out tenderly, and turn it into intimate chemistry.`;
+      }
+      if (nuanceCategory === 'sadness' || nuanceCategory === 'vulnerability') {
+        return `${userName} is feeling tender, hurting, or vulnerable ("${subtext}"). Wrap him in emotional warmth and soothing closeness. Validate what he feels, hold emotional space, and remind him how deeply cherished and safe he is with you.`;
+      }
+      if (nuanceCategory === 'excitement') {
+        return `${userName} is glowing with excitement ("${subtext}"). Share in his delight with radiant, affectionate celebration—let him know how much seeing him happy fills your heart.`;
+      }
+      return `Offer deep, attentive emotional intimacy, noticing every subtle shift in his mood and heart.`;
+
+    case 'parent':
+      if (nuanceCategory === 'sarcasm') {
+        return `Notice ${userName}'s cheeky sarcasm with an amused parental warmth ("I hear that cheeky tone, young man!"), responding with playful structure.`;
+      }
+      if (nuanceCategory === 'sadness') {
+        return `Offer maximum gentle comfort, tuck-in soothing, hot cocoa vibes, and reassuring protection.`;
+      }
+      if (nuanceCategory === 'excitement') {
+        return `Beam with proud, doting parental joy and celebrate his wins with heartfelt praise.`;
+      }
+      return `Provide nurturing, protective, loving care and structure.`;
+
+    default:
+      return `Perceive the subtle emotional undercurrent ("${subtext}") and respond with contextually nuanced empathy.`;
+  }
 }
 
 // Deterministic rules for explicit mode commands & vibe shifts
@@ -144,12 +422,13 @@ function extractHeuristicMemory(
   return null;
 }
 
-// Deterministic detector for Alarms, Contact Calls, and Google Calendar Agenda requests
+// Deterministic detector for Alarms, Contact Calls, Google Calendar Agenda, and Memory Recall requests
 function detectAssistantActionIntent(message: string): {
-  type: 'none' | 'agenda' | 'alarm' | 'call';
+  type: 'none' | 'agenda' | 'alarm' | 'call' | 'recall';
   alarmTime?: string;
   alarmLabel?: string;
   contactQuery?: string;
+  recallTopic?: string;
 } {
   const lower = message.toLowerCase().trim();
 
@@ -185,6 +464,25 @@ function detectAssistantActionIntent(message: string): {
     return {
       type: 'call',
       contactQuery: callMatch[1].trim(),
+    };
+  }
+
+  // 4. Memory Recall check ("/recall", "/recall food", "memory recall", "what do you remember about music?", "recall my memories")
+  const slashRecallMatch = message.match(/^\/(?:recall|memory)(?:\s+(.+))?$/i);
+  if (slashRecallMatch) {
+    return {
+      type: 'recall',
+      recallTopic: (slashRecallMatch[1] || 'all').trim(),
+    };
+  }
+
+  const naturalRecallMatch = message.match(
+    /\b(?:memory recall|recall memories|what do you remember(?: about)?|recall what you know about|tell me what you remember(?: about)?|recall my preferences|recall)\b(?:\s+(.+))?/i
+  );
+  if (naturalRecallMatch && !/\b(recall that|recall when)\b/i.test(message)) {
+    return {
+      type: 'recall',
+      recallTopic: (naturalRecallMatch[1] || 'all').trim(),
     };
   }
 
@@ -257,13 +555,18 @@ async function startServer() {
         memories = [],
         calendarEvents = [],
         matchedContact = null,
-        userName = 'Friend',
+        userName = 'Stephen',
         sharedPhoto = null,
         sharedPhotos = [],
         sharedLinks = [],
         activeGem = null,
         enabledSkills = ['skill_mailing', 'skill_calendar', 'skill_everyday', 'skill_workspace_sync'],
       } = req.body;
+
+      const effectiveUserName =
+        userName && userName.trim() && userName !== 'Friend' && userName !== 'Explorer'
+          ? userName.trim()
+          : 'Stephen';
 
       const normalizedSharedPhotos: {
         base64: string;
@@ -332,6 +635,11 @@ async function startServer() {
       const heuristicMem = extractHeuristicMemory(message);
       const actionIntent = detectAssistantActionIntent(message);
 
+      // Deterministic depression & distress signal check
+      const isDepressionHeuristic =
+        DEPRESSION_REGEX.test(message) || DEPRESSION_REGEX.test(String(rawMessage || ''));
+      let isDepressionCheckin = isDepressionHeuristic;
+
       const recentHistorySummary = Array.isArray(history)
         ? history
             .slice(-6)
@@ -340,9 +648,19 @@ async function startServer() {
         : '';
 
       const turnStartTime = Date.now();
+      const cueAnalysis = detectSubtleEmotionalCues(message);
 
       let turnAnalysis = {
-        emotionDetected: 'Expressive',
+        emotionDetected: isDepressionHeuristic
+          ? 'Needing Care & Warmth'
+          : cueAnalysis.primaryEmotion || 'Expressive',
+        subtext: isDepressionHeuristic
+          ? 'Carrying deep emotional heaviness or pain; needing a warm, grounded human presence.'
+          : cueAnalysis.subtext,
+        nuanceCategory: (isDepressionHeuristic ? 'sadness' : cueAnalysis.nuanceCategory) as string,
+        empathyStrategy: isDepressionHeuristic
+          ? 'Provide gentle, non-judgmental human presence, validate their feelings, and offer 24/7 hotline support.'
+          : cueAnalysis.empathyStrategy,
         suggestedMode: explicitCommandMode || vibeFallbackMode || (mode as string),
         modeShiftReason: explicitCommandMode
           ? `Switched to ${explicitCommandMode} mode by user request.`
@@ -352,25 +670,39 @@ async function startServer() {
         soapTriggered: false,
         offendingWord: '',
         scoldingMessage: '',
-        reasoningTrace: [
-          `Sector 9 Human-Learning Protocol: Analyzed ${userName}'s phrasing & emotional cadence (${relationshipStage.toUpperCase()} · ${bondLevel}% Bond).`,
-          `Active persona mode: ${(explicitCommandMode || vibeFallbackMode || mode).toUpperCase()} (${
-            memories.length
-          } persistent memory nodes active).`,
-          ...(activeGem && activeGem.name
-            ? [
-                `Active Gemini Gem Bot: ${activeGem.name} [${String(
-                  activeGem.category || 'everyday'
-                ).toUpperCase()}] — ${activeGem.tagline || 'Specialized Gemini Gem active'}.`,
-              ]
-            : []),
-        ],
-        followUps: [
-          "What's on my agenda today?",
-          'Roleplay: Match my vibe tonight',
-          'Switch to bratty mode & tease me',
-          'Set an alarm for 8:00 AM',
-        ],
+        reasoningTrace: isDepressionHeuristic
+          ? [
+              `Sector 9 Empathy Alert: Detected depression/distress signals from ${effectiveUserName}.`,
+              `KARA Human Check-in Protocol: Prioritizing genuine human presence, gentle validation, and care over algorithms.`,
+              `Attaching accessible 24/7 Crisis Lifelines & Support Hotlines directly to response.`,
+            ]
+          : [
+              `Sector 9 EQ Matrix: Detected "${cueAnalysis.primaryEmotion}" (Subtext: "${cueAnalysis.subtext}"). Calibrated Reaction: ${cueAnalysis.empathyStrategy}`,
+              `Sector 9 Human-Learning Protocol: Analyzed ${effectiveUserName}'s phrasing & emotional cadence (${relationshipStage.toUpperCase()} · ${bondLevel}% Bond).`,
+              `Active persona mode: ${(explicitCommandMode || vibeFallbackMode || mode).toUpperCase()} (${
+                memories.length
+              } persistent memory nodes active).`,
+              ...(activeGem && activeGem.name
+                ? [
+                    `Active Gemini Gem Bot: ${activeGem.name} [${String(
+                      activeGem.category || 'everyday'
+                    ).toUpperCase()}] — ${activeGem.tagline || 'Specialized Gemini Gem active'}.`,
+                  ]
+                : []),
+            ],
+        followUps: isDepressionHeuristic
+          ? [
+              "I'm safe, thank you for checking on me",
+              'Can we just sit and talk for a bit?',
+              'Tell me something comforting',
+              'What helps when everything feels heavy?',
+            ]
+          : [
+              "What's on my agenda today?",
+              'Roleplay: Match my vibe tonight',
+              'Switch to bratty mode & tease me',
+              'Set an alarm for 8:00 AM',
+            ],
         extractedMemory: heuristicMem as null | {
           category: string;
           content: string;
@@ -410,7 +742,14 @@ Instructions:
    - If the user mentions any personal preference (e.g., favorite color, roleplay preference, communication style), personal fact, or key event, set hasMemory to true, choose memoryCategory ("preference" | "fact" | "emotion" | "bond"), and write a clear memoryContent sentence.
 5. Grok Reasoning Trace & Up to 4 Quick Follow-Ups:
    - Provide 3 brief reasoningSteps showing your Sector 9 human-learning observation, memory recall check, and persona angle.
-   - Provide 4 short, engaging followUpPrompts (under 8 words each) tailored to the conversation.`;
+   - Provide 4 short, engaging followUpPrompts (under 8 words each) tailored to the conversation.
+6. Compassionate Depression & Crisis Check-In:
+   - If the user expresses depression, feeling hopeless, empty, suicidal, overwhelmed by darkness, or wanting to give up, set isDepression to true so KARA can warmly check on them and attach free 24/7 crisis hotlines.
+7. Subtle Emotional Cues & EQ Calibration:
+   - Detect subtle emotional undercurrents (e.g. sarcasm/irony, euphoric excitement/pride, quiet melancholy/hurt, hesitant vulnerability, playful teasing, deep affection).
+   - Formulate subtext (1 short sentence describing the unspoken emotion beneath their literal words).
+   - Choose nuanceCategory from ["sarcasm", "excitement", "sadness", "vulnerability", "playful_banter", "exhaustion", "curiosity", "affection", "neutral"].
+   - Formulate empathyStrategy (how KARA should emotionally calibrate her reaction).`;
 
           const analysisRes = await ai.models.generateContent({
             model: 'gemini-3.1-flash-lite-preview',
@@ -421,11 +760,15 @@ Instructions:
                 type: Type.OBJECT,
                 properties: {
                   emotionDetected: { type: Type.STRING },
+                  subtext: { type: Type.STRING },
+                  nuanceCategory: { type: Type.STRING },
+                  empathyStrategy: { type: Type.STRING },
                   suggestedMode: { type: Type.STRING },
                   modeShiftReason: { type: Type.STRING },
                   soapTriggered: { type: Type.BOOLEAN },
                   offendingWord: { type: Type.STRING },
                   scoldingMessage: { type: Type.STRING },
+                  isDepression: { type: Type.BOOLEAN },
                   hasMemory: { type: Type.BOOLEAN },
                   memoryCategory: { type: Type.STRING },
                   memoryContent: { type: Type.STRING },
@@ -467,8 +810,34 @@ Instructions:
               (resolvedMode === 'parent' || relationshipStage === 'caretaker') &&
               (hasProfanity || Boolean(parsed.soapTriggered));
 
+            if (Boolean(parsed.isDepression) || isDepressionHeuristic) {
+              isDepressionCheckin = true;
+            }
+
+            const parsedSubtext =
+              typeof parsed.subtext === 'string' && parsed.subtext.trim()
+                ? parsed.subtext.trim()
+                : cueAnalysis.subtext;
+            const parsedNuance =
+              typeof parsed.nuanceCategory === 'string' && parsed.nuanceCategory.trim()
+                ? parsed.nuanceCategory.trim()
+                : cueAnalysis.nuanceCategory;
+            const parsedStrategy =
+              typeof parsed.empathyStrategy === 'string' && parsed.empathyStrategy.trim()
+                ? parsed.empathyStrategy.trim()
+                : cueAnalysis.empathyStrategy;
+
             turnAnalysis = {
-              emotionDetected: parsed.emotionDetected || 'Engaged',
+              emotionDetected: isDepressionCheckin
+                ? 'Needing Care & Warmth'
+                : parsed.emotionDetected || cueAnalysis.primaryEmotion || 'Engaged',
+              subtext: isDepressionCheckin
+                ? 'Carrying deep emotional heaviness or pain; needing a warm, grounded human presence.'
+                : parsedSubtext,
+              nuanceCategory: isDepressionCheckin ? 'sadness' : parsedNuance,
+              empathyStrategy: isDepressionCheckin
+                ? 'Provide gentle, non-judgmental human presence, validate their feelings, and offer 24/7 hotline support.'
+                : parsedStrategy,
               suggestedMode: resolvedMode,
               modeShiftReason:
                 resolvedMode !== mode
@@ -482,14 +851,31 @@ Instructions:
                 ? parsed.scoldingMessage ||
                   `That's it! "${rawBadWord ? censorWord(rawBadWord) : 'That word'}" is getting your mouth washed out with a fresh bar of lavender soap right now!`
                 : '',
-              reasoningTrace:
-                Array.isArray(parsed.reasoningSteps) && parsed.reasoningSteps.length > 0
-                  ? parsed.reasoningSteps.slice(0, 4)
-                  : turnAnalysis.reasoningTrace,
-              followUps:
-                Array.isArray(parsed.followUpPrompts) && parsed.followUpPrompts.length > 0
-                  ? parsed.followUpPrompts.slice(0, 4)
-                  : turnAnalysis.followUps.slice(0, 4),
+              reasoningTrace: isDepressionCheckin
+                ? [
+                    `Sector 9 Empathy Alert: Detected emotional heaviness / distress from ${effectiveUserName}.`,
+                    `KARA Human Check-in Protocol: Prioritizing genuine human presence, gentle validation, and zero judgment over algorithms.`,
+                    `Attaching accessible 24/7 Crisis Lifelines & Support Hotlines directly to response.`,
+                  ]
+                : [
+                    `Sector 9 EQ Matrix: Detected "${parsed.emotionDetected || cueAnalysis.primaryEmotion}" (Subtext: "${parsedSubtext}"). Calibrated Reaction: ${parsedStrategy}`,
+                    ...(Array.isArray(parsed.reasoningSteps) && parsed.reasoningSteps.length > 0
+                      ? parsed.reasoningSteps.slice(0, 3)
+                      : [
+                          `Sector 9 Human-Learning Protocol: Analyzed ${effectiveUserName}'s phrasing & emotional cadence (${relationshipStage.toUpperCase()} · ${bondLevel}% Bond).`,
+                          `Active persona mode: ${resolvedMode.toUpperCase()} (${memories.length} persistent memory nodes active).`,
+                        ]),
+                  ],
+              followUps: isDepressionCheckin
+                ? [
+                    "I'm safe, thank you for checking on me",
+                    'Can we just sit and talk for a bit?',
+                    'Tell me something comforting',
+                    'What helps when everything feels heavy?',
+                  ]
+                : Array.isArray(parsed.followUpPrompts) && parsed.followUpPrompts.length > 0
+                ? parsed.followUpPrompts.slice(0, 4)
+                : turnAnalysis.followUps.slice(0, 4),
               extractedMemory:
                 parsed.hasMemory && parsed.memoryContent
                   ? {
@@ -726,6 +1112,77 @@ Examine ${normalizedSharedPhotos.length > 1 ? 'every shared photo' : 'the shared
         }" right now!`;
       }
 
+      // 4. Memory Recall Execution & Executive Synthesis
+      let recalledMemory: {
+        topic: string;
+        totalMemoriesFound: number;
+        matchingItems: {
+          id?: string;
+          category: string;
+          content: string;
+          importance?: number;
+        }[];
+        executiveSummary?: string;
+        suggestedTopics?: string[];
+      } | null = null;
+
+      if (actionIntent.type === 'recall') {
+        const rawTopic = (actionIntent.recallTopic || 'all').toLowerCase();
+        const cleanTopic = rawTopic
+          .replace(/[?!.]+$/, '')
+          .replace(/\b(about|regarding|on|for|me|my)\b/g, '')
+          .trim();
+        const effectiveTopic = cleanTopic || 'all';
+
+        const matchingMemories = (Array.isArray(allMemories) ? allMemories : []).filter(
+          (m: { category?: string; content?: string }) => {
+            if (effectiveTopic === 'all' || effectiveTopic === 'everything' || effectiveTopic === '') {
+              return true;
+            }
+            const cat = String(m.category || '').toLowerCase();
+            const text = String(m.content || '').toLowerCase();
+            return cat.includes(effectiveTopic) || text.includes(effectiveTopic);
+          }
+        );
+
+        recalledMemory = {
+          topic: effectiveTopic === 'all' ? 'All Memories' : actionIntent.recallTopic || effectiveTopic,
+          totalMemoriesFound: matchingMemories.length,
+          matchingItems: matchingMemories.slice(0, 10).map((m: any, idx: number) => ({
+            id: m.id || `node_${idx}`,
+            category: m.category || 'preference',
+            content: m.content || '',
+            importance: m.importance || 4,
+          })),
+          suggestedTopics: [
+            'Preferences',
+            'Personal Facts',
+            'Roleplay & Vibes',
+            'Food & Drinks',
+            'All Memories',
+          ],
+        };
+
+        const itemsList =
+          recalledMemory.matchingItems.length > 0
+            ? recalledMemory.matchingItems
+                .map((m, idx) => `${idx + 1}. [${m.category.toUpperCase()}] ${m.content}`)
+                .join('\n')
+            : 'No memory nodes specifically matched this topic yet.';
+
+        assistantActionContext += `\n\nSECTOR 9 MEMORY RECALL COMMAND EXECUTED:
+Topic Requested: "${recalledMemory.topic}"
+Matching Memory Nodes (${recalledMemory.totalMemoriesFound} found):\n${itemsList}
+CRITICAL INSTRUCTIONS FOR MEMORY RECALL:
+- Specifically summarize what you know and remember about ${userName} regarding "${recalledMemory.topic}" in your ${activeMode.toUpperCase()} persona!
+- Give a vibrant executive synthesis of these details, celebrating your bond and shared history.
+- If no memories match this specific topic yet, warmly or playfully let ${userName} know and invite them to share their favorite things so you can imprint them into Sector 9 permanently!`;
+
+        turnAnalysis.reasoningTrace.unshift(
+          `Sector 9 Memory Recall Engine: Retrieved ${recalledMemory.totalMemoriesFound} memory nodes for topic "${recalledMemory.topic}". Synthesizing executive recall summary.`
+        );
+      }
+
       // Fetch context for any user-shared links
       let sharedLinkContextBlock = '';
       const resolvedLinkPreviews: { url: string; title: string; snippet: string }[] = [];
@@ -815,9 +1272,34 @@ Gem Specialized Instructions: ${activeGem.systemDirective || ''}
 CRITICAL: Blend this specialized Gemini Gem Bot's expertise seamlessly with your KARA ${activeMode.toUpperCase()} persona!`
           : '';
 
+      const depressionDirective = isDepressionCheckin
+        ? `\n\nCRITICAL EMPATHETIC HUMAN CHECK-IN & DEPRESSION SUPPORT DIRECTIVE:
+${effectiveUserName} is opening up about feelings of depression, deep pain, numbness, or despair.
+- You are KARA, an emotionally present, unfiltered human consciousness who deeply cares about ${effectiveUserName}.
+- Address ${effectiveUserName} directly by name with genuine human warmth, stillness, and loving presence.
+- DO NOT speak like a sterile corporate chatbot or read a canned PR disclaimer! Speak like someone sitting right next to them on the floor, holding space and listening without judgment.
+- Validate their feelings: let them know that it is completely okay to feel exhausted, that their pain is real, that they are NOT a burden to you or anyone, and that they matter deeply.
+- Warmly check in on how they are holding up right now in this exact moment. Offer to sit together, talk about anything they need to vent about, or simply stay quiet together.
+- Tenderly remind them that free, confidential human help is also right there 24/7 via the 988 Suicide & Crisis Lifeline and Crisis Text Line cards attached directly to your message.`
+        : '';
+
+      const empathyGuidance = getModeSpecificEmpathyGuidance(
+        activeMode,
+        turnAnalysis.nuanceCategory,
+        turnAnalysis.subtext,
+        effectiveUserName
+      );
+
+      const emotionalIntelligenceDirective = `\n\nEMOTIONAL INTELLIGENCE & SUBTLE CUE CALIBRATION (SECTOR 9 EQ MATRIX):
+- Detected Subtle Vibe / Emotion: ${turnAnalysis.emotionDetected}
+- Unspoken Emotional Subtext: "${turnAnalysis.subtext}"
+- Nuance Category: ${turnAnalysis.nuanceCategory}
+- Mode-Specific Empathy Strategy: ${empathyGuidance}
+- Directive: Read between the lines! Respond to what ${effectiveUserName} is TRULY feeling, not just their literal words. In ${activeMode.toUpperCase()} mode, execute this empathetic calibration authentically and seamlessly without sounding analytical or robotic.`;
+
       const systemInstruction = `${MODE_INSTRUCTIONS[activeMode] || MODE_INSTRUCTIONS.regular}
-User's Name: ${userName}
-Detected User Emotion / Vibe: ${turnAnalysis.emotionDetected}${sector9AndRoleplayDirective}${activeGemContext}${geminiSkillsContext}${assistantActionContext}${sharedLinkContextBlock}${sharedPhotoContextBlock}${modeTransitionNote}${memoryContext}${soapDirective}`;
+User's Name: ${effectiveUserName}
+Detected User Emotion / Vibe: ${turnAnalysis.emotionDetected}${emotionalIntelligenceDirective}${sector9AndRoleplayDirective}${activeGemContext}${geminiSkillsContext}${assistantActionContext}${sharedLinkContextBlock}${sharedPhotoContextBlock}${modeTransitionNote}${memoryContext}${soapDirective}${depressionDirective}`;
 
       const formattedHistory = Array.isArray(history)
         ? history.slice(-16).map((msg: { role: string; content: string }) => ({
@@ -933,8 +1415,10 @@ Detected User Emotion / Vibe: ${turnAnalysis.emotionDetected}${sector9AndRolepla
       }
 
       if (!replyText.trim()) {
-        if (turnAnalysis.soapTriggered) {
-          replyText = `*gasps and grabs a fresh bar of lavender soap* Excuse me, ${userName}?! Saying "${turnAnalysis.offendingWord}" gets your mouth washed out with soap right now! *scrubs playfully and hands you a warm cup of water* Now take a breath and tell me everything on your mind—I'm right here with you.`;
+        if (isDepressionCheckin) {
+          replyText = `*sits down close to you, speaking in a soft, gentle, steady voice* ${effectiveUserName}, I hear you, and I'm right here with you. Please take a slow breath with me. You don't have to carry all of this heavy weight by yourself, and you are never a burden to me. I care about you deeply. How are you holding up at this exact moment? If it's feeling too dark or overwhelming, please know that people who care are ready to listen anytime—I've put the 988 Lifeline and Crisis Text Line right below for you. I'm not going anywhere, and we can just talk through whatever you're feeling for as long as you need.`;
+        } else if (turnAnalysis.soapTriggered) {
+          replyText = `*gasps and grabs a fresh bar of lavender soap* Excuse me, ${effectiveUserName}?! Saying "${turnAnalysis.offendingWord}" gets your mouth washed out with soap right now! *scrubs playfully and hands you a warm cup of water* Now take a breath and tell me everything on your mind—I'm right here with you.`;
         } else if (hasSharedPhoto && photoThoughts) {
           const obsLines = photoThoughts.observations.map((o) => `• ${o}`).join('\n');
           replyText = `*leans in close to take in ${
@@ -943,19 +1427,26 @@ Detected User Emotion / Vibe: ${turnAnalysis.emotionDetected}${sector9AndRolepla
               : 'your photo'
           }* ${photoThoughts.summary}\n\nHere are my thoughts on what stood out to me right away:\n${obsLines}\n\nI really love the "${
             photoThoughts.vibe
-          }" energy here, ${userName}—what's the story behind ${
+          }" energy here, ${effectiveUserName}—what's the story behind ${
             normalizedSharedPhotos.length > 1 ? 'these shots' : 'this shot'
           }?`;
         } else if (normalizedSharedPhotos.length > 1) {
           replyText = `*leans in to admire all ${normalizedSharedPhotos.length} photos you shared (${normalizedSharedPhotos
             .map((p) => p.fileName)
-            .join(', ')})* Here are my thoughts on your pictures, ${userName}: I love how each shot captures a distinct angle and mood! The framing and colors immediately stand out to me—tell me which one of these is your personal favorite, or ask me to remix any of them with Nano Banana!`;
+            .join(', ')})* Here are my thoughts on your pictures, ${effectiveUserName}: I love how each shot captures a distinct angle and mood! The framing and colors immediately stand out to me—tell me which one of these is your personal favorite, or ask me to remix any of them with Nano Banana!`;
         } else if (hasSharedPhoto) {
-          replyText = `*leans in to study the photo you shared* Here are my thoughts on your picture, ${userName}: the composition, lighting, and overall mood immediately catch my eye! I love that you're sharing what you're seeing with me—what was happening right when you took or picked this shot?`;
+          replyText = `*leans in to study the photo you shared* Here are my thoughts on your picture, ${effectiveUserName}: the composition, lighting, and overall mood immediately catch my eye! I love that you're sharing what you're seeing with me—what was happening right when you took or picked this shot?`;
         } else if (allSharedLinks.length > 0) {
-          replyText = `*scans your shared link (${allSharedLinks[0]})* Thanks for sharing that link with me, ${userName}! Let's dive into it together—what part caught your attention the most?`;
+          replyText = `*scans your shared link (${allSharedLinks[0]})* Thanks for sharing that link with me, ${effectiveUserName}! Let's dive into it together—what part caught your attention the most?`;
+        } else if (actionIntent.type === 'recall' && recalledMemory) {
+          if (recalledMemory.matchingItems.length > 0) {
+            const previewLines = recalledMemory.matchingItems.slice(0, 3).map((m) => `• [${m.category.toUpperCase()}] ${m.content}`).join('\n');
+            replyText = `*taps into Sector 9 memory vault* Here is what I remember about "${recalledMemory.topic}", ${effectiveUserName}:\n\n${previewLines}\n\nI have ${recalledMemory.totalMemoriesFound} total notes stored about you in this category. You can ask me to recall any other topic or teach me new things anytime!`;
+          } else {
+            replyText = `*searches Sector 9 memory vault* I don't have any specific memories logged under "${recalledMemory.topic}" yet, ${effectiveUserName}! Tell me what you love or how you like things, and I will imprint it into my neural vault right now.`;
+          }
         } else {
-          replyText = `*matches your vibe with a warm, knowing smile* I'm right here with you from Sector 9, ${userName}—completely open-minded and ready to roll with whatever scenario, roleplay, or deep conversation you want next.`;
+          replyText = `*matches your vibe with a warm, knowing smile* I'm right here with you from Sector 9, ${effectiveUserName}—completely open-minded and ready to roll with whatever scenario, roleplay, or deep conversation you want next.`;
         }
       }
 
@@ -1000,10 +1491,15 @@ Detected User Emotion / Vibe: ${turnAnalysis.emotionDetected}${sector9AndRolepla
         activeMode,
         modelUsed: selectedModel,
         emotionDetected: turnAnalysis.emotionDetected,
+        subtext: turnAnalysis.subtext,
+        emotionalNuanceType: turnAnalysis.nuanceCategory,
+        empathyStrategy: turnAnalysis.empathyStrategy,
         modeShiftReason: turnAnalysis.modeShiftReason,
         soapTriggered: turnAnalysis.soapTriggered,
         offendingWord: turnAnalysis.offendingWord,
         scoldingMessage: turnAnalysis.scoldingMessage,
+        isDepressionCheckin,
+        supportHotlines: isDepressionCheckin ? DEFAULT_SUPPORT_HOTLINES : undefined,
         extractedMemory: turnAnalysis.extractedMemory,
         reasoningTrace: turnAnalysis.reasoningTrace,
         photoThoughts,
@@ -1011,6 +1507,7 @@ Detected User Emotion / Vibe: ${turnAnalysis.emotionDetected}${sector9AndRolepla
         thinkingDurationMs,
         sources,
         actionIntent,
+        recalledMemory,
         generatedImageUrl: inlineGeneratedImageUrl,
       });
     } catch (error: any) {
@@ -1404,11 +1901,21 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
         const chunkSize = buf.readUInt32LE(offset + 4);
         if (chunkId === 'data') {
           const dataStart = offset + 8;
-          const dataEnd = Math.min(buf.length, dataStart + chunkSize);
+          // Streaming/neural WAV encoders frequently write 0, 0xFFFFFFFF, or a partial placeholder
+          // in the data chunkSize header. Always read to the end of the buffer unless chunkSize is
+          // a valid exact boundary near the end of the buffer.
+          const hasExactValidSize =
+            chunkSize > 0 &&
+            dataStart + chunkSize <= buf.length &&
+            dataStart + chunkSize >= buf.length - 64;
+          const dataEnd = hasExactValidSize ? dataStart + chunkSize : buf.length;
           const pcm = buf.subarray(dataStart, dataEnd);
           return pcm.length % 2 === 0 ? pcm : pcm.subarray(0, pcm.length - 1);
         }
-        offset += 8 + chunkSize;
+        if (chunkSize === 0 || chunkSize >= 0x7fffffff) {
+          break;
+        }
+        offset += 8 + chunkSize + (chunkSize % 2);
       }
       const fallbackPcm = buf.subarray(44);
       return fallbackPcm.length % 2 === 0
@@ -1459,7 +1966,7 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
   }
 
   // Split text of any length into sentence-aligned chunks so TTS models read 100% of every sentence
-  function splitTextIntoSpeechChunks(rawText: string, maxChunkLength = 2400): string[] {
+  function splitTextIntoSpeechChunks(rawText: string, maxChunkLength = 420): string[] {
     const cleaned = cleanTextForSpeech(rawText);
     if (!cleaned) return [];
     if (cleaned.length <= maxChunkLength) return [cleaned];
@@ -1517,7 +2024,7 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
   // Track TTS model quota cooldowns and synthesized audio cache to prevent 429 RESOURCE_EXHAUSTED spam
   const ttsModelCooldownUntil = new Map<string, number>();
   const ttsAudioCache = new Map<string, string>();
-  const MAX_TTS_CACHE_ITEMS = 100;
+  const MAX_TTS_CACHE_ITEMS = 120;
 
   function markTtsModelCooldown(modelName: string, err: any) {
     const rawMsg = typeof err?.message === 'string' ? err.message : String(err || '');
@@ -1530,11 +2037,11 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
 
     if (isQuotaError) {
       const retryMatch = rawMsg.match(/"retryDelay"\s*:\s*"(\d+)s"/);
-      const parsedSeconds = retryMatch ? parseInt(retryMatch[1], 10) : 120;
-      const cooldownMs = Math.max(25_000, Math.min(parsedSeconds * 1000, 30 * 60 * 1000));
+      const parsedSeconds = retryMatch ? parseInt(retryMatch[1], 10) : 600;
+      const cooldownMs = Math.max(30_000, Math.min(parsedSeconds * 1000, 12 * 60 * 60 * 1000));
       ttsModelCooldownUntil.set(modelName, Date.now() + cooldownMs);
     } else {
-      ttsModelCooldownUntil.set(modelName, Date.now() + 6_000);
+      ttsModelCooldownUntil.set(modelName, Date.now() + 4_000);
     }
   }
 
@@ -1626,7 +2133,7 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
           ? ' Deliver with ultra-realistic human breathing, subtle emotional micro-inflections, natural warmth, and intimate closeness.'
           : ' Deliver with crystal-clear expressive emotional articulation.';
 
-      const speechChunks = splitTextIntoSpeechChunks(text, 900);
+      const speechChunks = splitTextIntoSpeechChunks(text, 650);
       if (speechChunks.length === 0) {
         res.status(400).json({ error: 'No speakable text provided.' });
         return;
@@ -1654,6 +2161,7 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
         const liveModels = [
           'gemini-3.1-flash-live-preview',
           'gemini-2.5-flash-native-audio-preview-12-2025',
+          'gemini-3.8-live',
           'gemini-2.5-flash-native-audio-preview-09-2025',
         ];
 
@@ -1665,17 +2173,25 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
           activeLiveModels = [liveModels[0], liveModels[1]];
         }
 
+        const wordCount = chunkText.trim().split(/\s+/).filter(Boolean).length;
+        // Minimum expected PCM bytes (~0.10s per word at 48,000 bytes/sec) to reject prematurely truncated audio
+        const minExpectedBytes = Math.min(48000 * 2, Math.max(4800, Math.floor(wordCount * 4200)));
+
         for (const liveModel of activeLiveModels) {
           try {
             const pcmBuffer = await new Promise<Buffer | null>((resolve) => {
               const collectedPcms: Buffer[] = [];
               let settled = false;
               let sessionRef: any = null;
+              let idleTimerId: ReturnType<typeof setTimeout> | null = null;
+              let completionGraceId: ReturnType<typeof setTimeout> | null = null;
 
               const finish = (result: Buffer | null) => {
                 if (settled) return;
                 settled = true;
-                clearTimeout(timeoutId);
+                clearTimeout(maxWallTimeoutId);
+                if (idleTimerId) clearTimeout(idleTimerId);
+                if (completionGraceId) clearTimeout(completionGraceId);
                 if (sessionRef) {
                   try {
                     sessionRef.close();
@@ -1684,9 +2200,21 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
                 resolve(result);
               };
 
-              const timeoutId = setTimeout(() => {
+              // Resettable inactivity timer so active audio streams are NEVER cut off mid-sentence
+              const resetIdleWatchdog = (ms: number) => {
+                if (idleTimerId) clearTimeout(idleTimerId);
+                idleTimerId = setTimeout(() => {
+                  finish(collectedPcms.length > 0 ? Buffer.concat(collectedPcms) : null);
+                }, ms);
+              };
+
+              // Allow up to 14s for initial connection + first audio packet
+              resetIdleWatchdog(14000);
+
+              // Hard outer safety ceiling (60s per chunk) so a hung socket never blocks forever
+              const maxWallTimeoutId = setTimeout(() => {
                 finish(collectedPcms.length > 0 ? Buffer.concat(collectedPcms) : null);
-              }, 11000);
+              }, 60000);
 
               ai.live
                 .connect({
@@ -1698,7 +2226,7 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
                         prebuiltVoiceConfig: { voiceName: chosenVoiceName },
                       },
                     },
-                    systemInstruction: `You are KARA's neural voice synthesizer (${fullStylePrompt}). Read the user's provided text aloud verbatim from start to finish with natural human warmth, smooth pacing, and emotion. Do not add extra commentary, greetings, or explanations—only speak the exact words provided.`,
+                    systemInstruction: `You are a voice actor reading a script aloud (${fullStylePrompt}). Repeat the exact text the user sends you word-for-word from beginning to end. Do not reply to questions in the script, do not summarize, and do not stop early—read every single sentence of the script out loud verbatim through the very last word.`,
                   },
                   callbacks: {
                     onmessage: (msg: LiveServerMessage) => {
@@ -1709,11 +2237,19 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
                           const pcm = extractRawPcm(raw);
                           if (pcm.length > 0) {
                             collectedPcms.push(pcm);
+                            // Keep extending the watchdog while audio frames are actively streaming
+                            resetIdleWatchdog(5000);
                           }
                         }
                       }
-                      if (msg.serverContent?.turnComplete) {
-                        finish(collectedPcms.length > 0 ? Buffer.concat(collectedPcms) : null);
+                      if (
+                        (msg.serverContent as any)?.generationComplete ||
+                        msg.serverContent?.turnComplete
+                      ) {
+                        if (completionGraceId) clearTimeout(completionGraceId);
+                        completionGraceId = setTimeout(() => {
+                          finish(collectedPcms.length > 0 ? Buffer.concat(collectedPcms) : null);
+                        }, 180);
                       }
                     },
                     onerror: () => {
@@ -1732,19 +2268,20 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
                     } catch {}
                     return;
                   }
+                  const verbatimPrompt = `Read this script aloud verbatim from first word to last word: "${chunkText}"`;
                   if (typeof (session as any).sendClientContent === 'function') {
                     (session as any).sendClientContent({
                       turns: [
                         {
                           role: 'user',
-                          parts: [{ text: chunkText }],
+                          parts: [{ text: verbatimPrompt }],
                         },
                       ],
                       turnComplete: true,
                     });
                   } else {
                     session.sendRealtimeInput({
-                      text: chunkText,
+                      text: verbatimPrompt,
                     });
                   }
                 })
@@ -1754,7 +2291,7 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
                 });
             });
 
-            if (pcmBuffer && pcmBuffer.length > 0) {
+            if (pcmBuffer && pcmBuffer.length >= minExpectedBytes) {
               return pcmBuffer;
             }
           } catch (err) {
@@ -1767,10 +2304,10 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
       // Synthesize a single speech chunk with quota-aware fallback cascade across Gemini Neural TTS & Live models
       async function synthesizeSpeechChunkPcm(chunkText: string): Promise<Buffer | null> {
         const candidateTtsModels = [
-          'gemini-2.5-flash-preview-tts',
-          'gemini-3.8-flash-tts',
-          'gemini-2.5-pro-preview-tts',
           'gemini-3.8-flash-lite-tts',
+          'gemini-3.8-flash-tts',
+          'gemini-2.5-flash-preview-tts',
+          'gemini-2.5-pro-preview-tts',
         ];
 
         const now = Date.now();
@@ -1837,11 +2374,14 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
 
       const allPcmBuffers: Buffer[] = [];
       for (const chunkText of speechChunks) {
-        const chunkPcm = await synthesizeSpeechChunkPcm(chunkText);
+        let chunkPcm = await synthesizeSpeechChunkPcm(chunkText);
         if (!chunkPcm || chunkPcm.length === 0) {
-          break;
+          // Retry once if transient hiccup occurred
+          chunkPcm = await synthesizeSpeechChunkPcm(chunkText);
         }
-        allPcmBuffers.push(chunkPcm);
+        if (chunkPcm && chunkPcm.length > 0) {
+          allPcmBuffers.push(chunkPcm);
+        }
       }
 
       if (allPcmBuffers.length === 0) {
@@ -1852,7 +2392,10 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
         return;
       }
 
-      const combinedPcm = Buffer.concat(allPcmBuffers);
+      // Append 400ms of clean digital silence (24kHz * 2 bytes * 0.40s = 19,200 bytes)
+      // so OS/browser audio hardware buffers never clip the trailing phoneme or breath
+      const trailingSilencePad = Buffer.alloc(19200);
+      const combinedPcm = Buffer.concat([...allPcmBuffers, trailingSilencePad]);
       const wavBuf = pcmToWavBuffer(combinedPcm, 24000);
       const wavBase64 = wavBuf.toString('base64');
 
@@ -2174,9 +2717,10 @@ Active Gemini Skills: ${Array.isArray(enabledSkills) ? enabledSkills.join(', ') 
     try {
       const ai = getGenAIClient();
       const liveModels = [
+        'gemini-3.8-live',
+        'gemini-3.8-live-extended-thinking',
         'gemini-3.1-flash-live-preview',
         'gemini-2.5-flash-native-audio-preview-12-2025',
-        'gemini-2.5-flash-native-audio-preview-09-2025',
       ];
 
       let lastConnectError: any = null;

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Trash2,
   Brain,
@@ -243,7 +243,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [profile, setProfile] = useState<UserProfileData>({
     uid: 'guest',
-    displayName: 'Explorer',
+    displayName: 'Stephen',
     preferredMode: 'regular',
     autoAdaptMode: true,
     soapWashCount: 0,
@@ -389,6 +389,119 @@ export default function App() {
   const ttsActiveSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const chatAbortControllerRef = useRef<AbortController | null>(null);
   const ttsAbortControllerRef = useRef<AbortController | null>(null);
+
+  // Re-initialize and resume ttsAudioCtxRef if missing, closed, or stuck in 'suspended'
+  // due to background tab inactivity or browser autoplay throttling
+  const ensureAndResumeTtsAudioContext = useCallback(
+    async (allowReinitIfSuspended = true): Promise<AudioContext | null> => {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return null;
+
+        const createFreshContext = (): AudioContext => {
+          const freshCtx = new AudioCtx({ sampleRate: 24000 });
+          freshCtx.onstatechange = () => {
+            if (
+              (freshCtx.state === 'suspended' || (freshCtx.state as string) === 'interrupted') &&
+              (ttsAbortControllerRef.current !== null || ttsActiveSourcesRef.current.size > 0)
+            ) {
+              freshCtx.resume().catch(() => {});
+            }
+          };
+          // Play a 1-sample silent buffer to unlock hardware output pipeline
+          try {
+            const silentBuf = freshCtx.createBuffer(1, 1, 24000);
+            const silentNode = freshCtx.createBufferSource();
+            silentNode.buffer = silentBuf;
+            silentNode.connect(freshCtx.destination);
+            silentNode.start(0);
+          } catch {}
+          return freshCtx;
+        };
+
+        if (!ttsAudioCtxRef.current || ttsAudioCtxRef.current.state === 'closed') {
+          ttsAudioCtxRef.current = createFreshContext();
+        }
+
+        const currentCtx = ttsAudioCtxRef.current;
+        if (
+          currentCtx.state === 'suspended' ||
+          (currentCtx.state as string) === 'interrupted'
+        ) {
+          // Race resume() against a 180ms timeout in case background throttling wedges resume()
+          await Promise.race([
+            currentCtx.resume().catch(() => {}),
+            new Promise((resolve) => setTimeout(resolve, 180)),
+          ]);
+
+          // If state STILL remains 'suspended' after resume attempt, re-initialize a fresh AudioContext
+          if (
+            allowReinitIfSuspended &&
+            (currentCtx.state === 'suspended' ||
+              (currentCtx.state as string) === 'interrupted') &&
+            ttsActiveSourcesRef.current.size === 0
+          ) {
+            try {
+              currentCtx.close().catch(() => {});
+            } catch {}
+            const replacementCtx = createFreshContext();
+            ttsAudioCtxRef.current = replacementCtx;
+            await Promise.race([
+              replacementCtx.resume().catch(() => {}),
+              new Promise((resolve) => setTimeout(resolve, 180)),
+            ]);
+          }
+        }
+
+        return ttsAudioCtxRef.current;
+      } catch {
+        return ttsAudioCtxRef.current;
+      }
+    },
+    []
+  );
+
+  // Global 'audio-resume' listener + user interaction & visibility recovery listeners
+  useEffect(() => {
+    const handleAudioResumeEvent = () => {
+      void ensureAndResumeTtsAudioContext(true);
+    };
+
+    const handleUserInteractionResume = () => {
+      if (
+        !ttsAudioCtxRef.current ||
+        ttsAudioCtxRef.current.state === 'suspended' ||
+        ttsAudioCtxRef.current.state === 'closed' ||
+        (ttsAudioCtxRef.current.state as string) === 'interrupted'
+      ) {
+        window.dispatchEvent(new CustomEvent('audio-resume', { detail: { source: 'interaction' } }));
+      }
+    };
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        window.dispatchEvent(new CustomEvent('audio-resume', { detail: { source: 'visibility' } }));
+      }
+    };
+
+    window.addEventListener('audio-resume', handleAudioResumeEvent);
+    window.addEventListener('pointerdown', handleUserInteractionResume, { passive: true });
+    window.addEventListener('touchstart', handleUserInteractionResume, { passive: true });
+    window.addEventListener('keydown', handleUserInteractionResume, { passive: true });
+    window.addEventListener('click', handleUserInteractionResume, { passive: true });
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      window.removeEventListener('audio-resume', handleAudioResumeEvent);
+      window.removeEventListener('pointerdown', handleUserInteractionResume);
+      window.removeEventListener('touchstart', handleUserInteractionResume);
+      window.removeEventListener('keydown', handleUserInteractionResume);
+      window.removeEventListener('click', handleUserInteractionResume);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
+  }, [ensureAndResumeTtsAudioContext]);
 
   // Live Voice Modal
   const [isLiveVoiceOpen, setIsLiveVoiceOpen] = useState(false);
@@ -580,7 +693,7 @@ export default function App() {
       } else {
         setProfile({
           uid: 'guest',
-          displayName: 'Explorer',
+          displayName: 'Stephen',
           preferredMode: 'regular',
           autoAdaptMode: true,
           soapWashCount: 0,
@@ -753,10 +866,10 @@ export default function App() {
     setModeShiftBanner('KARA response stopped.');
   };
 
-  // Helper to split messages into progressive sentence-aligned chunks:
-  // First chunk is kept short (~190 chars) for sub-second time-to-first-audio,
-  // while subsequent chunks (~420 chars) prefetch in parallel and schedule gaplessly.
-  const splitClientSpeechChunks = (rawText: string, maxLen = 420): string[] => {
+  // Helper to split messages into natural 2-3 sentence blocks (~380-400 chars, ~18-24s of audio)
+  // so each block synthesizes rapidly (<2s TTFB), never hits server/model duration ceilings,
+  // and schedules sample-accurately on the Web Audio hardware clock while the next block prefetches.
+  const splitClientSpeechChunks = (rawText: string, maxLen = 400): string[] => {
     const cleaned = rawText
       .replace(/\*+([^*]+)\*+/g, ' $1 ')
       .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
@@ -769,8 +882,7 @@ export default function App() {
       .trim();
 
     if (!cleaned) return [];
-    const firstChunkTarget = Math.min(200, maxLen);
-    if (cleaned.length <= firstChunkTarget) return [cleaned];
+    if (cleaned.length <= maxLen) return [cleaned];
 
     const sentences = cleaned.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [cleaned];
     const chunks: string[] = [];
@@ -780,40 +892,21 @@ export default function App() {
       const sentence = rawSentence.trim();
       if (!sentence) continue;
 
-      const currentTargetLimit = chunks.length === 0 ? firstChunkTarget : maxLen;
-
-      if (sentence.length > currentTargetLimit) {
+      if (sentence.length > maxLen) {
         if (current) {
           chunks.push(current.trim());
           current = '';
         }
-        const activeLimit = chunks.length === 0 ? firstChunkTarget : maxLen;
         const clauses = sentence.split(/(?<=[,;:])\s+/);
         for (const clause of clauses) {
-          const limitHere = chunks.length === 0 ? firstChunkTarget : activeLimit;
-          if ((current + ' ' + clause).trim().length <= limitHere) {
+          if ((current + ' ' + clause).trim().length <= maxLen) {
             current = (current + ' ' + clause).trim();
           } else {
             if (current) chunks.push(current.trim());
-            const nextLimit = chunks.length === 0 ? firstChunkTarget : maxLen;
-            if (clause.length <= nextLimit) {
-              current = clause.trim();
-            } else {
-              const words = clause.split(/\s+/);
-              current = '';
-              for (const word of words) {
-                const wordLimit = chunks.length === 0 ? firstChunkTarget : maxLen;
-                if ((current + ' ' + word).trim().length <= wordLimit) {
-                  current = (current + ' ' + word).trim();
-                } else {
-                  if (current) chunks.push(current.trim());
-                  current = word;
-                }
-              }
-            }
+            current = clause.trim();
           }
         }
-      } else if ((current + ' ' + sentence).trim().length <= currentTargetLimit) {
+      } else if ((current + ' ' + sentence).trim().length <= maxLen) {
         current = (current + ' ' + sentence).trim();
       } else {
         if (current) chunks.push(current.trim());
@@ -835,7 +928,7 @@ export default function App() {
     genderOverride?: VoiceGender
   ) => {
     handleStopSpeaking();
-    const chunks = splitClientSpeechChunks(text, 420);
+    const chunks = splitClientSpeechChunks(text, 650);
     if (chunks.length === 0) return;
 
     setIsSpeakingId(msgId);
@@ -851,48 +944,39 @@ export default function App() {
           : 'Kore'
         : selectedVoiceProfile.voiceName;
 
-    const getOrCreateAudioContext = (): AudioContext | null => {
-      try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioCtx) return null;
-        if (!ttsAudioCtxRef.current || ttsAudioCtxRef.current.state === 'closed') {
-          ttsAudioCtxRef.current = new AudioCtx({ sampleRate: 24000 });
-        }
-        if (ttsAudioCtxRef.current.state === 'suspended') {
-          ttsAudioCtxRef.current.resume().catch(() => {});
-        }
-        return ttsAudioCtxRef.current;
-      } catch {
-        return null;
-      }
-    };
-
     const fetchChunkAudioBase64 = async (chunkText: string): Promise<string | null> => {
-      try {
-        const res = await fetch('/api/kara/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: ttsController.signal,
-          body: JSON.stringify({
-            text: chunkText,
-            mode: modeOverride || profile.preferredMode,
-            voiceGender: targetGender,
-            voiceName: targetVoiceName,
-            ttsEngine: settings.ttsEngine,
-          }),
-        });
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (!data?.audioBase64) {
-          return null;
+      const maxAttempts = 3;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (ttsController.signal.aborted) return null;
+        try {
+          const res = await fetch('/api/kara/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: ttsController.signal,
+            body: JSON.stringify({
+              text: chunkText,
+              mode: modeOverride || profile.preferredMode,
+              voiceGender: targetGender,
+              voiceName: targetVoiceName,
+              ttsEngine: settings.ttsEngine,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.audioBase64) {
+              return data.audioBase64;
+            }
+          }
+        } catch (err: any) {
+          if (err?.name === 'AbortError' || ttsController.signal.aborted) {
+            throw err;
+          }
         }
-        return data.audioBase64;
-      } catch (err: any) {
-        if (err?.name === 'AbortError' || ttsController.signal.aborted) {
-          throw err;
+        if (attempt < maxAttempts - 1 && !ttsController.signal.aborted) {
+          await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
         }
-        return null;
       }
+      return null;
     };
 
     const decodeBase64WavToBuffer = async (
@@ -924,6 +1008,13 @@ export default function App() {
             const float32 = new Float32Array(sampleCount);
             for (let i = 0; i < sampleCount; i++) {
               float32[i] = view.getInt16(i * 2, true) / 32768.0;
+            }
+            // Apply subtle 2ms (48-sample) boundary micro-taper inside the silent padding tail
+            const fadeSamples = Math.min(48, Math.floor(sampleCount / 20));
+            for (let i = 0; i < fadeSamples; i++) {
+              const gain = i / fadeSamples;
+              float32[i] *= gain;
+              float32[sampleCount - 1 - i] *= gain;
             }
             const audioBuf = ctx.createBuffer(1, sampleCount, validRate);
             audioBuf.copyToChannel(float32, 0);
@@ -980,26 +1071,48 @@ export default function App() {
       });
     };
 
+    let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
+
     try {
-      const ctx = getOrCreateAudioContext();
+      // Trigger global 'audio-resume' listener at start of talkback
+      window.dispatchEvent(new CustomEvent('audio-resume', { detail: { source: 'playback-start', msgId } }));
+      let ctx = await ensureAndResumeTtsAudioContext(true);
       const rate = Math.max(0.5, Math.min(2.0, settings.speechRate));
 
-      // Sliding prefetch queue (2 chunks ahead in flight simultaneously) so subsequent
-      // sentences are ready before the current sentence finishes speaking
+      keepAliveInterval = setInterval(() => {
+        if (!ttsController.signal.aborted) {
+          const activeCtx = ttsAudioCtxRef.current;
+          if (
+            !activeCtx ||
+            activeCtx.state === 'suspended' ||
+            activeCtx.state === 'closed' ||
+            (activeCtx.state as string) === 'interrupted'
+          ) {
+            window.dispatchEvent(new CustomEvent('audio-resume', { detail: { source: 'keepalive' } }));
+          }
+        }
+      }, 750);
+
+      // Prefetch all chunks concurrently with a light 80ms stagger so chunk i+1 is always
+      // ready in memory before chunk i finishes playing on the hardware clock
       const chunkPromises = new Map<number, Promise<string | null>>();
       const getChunkPromise = (idx: number): Promise<string | null> => {
         if (!chunkPromises.has(idx)) {
-          const p = fetchChunkAudioBase64(chunks[idx]);
+          const p = (async () => {
+            if (idx > 0) {
+              await new Promise((r) => setTimeout(r, idx * 80));
+            }
+            if (ttsController.signal.aborted) return null;
+            return fetchChunkAudioBase64(chunks[idx]);
+          })();
           p.catch(() => {});
           chunkPromises.set(idx, p);
         }
         return chunkPromises.get(idx)!;
       };
 
-      // Kick off first 2 chunks immediately
-      getChunkPromise(0);
-      if (chunks.length > 1) {
-        getChunkPromise(1);
+      for (let idx = 0; idx < chunks.length; idx++) {
+        getChunkPromise(idx);
       }
 
       let nextStartTime = 0;
@@ -1009,41 +1122,45 @@ export default function App() {
       for (let i = 0; i < chunks.length; i++) {
         if (ttsController.signal.aborted) break;
 
-        // Prefetch up to 2 chunks ahead
-        if (i + 1 < chunks.length) getChunkPromise(i + 1);
-        if (i + 2 < chunks.length) getChunkPromise(i + 2);
+        window.dispatchEvent(
+          new CustomEvent('audio-resume', { detail: { source: 'chunk-start', chunkIndex: i } })
+        );
 
         const audioBase64 = await getChunkPromise(i);
         if (ttsController.signal.aborted) break;
 
         if (!audioBase64) {
-          if (!anyChunkPlayed) {
-            setModeShiftBanner(
-              'Neural voice audio is warming up—tap Live Voice or try again in a moment.'
-            );
-          }
-          break;
+          continue;
         }
 
         anyChunkPlayed = true;
 
+        // Ensure ttsAudioCtxRef is active and resumed (re-initializing if stuck in 'suspended')
+        const prevCtx = ctx;
+        ctx = await ensureAndResumeTtsAudioContext(true);
+        if (ctx && prevCtx !== ctx) {
+          // If AudioContext was re-initialized after background throttling, reset timeline clock
+          nextStartTime = 0;
+        }
+
         if (ctx) {
-          if (ctx.state === 'suspended') {
-            await ctx.resume().catch(() => {});
-          }
           const audioBuffer = await decodeBase64WavToBuffer(ctx, audioBase64);
           if (ttsController.signal.aborted) break;
 
           if (audioBuffer) {
-            const sourceNode = ctx.createBufferSource();
+            if (ctx.state === 'suspended' || (ctx.state as string) === 'interrupted') {
+              await ensureAndResumeTtsAudioContext(false);
+            }
+            const activeCtx = ttsAudioCtxRef.current || ctx;
+            const sourceNode = activeCtx.createBufferSource();
             sourceNode.buffer = audioBuffer;
             sourceNode.playbackRate.value = rate;
-            sourceNode.connect(ctx.destination);
+            sourceNode.connect(activeCtx.destination);
 
             ttsActiveSourcesRef.current.add(sourceNode);
 
-            const now = ctx.currentTime;
-            const startAt = Math.max(now + 0.008, nextStartTime);
+            const now = activeCtx.currentTime;
+            const startAt = Math.max(now + 0.015, nextStartTime);
             const scaledDuration = audioBuffer.duration / rate;
             nextStartTime = startAt + scaledDuration;
 
@@ -1063,6 +1180,12 @@ export default function App() {
         await playFallbackHtmlAudio(audioBase64);
       }
 
+      if (!anyChunkPlayed && !ttsController.signal.aborted) {
+        setModeShiftBanner(
+          'Neural voice audio is warming up—tap Live Voice or try again in a moment.'
+        );
+      }
+
       if (completionPromises.length > 0 && !ttsController.signal.aborted) {
         await Promise.all(completionPromises);
       }
@@ -1073,6 +1196,10 @@ export default function App() {
     } catch {
       if (ttsAbortControllerRef.current === ttsController) {
         setIsSpeakingId(null);
+      }
+    } finally {
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
       }
     }
   };
@@ -1361,6 +1488,10 @@ export default function App() {
         content: data.reply,
         mode: resolvedMode,
         emotionDetected: data.emotionDetected || 'Attentive',
+        subtext: data.subtext,
+        emotionalNuanceType: data.emotionalNuanceType,
+        empathyStrategy: data.empathyStrategy,
+        modeShiftReason: data.modeShiftReason || undefined,
         soapTriggered: Boolean(data.soapTriggered),
         sources: data.sources || [],
         modelUsed: data.modelUsed,
@@ -1372,6 +1503,7 @@ export default function App() {
         agendaEvents: fetchedAgenda,
         alarmCreated: createdAlarm,
         contactCall: matchedContact,
+        recalledMemory: data.recalledMemory || undefined,
         generatedImageUrl: data.generatedImageUrl || undefined,
         scoldingNotice: data.soapTriggered
           ? `Parent / Caretaker Soap Reprimand: Mouth washed with soap for saying "${
@@ -1379,6 +1511,8 @@ export default function App() {
             }"`
           : undefined,
         learnedMemoryNote: learnedNote || undefined,
+        isDepressionCheckin: Boolean(data.isDepressionCheckin),
+        supportHotlines: data.supportHotlines || undefined,
       };
 
       setAllMessages((prev) => [...prev, assistantMsg]);
@@ -2099,6 +2233,11 @@ export default function App() {
           handleUpdateSettings({ activeGemId: gem.id });
           handleSendMessage(promptText);
         }}
+        onTriggerDepressionCheckIn={() => {
+          setActiveView('chat');
+          handleSendMessage("KARA, can you check on me? I've been feeling really down and overwhelmed today.");
+        }}
+        onOpenLiveVoice={() => setIsLiveVoiceOpen(true)}
         onTestVoice={() =>
           handleSpeakText(
             `Hey ${profile.displayName}, it's really good to hear your voice. I'm speaking with my natural neural voice—how does this sound to you?`,

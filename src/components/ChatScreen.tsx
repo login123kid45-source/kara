@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
   Mic,
@@ -38,6 +39,7 @@ import {
   ImagePlus,
   Link2,
   Download,
+  Search,
 } from 'lucide-react';
 import { KaraMode, ChatMessageData } from '../lib/firebase';
 import { triggerHaptic } from '../lib/haptics';
@@ -258,10 +260,40 @@ export interface KaraPhotoThoughts {
   photoCount: number;
 }
 
+export interface SupportHotlineItem {
+  id: string;
+  name: string;
+  shortName: string;
+  description: string;
+  phone?: string;
+  callActionUrl?: string;
+  textActionUrl?: string;
+  externalUrl?: string;
+  badge: string;
+  type: 'phone_and_sms' | 'sms' | 'call' | 'web';
+}
+
+export interface RecalledMemorySummary {
+  topic: string;
+  totalMemoriesFound: number;
+  matchingItems: {
+    id?: string;
+    category: string;
+    content: string;
+    importance?: number;
+  }[];
+  executiveSummary?: string;
+  suggestedTopics?: string[];
+}
+
 export interface EnhancedChatMessage extends ChatMessageData {
   sessionId?: string;
   sources?: { title: string; uri: string; type: 'web' | 'maps' }[];
   modelUsed?: string;
+  subtext?: string;
+  emotionalNuanceType?: string;
+  empathyStrategy?: string;
+  modeShiftReason?: string;
   scoldingNotice?: string;
   learnedMemoryNote?: string;
   reasoningTrace?: string[];
@@ -273,11 +305,14 @@ export interface EnhancedChatMessage extends ChatMessageData {
   agendaEvents?: CalendarAgendaEvent[];
   alarmCreated?: KaraAlarmItem;
   contactCall?: ContactPersonItem;
+  recalledMemory?: RecalledMemorySummary;
   generatedImageUrl?: string;
   sharedPhotoUrl?: string;
   sharedPhotoName?: string;
   sharedPhotos?: SharedPhotoItem[];
   sharedLinks?: string[];
+  isDepressionCheckin?: boolean;
+  supportHotlines?: SupportHotlineItem[];
 }
 
 export interface ChatAttachmentPayload {
@@ -344,16 +379,16 @@ export const MODE_META: Record<
 
 const DEFAULT_FOUR_QUICK_STARTERS: { label: string; prompt: string }[] = [
   {
+    label: 'Memory Recall: What do you remember?',
+    prompt: '/recall all',
+  },
+  {
     label: "What's on my agenda today?",
     prompt: "What's on my agenda today?",
   },
   {
     label: 'Set an alarm for 8:00 AM',
     prompt: 'Set an alarm for 8:00 AM tomorrow for my morning routine',
-  },
-  {
-    label: 'Call Alex Rivera',
-    prompt: 'Call Alex Rivera from my contacts',
   },
   {
     label: 'Roleplay: Match my vibe tonight',
@@ -453,7 +488,12 @@ export const UserMessageBubble: React.FC<UserMessageBubbleProps> = ({
   const modeMeta = MODE_META[msg.mode] || MODE_META.regular;
 
   return (
-    <div className="flex flex-col items-end group">
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.99 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
+      className="flex flex-col items-end group"
+    >
       <div className="flex items-center gap-2 text-xs text-neutral-400 mb-1.5 px-1">
         <span className="font-semibold text-sky-300">{userName}</span>
         <span aria-hidden="true">·</span>
@@ -677,7 +717,7 @@ export const UserMessageBubble: React.FC<UserMessageBubbleProps> = ({
           </button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
@@ -700,6 +740,7 @@ interface AiMessageBubbleProps {
   onCopy: (msgId: string, text: string) => void;
   onQuote: (text: string) => void;
   onDelete: (msgId: string) => void;
+  onSelectQuickReply?: (promptText: string) => void;
 }
 
 export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
@@ -718,9 +759,39 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   onCopy,
   onQuote,
   onDelete,
+  onSelectQuickReply,
 }) => {
   const modeMeta = MODE_META[msg.mode] || MODE_META.regular;
   const textToRender = displayedText !== undefined ? displayedText : msg.content;
+  const [thoughtFilterQuery, setThoughtFilterQuery] = useState('');
+
+  const allReasoningSteps = React.useMemo(
+    () =>
+      msg.reasoningTrace && msg.reasoningTrace.length > 0
+        ? msg.reasoningTrace
+        : [
+            `Input Decoding: Analyzed input sentiment ("${
+              msg.emotionDetected || 'Expressive'
+            }") and user conversational intent.`,
+            `Context Correlation: Correlated with Sector 9 memories, conversational history, and relationship bond.`,
+            `Persona Synthesis: Formulated human companion dialogue tailored to ${modeMeta.label} persona.`,
+          ],
+    [msg.reasoningTrace, msg.emotionDetected, modeMeta.label]
+  );
+
+  const normalizedThoughtFilter = thoughtFilterQuery.trim().toLowerCase();
+  const filteredReasoningSteps = React.useMemo(
+    () =>
+      allReasoningSteps
+        .map((stepText, originalIndex) => ({ stepText, originalIndex }))
+        .filter(
+          ({ stepText, originalIndex }) =>
+            !normalizedThoughtFilter ||
+            stepText.toLowerCase().includes(normalizedThoughtFilter) ||
+            `step ${originalIndex + 1}`.includes(normalizedThoughtFilter)
+        ),
+    [allReasoningSteps, normalizedThoughtFilter]
+  );
 
   const fullSpokenText = React.useMemo(() => {
     const spokenSegments: string[] = [];
@@ -752,8 +823,13 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   }, [msg.content, msg.photoThoughts, msg.scoldingNotice]);
 
   return (
-    <div className="flex flex-col items-start group">
-      <div className="flex items-center gap-2 text-xs text-neutral-400 mb-1.5 px-1">
+    <motion.div
+      initial={{ opacity: 0, y: 14, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col items-start group w-full"
+    >
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400 mb-1.5 px-1">
         <span className="w-2 h-2 rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-400 shrink-0" />
         <span className="font-bold tracking-wide text-white">KARA</span>
         <span aria-hidden="true">·</span>
@@ -766,6 +842,46 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
             <span>{msg.emotionDetected}</span>
           </>
         )}
+        {msg.emotionalNuanceType && msg.emotionalNuanceType !== 'neutral' && (
+          <span
+            className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+              msg.emotionalNuanceType === 'sarcasm'
+                ? 'text-amber-300 bg-amber-500/15 border-amber-500/30'
+                : msg.emotionalNuanceType === 'excitement'
+                ? 'text-orange-300 bg-orange-500/15 border-orange-500/30'
+                : msg.emotionalNuanceType === 'sadness'
+                ? 'text-sky-300 bg-sky-500/15 border-sky-500/30'
+                : msg.emotionalNuanceType === 'vulnerability'
+                ? 'text-fuchsia-300 bg-fuchsia-500/15 border-fuchsia-500/30'
+                : msg.emotionalNuanceType === 'affection'
+                ? 'text-rose-300 bg-rose-500/15 border-rose-500/30'
+                : 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30'
+            }`}
+          >
+            {msg.emotionalNuanceType === 'sarcasm' ? (
+              <Smile className="w-2.5 h-2.5" />
+            ) : msg.emotionalNuanceType === 'excitement' ? (
+              <Flame className="w-2.5 h-2.5" />
+            ) : msg.emotionalNuanceType === 'sadness' || msg.emotionalNuanceType === 'affection' ? (
+              <Heart className="w-2.5 h-2.5" />
+            ) : (
+              <Sparkles className="w-2.5 h-2.5" />
+            )}
+            <span>
+              {msg.emotionalNuanceType === 'sarcasm'
+                ? 'Sarcasm Detected'
+                : msg.emotionalNuanceType === 'excitement'
+                ? 'High Excitement'
+                : msg.emotionalNuanceType === 'sadness'
+                ? 'Empathy Activated'
+                : msg.emotionalNuanceType === 'vulnerability'
+                ? 'Vulnerability Honored'
+                : msg.emotionalNuanceType === 'affection'
+                ? 'Affection Resonant'
+                : 'Playful Sparring'}
+            </span>
+          </span>
+        )}
         {msg.soapTriggered && (
           <>
             <span aria-hidden="true">·</span>
@@ -774,42 +890,244 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         )}
       </div>
 
-      {/* Grok-Style Expandable Reasoning Trace Accordion */}
-      {msg.reasoningTrace && msg.reasoningTrace.length > 0 && (
-        <div className="mb-2 max-w-[86%] w-full">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('tap');
-              onToggleReasoning(msg.id);
-            }}
-            className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 kara-chat-subcard border rounded-xl px-3 py-1.5 transition-colors"
-          >
-            <Brain className="w-3.5 h-3.5 text-fuchsia-400 shrink-0" />
-            <span className="font-mono tabular-nums">
-              Thought for {((msg.thinkingDurationMs || 620) / 1000).toFixed(1)}s
+      {/* Subtle, Collapsible Thought Process Indicator Visualizing Kara's Reasoning & Persona Adaptation */}
+      <div className="mb-2 max-w-[88%] w-full">
+        <button
+          type="button"
+          aria-expanded={isReasoningOpen}
+          onClick={() => {
+            triggerHaptic('tap');
+            onToggleReasoning(msg.id);
+          }}
+          className={`kara-thought-trigger group flex items-center gap-2 text-xs rounded-xl px-3 py-1.5 border text-left ${
+            isReasoningOpen
+              ? 'kara-thought-trigger--open text-neutral-100'
+              : 'bg-neutral-900/45 hover:bg-neutral-900/85 text-neutral-400 hover:text-neutral-200'
+          }`}
+          title="Inspect Kara's internal thought process, reasoning steps, subtext perception, and persona adaptation"
+        >
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="relative flex h-2 w-2">
+              <span
+                className={`absolute inline-flex h-full w-full rounded-full bg-fuchsia-400 opacity-60 ${
+                  isReasoningOpen ? 'animate-pulse' : 'animate-ping'
+                }`}
+              />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-fuchsia-500" />
             </span>
-            <span aria-hidden="true">·</span>
-            <span>{isReasoningOpen ? 'Hide Grok Reasoning' : 'Inspect Grok Reasoning'}</span>
-            {isReasoningOpen ? (
-              <ChevronDown className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5" />
-            )}
-          </button>
+            <Brain className="w-3.5 h-3.5 text-fuchsia-400 shrink-0 group-hover:scale-110 transition-transform" />
+          </div>
 
-          {isReasoningOpen && (
-            <div className="mt-1.5 p-3.5 rounded-2xl kara-chat-subcard border text-xs text-neutral-300 space-y-1.5 font-mono">
-              {msg.reasoningTrace.map((step, idx) => (
-                <div key={idx} className="flex items-start gap-2">
-                  <span className="text-fuchsia-400 shrink-0">{idx + 1}.</span>
-                  <span className="leading-relaxed">{step}</span>
-                </div>
-              ))}
-            </div>
+          <span className="font-mono text-[11px] tabular-nums text-neutral-300">
+            Thought for {((msg.thinkingDurationMs || 520) / 1000).toFixed(1)}s
+          </span>
+
+          <span aria-hidden="true" className="text-neutral-600">
+            ·
+          </span>
+
+          <span className="text-[11px] font-medium text-neutral-300 truncate">
+            {isReasoningOpen ? 'Hide Thought Process' : 'Kara’s Thought Process'}
+          </span>
+
+          {msg.mode && (
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-950/80 border border-neutral-800 text-neutral-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+              <span>{modeMeta.label}</span>
+            </span>
           )}
+
+          <span
+            className={`ml-auto text-neutral-500 group-hover:text-neutral-300 transition-transform duration-300 shrink-0 ${
+              isReasoningOpen ? 'rotate-90 text-fuchsia-300' : 'rotate-0'
+            }`}
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </span>
+        </button>
+
+        {/* Pure CSS Smooth Height Transition (0fr -> 1fr) + Subtle Glowing Border */}
+        <div
+          aria-hidden={!isReasoningOpen}
+          className={`kara-thought-drawer text-xs text-neutral-300 ${
+            isReasoningOpen ? 'kara-thought-drawer--open' : ''
+          }`}
+        >
+          <div className="kara-thought-drawer-inner">
+            <div className="kara-thought-top-beam" />
+            <div className="p-4 space-y-3.5">
+              {/* Header with Execution Telemetry */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-neutral-800/80">
+                <div className="flex items-center gap-2">
+                  <span className="p-1 rounded-lg bg-fuchsia-500/15 border border-fuchsia-500/30 text-fuchsia-300">
+                    <Brain className="w-3.5 h-3.5 text-fuchsia-400" />
+                  </span>
+                  <div>
+                    <div className="text-xs font-semibold text-white flex items-center gap-1.5">
+                      <span>Kara&apos;s Reasoning &amp; Persona Adaptation</span>
+                    </div>
+                    <div className="text-[10px] text-neutral-400">
+                      Transparent internal cognition trace &amp; EQ perception
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-[10px] font-mono">
+                  <span className="px-2 py-0.5 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-400">
+                    {msg.modelUsed || 'gemini-3.8-flash'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg bg-fuchsia-950/60 border border-fuchsia-800/40 text-fuchsia-300">
+                    {msg.thinkingDurationMs || 520}ms
+                  </span>
+                </div>
+              </div>
+
+              {/* 1. Persona Adaptation & Mode Calibration */}
+              <div className="p-3 rounded-xl bg-neutral-900/70 border border-neutral-800 space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-sky-300 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Persona Adaptation &amp; Tone Strategy</span>
+                  </span>
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded border ${modeMeta.accentText} bg-white/5 border-white/10`}
+                  >
+                    {modeMeta.label} Mode Active
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed">
+                  {msg.modeShiftReason ||
+                    `Calibrated Kara's emotional attitude, pacing, and tone boundaries to match ongoing rapport in ${modeMeta.label} persona.`}
+                </p>
+              </div>
+
+              {/* 2. EQ Interpretation & Subtext (if detected) */}
+              {(msg.subtext || msg.empathyStrategy || msg.emotionalNuanceType) && (
+                <div className="p-3 rounded-xl bg-neutral-900/70 border border-neutral-800 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-fuchsia-300">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" />
+                      <span>Input Perception &amp; Subtle Subtext</span>
+                    </span>
+                    {msg.emotionalNuanceType && (
+                      <span className="text-[10px] font-mono text-fuchsia-300 uppercase">
+                        {msg.emotionalNuanceType.replace('_', ' ')}
+                      </span>
+                    )}
+                  </div>
+
+                  {msg.subtext && (
+                    <div className="text-[11px] leading-relaxed">
+                      <span className="text-neutral-400 font-medium">Unspoken Subtext: </span>
+                      <span className="text-neutral-200 italic">&ldquo;{msg.subtext}&rdquo;</span>
+                    </div>
+                  )}
+
+                  {msg.empathyStrategy && (
+                    <div className="text-[11px] leading-relaxed">
+                      <span className="text-neutral-400 font-medium">Empathetic Strategy: </span>
+                      <span className="text-neutral-200">{msg.empathyStrategy}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 3. Visualized Sequential Reasoning Steps */}
+              <div className="space-y-2.5 pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider font-mono">
+                    Sequential Reasoning Steps
+                  </div>
+                  <div className="text-[10px] font-mono text-neutral-500 tabular-nums">
+                    {normalizedThoughtFilter
+                      ? `${filteredReasoningSteps.length} of ${allReasoningSteps.length} matching`
+                      : `${allReasoningSteps.length} steps`}
+                  </div>
+                </div>
+
+                {/* Filter / Search Input for Reasoning Steps */}
+                <div className="relative flex items-center">
+                  <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={thoughtFilterQuery}
+                    onChange={(e) => setThoughtFilterQuery(e.target.value)}
+                    placeholder="Filter reasoning steps (e.g., sentiment, memory, persona)..."
+                    aria-label="Filter Kara's reasoning steps"
+                    className="w-full bg-neutral-950/80 border border-neutral-800 focus:border-fuchsia-500/60 rounded-lg pl-8 pr-7 py-1.5 text-[11px] text-neutral-200 placeholder:text-neutral-500 font-mono focus:outline-none transition-colors"
+                  />
+                  {thoughtFilterQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setThoughtFilterQuery('')}
+                      aria-label="Clear reasoning step filter"
+                      className="absolute right-2 text-neutral-500 hover:text-neutral-200 p-0.5 rounded transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {filteredReasoningSteps.length > 0 ? (
+                  <div className="space-y-2.5 pl-1 border-l-2 border-fuchsia-500/35 ml-2 pt-0.5">
+                    {filteredReasoningSteps.map(({ stepText, originalIndex }, filteredIdx) => (
+                      <div
+                        key={originalIndex}
+                        className={`kara-thought-step kara-thought-step--${Math.min(
+                          filteredIdx,
+                          5
+                        )} relative pl-4 text-xs`}
+                      >
+                        <div className="kara-thought-step-badge absolute -left-[1.3rem] top-0.5 w-4 h-4 rounded-full bg-neutral-900 border border-fuchsia-400 text-[10px] font-mono text-fuchsia-300 flex items-center justify-center shadow-sm">
+                          {originalIndex + 1}
+                        </div>
+                        <p className="text-neutral-200 leading-relaxed font-mono text-[11px]">
+                          {stepText}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-2.5 px-3 rounded-lg bg-neutral-950/60 border border-neutral-800/80 flex items-center justify-between gap-2 text-[11px] text-neutral-400 font-mono">
+                    <span>No reasoning steps match &ldquo;{thoughtFilterQuery}&rdquo;.</span>
+                    <button
+                      type="button"
+                      onClick={() => setThoughtFilterQuery('')}
+                      className="text-fuchsia-400 hover:text-fuchsia-300 underline underline-offset-2 shrink-0"
+                    >
+                      Reset filter
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Active Context Imprints */}
+              {(msg.learnedMemoryNote || msg.recalledMemory || msg.soapTriggered) && (
+                <div className="pt-2 border-t border-neutral-800/80 flex flex-wrap items-center gap-2 text-[10px] font-mono text-neutral-400">
+                  {msg.learnedMemoryNote && (
+                    <span className="px-2 py-0.5 rounded bg-sky-950/60 border border-sky-500/30 text-sky-300 flex items-center gap-1">
+                      <Database className="w-3 h-3 text-sky-400" />
+                      <span>Memory Imprinted</span>
+                    </span>
+                  )}
+                  {msg.recalledMemory && (
+                    <span className="px-2 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 flex items-center gap-1">
+                      <Database className="w-3 h-3 text-indigo-400" />
+                      <span>Recalled: {msg.recalledMemory.topic}</span>
+                    </span>
+                  )}
+                  {msg.soapTriggered && (
+                    <span className="px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 flex items-center gap-1">
+                      <ShieldAlert className="w-3 h-3 text-emerald-400" />
+                      <span>Soap Rule Triggered</span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Distinct AI Composable Message Bubble */}
       <div
@@ -864,6 +1182,258 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         )}
 
         <div className="whitespace-pre-wrap">{textToRender}</div>
+
+        {/* Empathetic Depression Check-in & Accessible 24/7 Crisis Hotline Card */}
+        {(msg.isDepressionCheckin || (msg.supportHotlines && msg.supportHotlines.length > 0)) && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.35, delay: 0.08, ease: 'easeOut' }}
+            className="mt-3.5 p-4 rounded-3xl bg-rose-950/35 border border-rose-500/45 text-neutral-200 shadow-xl space-y-3.5 backdrop-blur-sm"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-800/40 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-xl bg-rose-500/20 text-rose-300">
+                  <Heart className="w-4 h-4 fill-rose-400 text-rose-400 animate-pulse" />
+                </span>
+                <div>
+                  <div className="text-xs font-semibold text-rose-200 flex items-center gap-1.5">
+                    <span>KARA Empathy Check-In · You Are Not Alone</span>
+                  </div>
+                  <div className="text-[11px] text-neutral-400">
+                    Confidential, free &amp; available 24/7 with zero judgment
+                  </div>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300">
+                24/7 Lifelines
+              </span>
+            </div>
+
+            <p className="text-xs text-neutral-300 leading-relaxed">
+              Stephen, I&apos;m sitting right here with you. Take a slow, easy breath. You never have to carry all of this heavy weight by yourself, and you are not a burden. If you need a listening ear or immediate support right now, these trained counselors are ready to be there for you 24/7:
+            </p>
+
+            {/* 1-Tap Actionable Crisis Hotline Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="p-2.5 rounded-2xl bg-neutral-900/90 border border-rose-900/60 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-white">988 Suicide &amp; Crisis Lifeline</span>
+                  <span className="text-[10px] font-mono text-rose-400 bg-rose-950/60 px-1.5 py-0.5 rounded">US &amp; Canada</span>
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-snug">
+                  Free, confidential 24/7 help by call or text.
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <a
+                    href="tel:988"
+                    className="flex-1 py-1.5 px-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                  >
+                    <PhoneCall className="w-3.5 h-3.5" />
+                    <span>Call 988</span>
+                  </a>
+                  <a
+                    href="sms:988"
+                    className="flex-1 py-1.5 px-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/50 text-rose-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Text 988</span>
+                  </a>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-2xl bg-neutral-900/90 border border-rose-900/60 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-white">Crisis Text Line</span>
+                  <span className="text-[10px] font-mono text-sky-400 bg-sky-950/60 px-1.5 py-0.5 rounded">Text HOME</span>
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-snug">
+                  Connect with a crisis counselor over text 24/7.
+                </p>
+                <div className="pt-1">
+                  <a
+                    href="sms:741741?body=HOME"
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/50 text-sky-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Text HOME to 741741</span>
+                  </a>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-2xl bg-neutral-900/90 border border-rose-900/60 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-white">The Trevor Project</span>
+                  <span className="text-[10px] font-mono text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded">LGBTQ+</span>
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-snug">
+                  24/7 confidential crisis counseling &amp; suicide prevention.
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <a
+                    href="tel:18664887386"
+                    className="flex-1 py-1.5 px-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <PhoneCall className="w-3.5 h-3.5" />
+                    <span>Call 1-866-488-7386</span>
+                  </a>
+                  <a
+                    href="sms:678678"
+                    className="py-1.5 px-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Text</span>
+                  </a>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-2xl bg-neutral-900/90 border border-rose-900/60 space-y-2 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-white">International Support</span>
+                    <span className="text-[10px] font-mono text-indigo-400 bg-indigo-950/60 px-1.5 py-0.5 rounded">130+ Countries</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 leading-snug mt-1">
+                    Free, confidential local crisis helplines worldwide.
+                  </p>
+                </div>
+                <div className="pt-1">
+                  <a
+                    href="https://findahelpline.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/50 text-indigo-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Find A Helpline Worldwide</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Comforting Quick Reply Chips so Stephen can respond easily */}
+            {onSelectQuickReply && (
+              <div className="pt-2 border-t border-rose-900/40 space-y-1.5">
+                <span className="text-[11px] text-rose-300/80 font-mono">
+                  Quick reassurance for KARA:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onSelectQuickReply("I'm safe, thank you for checking on me")}
+                    className="px-2.5 py-1 text-xs rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-200 transition-colors"
+                  >
+                    &ldquo;I&apos;m safe, thank you for checking on me&rdquo;
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectQuickReply('Can we just talk for a bit?')}
+                    className="px-2.5 py-1 text-xs rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 transition-colors"
+                  >
+                    &ldquo;Can we just talk for a bit?&rdquo;
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectQuickReply('Tell me something comforting')}
+                    className="px-2.5 py-1 text-xs rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 transition-colors"
+                  >
+                    &ldquo;Tell me something comforting&rdquo;
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Sector 9 Memory Recall Card when user asks KARA to recall memories or uses /recall */}
+        {msg.recalledMemory && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="mt-3.5 p-4 rounded-3xl bg-indigo-950/35 border border-indigo-500/40 text-neutral-200 shadow-xl space-y-3 backdrop-blur-sm"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-800/40 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-xl bg-indigo-500/20 text-indigo-300 shrink-0">
+                  <Database className="w-4 h-4 text-indigo-400" />
+                </span>
+                <div>
+                  <div className="text-xs font-semibold text-indigo-200 flex items-center gap-1.5">
+                    <span>Sector 9 Memory Recall</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 border border-indigo-500/40 text-indigo-300">
+                      Topic: {msg.recalledMemory.topic === 'all' ? 'Everything' : msg.recalledMemory.topic}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-neutral-400">
+                    {msg.recalledMemory.totalMemoriesFound === 0
+                      ? 'No stored memories logged under this specific topic yet'
+                      : `${msg.recalledMemory.totalMemoriesFound} node${
+                          msg.recalledMemory.totalMemoriesFound === 1 ? '' : 's'
+                        } retrieved from permanent neural storage`}
+                  </div>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 shrink-0">
+                /recall
+              </span>
+            </div>
+
+            {msg.recalledMemory.matchingItems.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                {msg.recalledMemory.matchingItems.map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    className="p-2.5 rounded-2xl bg-neutral-900/90 border border-indigo-900/60 space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-300 bg-indigo-950/80 px-1.5 py-0.5 rounded border border-indigo-500/30">
+                        {item.category}
+                      </span>
+                      {item.importance && (
+                        <span className="text-[10px] font-mono text-neutral-500">
+                          Priority {item.importance}/5
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-neutral-200 leading-snug">{item.content}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-neutral-400 italic">
+                KARA hasn&apos;t logged any specific notes about &ldquo;{msg.recalledMemory.topic}&rdquo; yet. Tell her your favorite things, routines, or thoughts, and she will store them automatically!
+              </p>
+            )}
+
+            {/* Quick Topic Recall Chips */}
+            {onSelectQuickReply && (
+              <div className="pt-2 border-t border-indigo-800/30 flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-mono text-neutral-400 mr-1">Recall other topics:</span>
+                {(msg.recalledMemory.suggestedTopics || [
+                  'Preferences',
+                  'Personal Facts',
+                  'Roleplay & Vibes',
+                  'Food & Drinks',
+                  'All Memories',
+                ]).map((topicName) => (
+                  <button
+                    key={topicName}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      onSelectQuickReply(`/recall ${topicName.toLowerCase()}`);
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-neutral-900 hover:bg-indigo-500/20 border border-indigo-800/60 hover:border-indigo-500/50 text-[11px] text-neutral-300 hover:text-indigo-200 transition-colors"
+                  >
+                    {topicName}
+                  </button>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Inline Google Calendar Agenda Card when user asks "What's on my agenda today?" */}
         {msg.agendaEvents && msg.agendaEvents.length > 0 && (
@@ -1118,7 +1688,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           </button>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -1423,6 +1993,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [stagedLinks, setStagedLinks] = useState<string[]>([]);
   const [isLinkInputOpen, setIsLinkInputOpen] = useState(false);
   const [linkInputValue, setLinkInputValue] = useState('');
+  const [isRecallPickerOpen, setIsRecallPickerOpen] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Token-by-token streaming effect for the newest assistant message when tokenStreaming is enabled
@@ -1900,10 +2471,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               triggerHaptic('tap');
               onOpenLiveVoice();
             }}
-            className="px-3 py-1.5 text-xs font-medium bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-300 rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
+            className="px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-sky-500/20 via-indigo-500/20 to-fuchsia-500/20 hover:from-sky-500/30 hover:to-fuchsia-500/30 border border-sky-400/50 hover:border-sky-300 text-sky-200 rounded-xl transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0"
+            title="Real-Time Call: Speak directly with KARA in real-time with continuous bi-directional voice streaming"
           >
-            <Volume2 className="w-3.5 h-3.5 text-sky-400" />
-            <span>Live Voice</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <Zap className="w-3.5 h-3.5 text-sky-400" />
+            <span>Real-Time Voice</span>
           </button>
 
           <button
@@ -2045,16 +2618,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               onCopy={handleCopyText}
               onQuote={handleQuoteMessage}
               onDelete={onDeleteMessage}
+              onSelectQuickReply={(promptText) => onSendMessage(promptText)}
             />
           );
         })}
 
         {isSending && (
-          <KaraTypingIndicator
-            activeMode={activeMode}
-            modelTier={modelTier}
-            onStop={handleStopAllResponse}
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.2 }}
+          >
+            <KaraTypingIndicator
+              activeMode={activeMode}
+              modelTier={modelTier}
+              onStop={handleStopAllResponse}
+            />
+          </motion.div>
         )}
 
         {!isSending && (inputText.trim().length > 0 || isRecording || isTranscribing) && (
@@ -2129,6 +2709,52 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             >
               <X className="w-3.5 h-3.5" />
             </button>
+          </div>
+        )}
+
+        {/* Memory Recall Topic Quick-Launcher Drawer */}
+        {isRecallPickerOpen && (
+          <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 space-y-2.5 backdrop-blur-sm">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-indigo-200 flex items-center gap-1.5">
+                <Database className="w-4 h-4 text-indigo-400" />
+                <span>Sector 9 Memory Recall Command (/recall)</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsRecallPickerOpen(false)}
+                className="p-1 text-neutral-400 hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="text-[11px] text-neutral-300">
+              Select a quick topic or type <code className="text-indigo-300 bg-neutral-900 px-1 py-0.5 rounded font-mono">/recall [topic]</code> to summarize what KARA remembers about you:
+            </p>
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {[
+                { label: 'All Memories', cmd: '/recall all' },
+                { label: 'Preferences', cmd: '/recall preferences' },
+                { label: 'Personal Facts', cmd: '/recall facts' },
+                { label: 'Roleplay & Vibes', cmd: '/recall roleplay' },
+                { label: 'Food & Drinks', cmd: '/recall food' },
+                { label: 'Hobbies & Music', cmd: '/recall hobbies' },
+                { label: 'Bond & Milestones', cmd: '/recall bond' },
+              ].map((t) => (
+                <button
+                  key={t.label}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('tap');
+                    setIsRecallPickerOpen(false);
+                    onSendMessage(t.cmd);
+                  }}
+                  className="px-2.5 py-1 text-xs rounded-xl bg-neutral-900 hover:bg-indigo-500/25 border border-indigo-800/60 hover:border-indigo-400 text-indigo-200 transition-colors"
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -2294,6 +2920,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
           <button
             type="button"
+            onClick={() => {
+              triggerHaptic('tap');
+              onOpenLiveVoice();
+            }}
+            disabled={isSending}
+            className="p-3 rounded-2xl border border-sky-400/40 bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 transition-all hover:scale-105 shrink-0"
+            title="Real-Time Voice: Start full-duplex live audio call with KARA"
+          >
+            <Zap className="w-4 h-4 text-sky-400" />
+          </button>
+
+          <button
+            type="button"
             onClick={() => photoInputRef.current?.click()}
             disabled={isSending}
             className={`relative p-3 rounded-2xl border transition-colors shrink-0 ${
@@ -2326,6 +2965,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             title="Share a link with KARA"
           >
             <Link2 className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('tap');
+              setIsRecallPickerOpen((prev) => !prev);
+            }}
+            disabled={isSending}
+            className={`p-3 rounded-2xl border transition-colors shrink-0 ${
+              isRecallPickerOpen
+                ? 'bg-indigo-500/25 border-indigo-400 text-indigo-300'
+                : 'kara-chat-control-btn hover:text-indigo-300'
+            }`}
+            title="Memory Recall (/recall): Ask KARA what she remembers about specific topics"
+          >
+            <Database className="w-4 h-4 text-indigo-400" />
           </button>
 
           <input
