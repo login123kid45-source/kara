@@ -1348,7 +1348,13 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           <span
             className={`ml-auto flex items-center gap-1 text-[10px] font-mono text-neutral-400 group-hover:text-neutral-200 transition-colors shrink-0`}
           >
-            <span className="hidden sm:inline">{isReasoningOpen ? 'Hide' : 'Inspect'}</span>
+            <span className="hidden sm:inline">
+              {isStreamingThis
+                ? 'Auto-Expanding'
+                : isReasoningOpen
+                ? 'Collapse'
+                : 'Auto-Collapsed · Inspect'}
+            </span>
             <ChevronRight
               className={`w-3.5 h-3.5 transition-transform duration-300 ${
                 isReasoningOpen ? 'rotate-90 text-fuchsia-300' : 'rotate-0'
@@ -1382,7 +1388,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                       </span>
                     </div>
                     <div className="text-[10px] text-neutral-400">
-                      Live reasoningTrace breakdown · Emotional perception, memory recall &amp; persona synthesis
+                      Automatic-collapsible reasoningTrace · Emotional perception, memory recall &amp; persona synthesis
                     </div>
                   </div>
                 </div>
@@ -1394,6 +1400,17 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                   <span className="px-2 py-0.5 rounded-lg bg-fuchsia-950/60 border border-fuchsia-800/40 text-fuchsia-300">
                     {msg.thinkingDurationMs || 520}ms
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      onToggleReasoning(msg.id);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-300 hover:text-white transition-colors"
+                    title="Collapse Thought Process"
+                  >
+                    Collapse
+                  </button>
                 </div>
               </div>
 
@@ -2286,6 +2303,7 @@ export const KaraTypingIndicator: React.FC<{
 }> = ({ activeMode, modelTier, latestUserPrompt, reasoningTrace, onStop }) => {
   const [elapsedTenths, setElapsedTenths] = useState(0);
   const [isLiveTraceExpanded, setIsLiveTraceExpanded] = useState(true);
+  const [userManuallyToggledLive, setUserManuallyToggledLive] = useState(false);
   const modeMeta = MODE_META[activeMode] || MODE_META.regular;
 
   useEffect(() => {
@@ -2330,6 +2348,17 @@ export const KaraTypingIndicator: React.FC<{
     Math.floor(elapsedTenths / 8)
   );
 
+  // Automatically collapse the live reasoning drawer once all steps are verified
+  useEffect(() => {
+    if (
+      !userManuallyToggledLive &&
+      isLiveTraceExpanded &&
+      elapsedTenths >= (parsedLiveSteps.length + 1) * 8
+    ) {
+      setIsLiveTraceExpanded(false);
+    }
+  }, [elapsedTenths, parsedLiveSteps.length, isLiveTraceExpanded, userManuallyToggledLive]);
+
   const currentStep = parsedLiveSteps[activeStepIndex]?.parsed;
   const phaseLabel = currentStep
     ? `${currentStep.title}: ${currentStep.detail}`
@@ -2358,6 +2387,7 @@ export const KaraTypingIndicator: React.FC<{
           aria-expanded={isLiveTraceExpanded}
           onClick={() => {
             triggerHaptic('tap');
+            setUserManuallyToggledLive(true);
             setIsLiveTraceExpanded((prev) => !prev);
           }}
           className={`kara-thought-trigger group flex flex-wrap items-center gap-2 text-xs rounded-2xl px-3.5 py-2 border text-left w-full transition-all ${
@@ -2802,7 +2832,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onToggleFunMode,
 }) => {
   const [inputText, setInputText] = useState('');
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(true);
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [autoCollapseSidePanel, setAutoCollapseSidePanel] = useState(true);
+  const [isSideSectionExpanded, setIsSideSectionExpanded] = useState(true);
   const [sidePanelTab, setSidePanelTab] = useState<'convos' | 'history' | 'memory'>('convos');
   const [sidePanelSearch, setSidePanelSearch] = useState('');
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
@@ -2819,6 +2851,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState('');
   const [expandedReasoningIds, setExpandedReasoningIds] = useState<Record<string, boolean>>({});
+  const [autoCollapseThoughtProcess, setAutoCollapseThoughtProcess] = useState(true);
+  const autoCollapseReasonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Multi-Photo & Link Sharing State
@@ -2846,6 +2880,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const dictationBaseInputRef = useRef<string>('');
   const prevIsRecordingRef = useRef<boolean>(false);
 
+  const triggerAutoCollapseSidePanel = () => {
+    if (autoCollapseSidePanel && isSidePanelOpen) {
+      setIsSidePanelOpen(false);
+    }
+  };
+
   // Capture base input text when microphone recording starts so live interim transcripts don't duplicate
   useEffect(() => {
     if (isRecording && !prevIsRecordingRef.current) {
@@ -2865,7 +2905,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   }, [voiceDraftTranscript, onConsumeVoiceDraft]);
 
   // Progressive token reveal when a new assistant reply arrives and tokenStreaming is ON
-  // Also auto-expand the visual Thought Process indicator for the newly reasoned message
+  // Also auto-expand the visual Thought Process indicator while reasoning/streaming, then AUTOMATICALLY COLLAPSE once completed!
   useEffect(() => {
     const newestAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
     if (!newestAssistant) return;
@@ -2875,17 +2915,36 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       lastSeenAssistantIdRef.current !== newestAssistant.id;
 
     if (isNewAssistantReply) {
-      setExpandedReasoningIds((prev) => ({
-        ...prev,
+      if (autoCollapseReasonTimerRef.current) {
+        clearTimeout(autoCollapseReasonTimerRef.current);
+        autoCollapseReasonTimerRef.current = null;
+      }
+      // Collapse any older expanded Thought Processes and briefly show the active one while streaming
+      setExpandedReasoningIds({
         [newestAssistant.id]: true,
-      }));
+      });
     }
+
+    const scheduleThoughtAutoCollapse = (targetId: string, delayMs: number) => {
+      if (!autoCollapseThoughtProcess) return;
+      if (autoCollapseReasonTimerRef.current) {
+        clearTimeout(autoCollapseReasonTimerRef.current);
+      }
+      autoCollapseReasonTimerRef.current = setTimeout(() => {
+        setExpandedReasoningIds((prev) => {
+          if (!prev[targetId]) return prev;
+          return { ...prev, [targetId]: false };
+        });
+        autoCollapseReasonTimerRef.current = null;
+      }, delayMs);
+    };
 
     if (isNewAssistantReply && tokenStreaming) {
       lastSeenAssistantIdRef.current = newestAssistant.id;
       const fullWords = newestAssistant.content.split(' ');
       if (fullWords.length <= 4) {
         setStreamingMsgId(null);
+        scheduleThoughtAutoCollapse(newestAssistant.id, 1100);
         return;
       }
       if (streamIntervalRef.current) {
@@ -2901,6 +2960,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           setStreamingMsgId(null);
           clearInterval(interval);
           streamIntervalRef.current = null;
+          // Automatically collapse Thought Process once response finishes streaming
+          scheduleThoughtAutoCollapse(newestAssistant.id, 850);
         } else {
           setStreamedText(fullWords.slice(0, idx).join(' '));
         }
@@ -2913,9 +2974,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         }
       };
     } else {
+      if (isNewAssistantReply) {
+        scheduleThoughtAutoCollapse(newestAssistant.id, 1300);
+      }
       lastSeenAssistantIdRef.current = newestAssistant.id;
     }
-  }, [messages, tokenStreaming]);
+  }, [messages, tokenStreaming, autoCollapseThoughtProcess]);
 
   const handleStopAllResponse = () => {
     triggerHaptic('tap');
@@ -2923,12 +2987,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       clearInterval(streamIntervalRef.current);
       streamIntervalRef.current = null;
     }
+    if (autoCollapseReasonTimerRef.current) {
+      clearTimeout(autoCollapseReasonTimerRef.current);
+      autoCollapseReasonTimerRef.current = null;
+    }
     if (streamingMsgId) {
       setStoppedStreamTexts((prev) => ({
         ...prev,
         [streamingMsgId]: streamedText,
       }));
       setStreamingMsgId(null);
+    }
+    if (autoCollapseThoughtProcess) {
+      setExpandedReasoningIds({});
     }
     onStopResponse();
   };
@@ -3057,6 +3128,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if ((!trimmed && stagedPhotos.length === 0 && stagedLinks.length === 0) || isSending) return;
     triggerHaptic('send');
 
+    // Auto-collapse Convos/History panel and any open Thought Process drawers when sending a new message
+    triggerAutoCollapseSidePanel();
+    if (autoCollapseThoughtProcess) {
+      setExpandedReasoningIds({});
+    }
+
     // Auto-extract any http/https links typed in the text input as well
     const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
     const inlineUrls = trimmed.match(urlRegex) || [];
@@ -3137,7 +3214,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   };
 
   const toggleReasoningDrawer = (id: string) => {
-    setExpandedReasoningIds((prev) => ({ ...prev, [id]: !prev[id] }));
+    if (autoCollapseReasonTimerRef.current) {
+      clearTimeout(autoCollapseReasonTimerRef.current);
+      autoCollapseReasonTimerRef.current = null;
+    }
+    // Accordion behavior: expanding one Thought Process automatically collapses any other open one
+    setExpandedReasoningIds((prev) => (prev[id] ? {} : { [id]: true }));
   };
 
   const lastAssistantMsg = [...messages].reverse().find((m) => m.role === 'assistant');
@@ -3214,417 +3296,545 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   return (
     <section className="w-full kara-chat-shell border rounded-3xl flex h-[calc(100vh-6.5rem)] min-h-[600px] overflow-hidden relative">
-      {/* DOCKED SIDE PANEL FOR CONVOS, HISTORY & CROSS-DEVICE SYNCED MEMORY */}
-      {isSidePanelOpen && (
-        <aside className="w-80 max-w-[86vw] shrink-0 kara-chat-header border-r h-full flex flex-col justify-between z-20">
-          <div className="p-3.5 space-y-3 flex-1 flex flex-col min-h-0">
-            {/* Side Panel Top Header + Cloud Sync Status */}
-            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-neutral-800/80">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-sky-400">
-                  <Cloud className="w-3 h-3 text-emerald-400 shrink-0" />
-                  <span className="truncate">
-                    {isCloudSynced
-                      ? `Synced · ${userEmail || userName}`
-                      : 'Device + Cloud Ready'}
-                  </span>
+      {/* AUTOMATIC COLLAPSIBLE SIDE PANEL FOR CONVOS, HISTORY & CROSS-DEVICE SYNCED MEMORY */}
+      <AnimatePresence initial={false}>
+        {isSidePanelOpen && (
+          <motion.aside
+            key="kara-convos-history-panel"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 320, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            onMouseLeave={() => {
+              if (autoCollapseSidePanel && !renamingSessionId && !sidePanelSearch.trim()) {
+                setIsSidePanelOpen(false);
+              }
+            }}
+            className="w-80 max-w-[86vw] shrink-0 kara-chat-header border-r h-full flex flex-col justify-between z-20 overflow-hidden"
+          >
+            <div className="p-3.5 space-y-3 flex-1 flex flex-col min-h-0 w-80 max-w-[86vw]">
+              {/* Side Panel Top Header + Cloud Sync Status + Auto-Collapse Toggle */}
+              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-neutral-800/80">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-sky-400">
+                    <Cloud className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span className="truncate">
+                      {isCloudSynced
+                        ? `Synced · ${userEmail || userName}`
+                        : 'Auto-Collapsible Drawer'}
+                    </span>
+                  </div>
+                  <h3 className="text-xs font-semibold text-white truncate mt-0.5">
+                    Convos · History · Synced Memory
+                  </h3>
                 </div>
-                <h3 className="text-xs font-semibold text-white truncate mt-0.5">
-                  Convos · History · Synced Memory
-                </h3>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      setAutoCollapseSidePanel((prev) => !prev);
+                    }}
+                    className={`px-2 py-1 rounded-xl border text-[10px] font-mono transition-colors ${
+                      autoCollapseSidePanel
+                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                    }`}
+                    title={
+                      autoCollapseSidePanel
+                        ? 'Auto-Collapse ON: Convos & History automatically collapses when you select a chat, start typing, or move back to the conversation'
+                        : 'Auto-Collapse OFF (Pinned): Click to re-enable automatic collapse'
+                    }
+                  >
+                    {autoCollapseSidePanel ? 'Auto-Hide' : 'Pinned'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      onCreateNewSession();
+                      triggerAutoCollapseSidePanel();
+                    }}
+                    className="px-2.5 py-1 rounded-xl kara-send-btn hover:opacity-90 text-[11px] font-semibold flex items-center gap-1 transition-all"
+                    title="Start a new conversation session"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>New</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsSidePanelOpen(false)}
+                    className="p-1.5 text-neutral-400 hover:text-white rounded-xl hover:bg-neutral-800"
+                    title="Collapse Convos & History Side Panel"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
+
+              {/* Automatic-Collapsible Segmented Tabs: Convos | History | Synced Memory */}
+              <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-neutral-950/80 border border-neutral-800">
                 <button
                   type="button"
                   onClick={() => {
                     triggerHaptic('tap');
-                    onCreateNewSession();
+                    if (sidePanelTab === 'convos') {
+                      setIsSideSectionExpanded((prev) => !prev);
+                    } else {
+                      setSidePanelTab('convos');
+                      setIsSideSectionExpanded(true);
+                    }
                   }}
-                  className="px-2.5 py-1 rounded-xl kara-send-btn hover:opacity-90 text-[11px] font-semibold flex items-center gap-1 transition-all"
-                  title="Start a new conversation session"
+                  className={`py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                    sidePanelTab === 'convos'
+                      ? 'bg-sky-500/20 text-sky-200 border border-sky-500/40'
+                      : 'text-neutral-400 hover:text-neutral-200'
+                  }`}
+                  title="Click to view or collapse Conversations"
                 >
-                  <Plus className="w-3 h-3" />
-                  <span>New</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsSidePanelOpen(false)}
-                  className="p-1.5 text-neutral-400 hover:text-white rounded-xl hover:bg-neutral-800"
-                  title="Collapse Convos & History Side Panel"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Segmented Tabs: Convos | History | Synced Memory */}
-            <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-neutral-950/80 border border-neutral-800">
-              <button
-                type="button"
-                onClick={() => setSidePanelTab('convos')}
-                className={`py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
-                  sidePanelTab === 'convos'
-                    ? 'bg-sky-500/20 text-sky-200 border border-sky-500/40'
-                    : 'text-neutral-400 hover:text-neutral-200'
-                }`}
-              >
-                <MessageSquare className="w-3 h-3" />
-                <span>Convos ({sessions.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSidePanelTab('history')}
-                className={`py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
-                  sidePanelTab === 'history'
-                    ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
-                    : 'text-neutral-400 hover:text-neutral-200'
-                }`}
-              >
-                <History className="w-3 h-3" />
-                <span>History ({combinedHistoryMessages.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSidePanelTab('memory')}
-                className={`py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
-                  sidePanelTab === 'memory'
-                    ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40'
-                    : 'text-neutral-400 hover:text-neutral-200'
-                }`}
-              >
-                <Brain className="w-3 h-3" />
-                <span>Sync ({memories.length})</span>
-              </button>
-            </div>
-
-            {/* Search Filter Input */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={sidePanelSearch}
-                onChange={(e) => setSidePanelSearch(e.target.value)}
-                placeholder={
-                  sidePanelTab === 'convos'
-                    ? 'Search conversations...'
-                    : sidePanelTab === 'history'
-                    ? 'Search message & image history...'
-                    : 'Filter synced memories...'
-                }
-                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-neutral-950/90 border border-neutral-800 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-sky-500"
-              />
-              {sidePanelSearch && (
-                <button
-                  type="button"
-                  onClick={() => setSidePanelSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-
-            {/* TAB 1: CONVOS LIST */}
-            {sidePanelTab === 'convos' && (
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
-                {filteredSessions.map((sess) => {
-                  const isCurrent = sess.id === activeSessionId;
-                  const modeInfo = MODE_META[sess.lastMode] || MODE_META.regular;
-                  const isRenaming = renamingSessionId === sess.id;
-
-                  return (
-                    <div
-                      key={sess.id}
-                      className={`p-2.5 rounded-2xl border transition-all ${
-                        isCurrent
-                          ? 'bg-sky-500/15 border-sky-500/50 text-white shadow-sm'
-                          : 'bg-neutral-900/70 border-neutral-800/90 text-neutral-300 hover:border-neutral-700'
+                  <MessageSquare className="w-3 h-3" />
+                  <span>Convos ({sessions.length})</span>
+                  {sidePanelTab === 'convos' && (
+                    <ChevronDown
+                      className={`w-3 h-3 transition-transform ${
+                        isSideSectionExpanded ? 'rotate-0' : '-rotate-90'
                       }`}
-                    >
-                      {isRenaming ? (
-                        <div className="space-y-1.5">
-                          <input
-                            type="text"
-                            value={renameSessionDraft}
-                            onChange={(e) => setRenameSessionDraft(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && renameSessionDraft.trim()) {
-                                onRenameSession?.(sess.id, renameSessionDraft.trim());
-                                setRenamingSessionId(null);
-                              } else if (e.key === 'Escape') {
-                                setRenamingSessionId(null);
-                              }
-                            }}
-                            autoFocus
-                            className="w-full px-2.5 py-1 text-xs rounded-lg bg-neutral-950 border border-sky-500 text-white focus:outline-none"
-                          />
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setRenamingSessionId(null)}
-                              className="px-2 py-0.5 text-[10px] text-neutral-400 hover:text-white"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (renameSessionDraft.trim()) {
-                                  onRenameSession?.(sess.id, renameSessionDraft.trim());
-                                }
-                                setRenamingSessionId(null);
-                              }}
-                              className="px-2.5 py-0.5 text-[10px] font-semibold bg-sky-500 text-slate-950 rounded-md"
-                            >
-                              Save
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-start justify-between gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              triggerHaptic('tap');
-                              onSelectSession(sess.id);
-                            }}
-                            className="text-left flex-1 min-w-0"
-                          >
-                            <div className="flex items-center gap-1.5 text-xs font-semibold truncate">
-                              <MessageSquare className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                              <span className="truncate">{sess.title}</span>
-                            </div>
-                            <div className="text-[11px] text-neutral-400 truncate mt-1">
-                              {sess.preview}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 mt-1.5 font-mono">
-                              <span className={modeInfo.accentText}>{modeInfo.label}</span>
-                              <span>·</span>
-                              <span>{sess.messageCount} msgs</span>
-                              {isCurrent && (
-                                <>
-                                  <span>·</span>
-                                  <span className="text-emerald-400">Active</span>
-                                </>
-                              )}
-                            </div>
-                          </button>
-
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            {onRenameSession && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRenamingSessionId(sess.id);
-                                  setRenameSessionDraft(sess.title);
-                                }}
-                                className="p-1 text-neutral-500 hover:text-sky-400"
-                                title="Rename conversation"
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </button>
-                            )}
-                            {sessions.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => onDeleteSession(sess.id)}
-                                className="p-1 text-neutral-500 hover:text-rose-400"
-                                title="Delete conversation"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('tap');
+                    if (sidePanelTab === 'history') {
+                      setIsSideSectionExpanded((prev) => !prev);
+                    } else {
+                      setSidePanelTab('history');
+                      setIsSideSectionExpanded(true);
+                    }
+                  }}
+                  className={`py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                    sidePanelTab === 'history'
+                      ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
+                      : 'text-neutral-400 hover:text-neutral-200'
+                  }`}
+                  title="Click to view or collapse Chronological History"
+                >
+                  <History className="w-3 h-3" />
+                  <span>History ({combinedHistoryMessages.length})</span>
+                  {sidePanelTab === 'history' && (
+                    <ChevronDown
+                      className={`w-3 h-3 transition-transform ${
+                        isSideSectionExpanded ? 'rotate-0' : '-rotate-90'
+                      }`}
+                    />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('tap');
+                    if (sidePanelTab === 'memory') {
+                      setIsSideSectionExpanded((prev) => !prev);
+                    } else {
+                      setSidePanelTab('memory');
+                      setIsSideSectionExpanded(true);
+                    }
+                  }}
+                  className={`py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                    sidePanelTab === 'memory'
+                      ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40'
+                      : 'text-neutral-400 hover:text-neutral-200'
+                  }`}
+                  title="Click to view or collapse Synced Memory"
+                >
+                  <Brain className="w-3 h-3" />
+                  <span>Sync ({memories.length})</span>
+                  {sidePanelTab === 'memory' && (
+                    <ChevronDown
+                      className={`w-3 h-3 transition-transform ${
+                        isSideSectionExpanded ? 'rotate-0' : '-rotate-90'
+                      }`}
+                    />
+                  )}
+                </button>
               </div>
-            )}
 
-            {/* TAB 2: CHRONOLOGICAL MESSAGE & NANO BANANA IMAGE HISTORY */}
-            {sidePanelTab === 'history' && (
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
-                {filteredHistoryMessages.length === 0 ? (
-                  <p className="text-xs text-neutral-500 text-center py-6">
-                    No matching history items found.
-                  </p>
-                ) : (
-                  filteredHistoryMessages.slice(0, 80).map((item) => {
-                    const itemSessionId = item.sessionId || 'sess_main';
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic('tap');
-                          onSelectSession(itemSessionId);
-                        }}
-                        className="w-full p-2.5 rounded-2xl bg-neutral-900/75 hover:bg-neutral-900 border border-neutral-800/90 hover:border-sky-500/40 text-left space-y-1.5 transition-all"
-                      >
-                        <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
-                          <span
-                            className={
-                              item.role === 'assistant' ? 'text-sky-400 font-semibold' : 'text-amber-300'
-                            }
-                          >
-                            {item.role === 'assistant' ? 'KARA' : userName}
-                          </span>
-                          <span>
-                            {new Date(item.createdAt).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                        </div>
-                        <p className="text-xs text-neutral-200 line-clamp-2 leading-snug">
-                          {item.content}
-                        </p>
-                        {item.generatedImageUrl && (
-                          <div className="flex items-center gap-2 pt-1">
-                            <img
-                              src={item.generatedImageUrl}
-                              alt="Nano Banana history thumb"
-                              className="w-10 h-10 rounded-lg object-cover border border-amber-500/40 shrink-0"
-                            />
-                            <span className="text-[10px] font-mono text-amber-300 truncate">
-                              {item.generatedImagePrompt || 'Nano Banana Artwork'}
-                            </span>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })
+              {/* Search Filter Input */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={sidePanelSearch}
+                  onChange={(e) => {
+                    setSidePanelSearch(e.target.value);
+                    if (!isSideSectionExpanded) setIsSideSectionExpanded(true);
+                  }}
+                  placeholder={
+                    sidePanelTab === 'convos'
+                      ? 'Search conversations...'
+                      : sidePanelTab === 'history'
+                      ? 'Search message & image history...'
+                      : 'Filter synced memories...'
+                  }
+                  className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-neutral-950/90 border border-neutral-800 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-sky-500"
+                />
+                {sidePanelSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setSidePanelSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
                 )}
               </div>
-            )}
 
-            {/* TAB 3: CROSS-DEVICE LOGIN SYNCED MEMORIES */}
-            {sidePanelTab === 'memory' && (
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
-                <div className="p-2.5 rounded-xl bg-emerald-950/25 border border-emerald-500/35 space-y-1">
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-300">
-                    <span className="flex items-center gap-1">
-                      <Cloud className="w-3.5 h-3.5" />
-                      <span>Cross-Device Login Memory Sync</span>
-                    </span>
-                    <span className="font-mono text-[10px]">
-                      {isCloudSynced ? 'LIVE' : 'LOCAL'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-neutral-300 leading-snug">
-                    {isCloudSynced
-                      ? `Signed in as ${
-                          userEmail || userName
-                        }. Your conversations and ${
-                          memories.length
-                        } memories automatically pick up on any device.`
-                      : 'Sign in with your account in the top bar to sync all conversations and memories across every device.'}
+              {!isSideSectionExpanded ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-2 border border-dashed border-neutral-800/80 rounded-2xl bg-neutral-950/40">
+                  <p className="text-xs text-neutral-400 font-medium">
+                    {sidePanelTab === 'convos'
+                      ? `Conversations (${sessions.length}) collapsed`
+                      : sidePanelTab === 'history'
+                      ? `History (${combinedHistoryMessages.length}) collapsed`
+                      : `Synced Memory (${memories.length}) collapsed`}
                   </p>
-                  {lastCloudSyncAt && (
-                    <div className="text-[10px] font-mono text-emerald-400/80">
-                      Last synced:{' '}
-                      {new Date(lastCloudSyncAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
+                  <button
+                    type="button"
+                    onClick={() => setIsSideSectionExpanded(true)}
+                    className="px-3 py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-[11px] text-sky-300 font-medium transition-colors"
+                  >
+                    Expand Section
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* TAB 1: CONVOS LIST */}
+                  {sidePanelTab === 'convos' && (
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
+                      {filteredSessions.map((sess) => {
+                        const isCurrent = sess.id === activeSessionId;
+                        const modeInfo = MODE_META[sess.lastMode] || MODE_META.regular;
+                        const isRenaming = renamingSessionId === sess.id;
+
+                        return (
+                          <div
+                            key={sess.id}
+                            className={`p-2.5 rounded-2xl border transition-all ${
+                              isCurrent
+                                ? 'bg-sky-500/15 border-sky-500/50 text-white shadow-sm'
+                                : 'bg-neutral-900/70 border-neutral-800/90 text-neutral-300 hover:border-neutral-700'
+                            }`}
+                          >
+                            {isRenaming ? (
+                              <div className="space-y-1.5">
+                                <input
+                                  type="text"
+                                  value={renameSessionDraft}
+                                  onChange={(e) => setRenameSessionDraft(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && renameSessionDraft.trim()) {
+                                      onRenameSession?.(sess.id, renameSessionDraft.trim());
+                                      setRenamingSessionId(null);
+                                    } else if (e.key === 'Escape') {
+                                      setRenamingSessionId(null);
+                                    }
+                                  }}
+                                  autoFocus
+                                  className="w-full px-2.5 py-1 text-xs rounded-lg bg-neutral-950 border border-sky-500 text-white focus:outline-none"
+                                />
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setRenamingSessionId(null)}
+                                    className="px-2 py-0.5 text-[10px] text-neutral-400 hover:text-white"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (renameSessionDraft.trim()) {
+                                        onRenameSession?.(sess.id, renameSessionDraft.trim());
+                                      }
+                                      setRenamingSessionId(null);
+                                    }}
+                                    className="px-2.5 py-0.5 text-[10px] font-semibold bg-sky-500 text-slate-950 rounded-md"
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-start justify-between gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    triggerHaptic('tap');
+                                    onSelectSession(sess.id);
+                                    triggerAutoCollapseSidePanel();
+                                  }}
+                                  className="text-left flex-1 min-w-0"
+                                >
+                                  <div className="flex items-center gap-1.5 text-xs font-semibold truncate">
+                                    <MessageSquare className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                                    <span className="truncate">{sess.title}</span>
+                                  </div>
+                                  <div className="text-[11px] text-neutral-400 truncate mt-1">
+                                    {sess.preview}
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 mt-1.5 font-mono">
+                                    <span className={modeInfo.accentText}>{modeInfo.label}</span>
+                                    <span>·</span>
+                                    <span>{sess.messageCount} msgs</span>
+                                    {isCurrent && (
+                                      <>
+                                        <span>·</span>
+                                        <span className="text-emerald-400">Active</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </button>
+
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  {onRenameSession && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setRenamingSessionId(sess.id);
+                                        setRenameSessionDraft(sess.title);
+                                      }}
+                                      className="p-1 text-neutral-500 hover:text-sky-400"
+                                      title="Rename conversation"
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                  {sessions.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onDeleteSession(sess.id)}
+                                      className="p-1 text-neutral-500 hover:text-rose-400"
+                                      title="Delete conversation"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
                       })}
                     </div>
                   )}
-                </div>
 
-                {memories
-                  .filter((m) =>
-                    searchLower
-                      ? m.content.toLowerCase().includes(searchLower) ||
-                        m.category.toLowerCase().includes(searchLower)
-                      : true
-                  )
-                  .map((mem) => (
-                    <div
-                      key={mem.id}
-                      className="p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800 space-y-1"
-                    >
-                      <div className="flex items-center justify-between text-[10px] font-mono">
-                        <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 uppercase">
-                          {mem.category}
-                        </span>
-                        <span className="text-neutral-500">Synced</span>
-                      </div>
-                      <p className="text-xs text-neutral-200 leading-snug">{mem.content}</p>
+                  {/* TAB 2: CHRONOLOGICAL MESSAGE & NANO BANANA IMAGE HISTORY */}
+                  {sidePanelTab === 'history' && (
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
+                      {filteredHistoryMessages.length === 0 ? (
+                        <p className="text-xs text-neutral-500 text-center py-6">
+                          No matching history items found.
+                        </p>
+                      ) : (
+                        filteredHistoryMessages.slice(0, 80).map((item) => {
+                          const itemSessionId = item.sessionId || 'sess_main';
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => {
+                                triggerHaptic('tap');
+                                onSelectSession(itemSessionId);
+                                triggerAutoCollapseSidePanel();
+                              }}
+                              className="w-full p-2.5 rounded-2xl bg-neutral-900/75 hover:bg-neutral-900 border border-neutral-800/90 hover:border-sky-500/40 text-left space-y-1.5 transition-all"
+                            >
+                              <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
+                                <span
+                                  className={
+                                    item.role === 'assistant'
+                                      ? 'text-sky-400 font-semibold'
+                                      : 'text-amber-300'
+                                  }
+                                >
+                                  {item.role === 'assistant' ? 'KARA' : userName}
+                                </span>
+                                <span>
+                                  {new Date(item.createdAt).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              </div>
+                              <p className="text-xs text-neutral-200 line-clamp-2 leading-snug">
+                                {item.content}
+                              </p>
+                              {item.generatedImageUrl && (
+                                <div className="flex items-center gap-2 pt-1">
+                                  <img
+                                    src={item.generatedImageUrl}
+                                    alt="Nano Banana history thumb"
+                                    className="w-10 h-10 rounded-lg object-cover border border-amber-500/40 shrink-0"
+                                  />
+                                  <span className="text-[10px] font-mono text-amber-300 truncate">
+                                    {item.generatedImagePrompt || 'Nano Banana Artwork'}
+                                  </span>
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
                     </div>
-                  ))}
-              </div>
-            )}
-          </div>
+                  )}
 
-          {/* Side Panel Footer: Quick MxChat Chatbot Themes Version 2.1.6 Switcher */}
-          <div className="p-3 border-t border-neutral-800/90 bg-neutral-950/60 space-y-2">
-            <div className="flex items-center justify-between text-[10px] font-mono">
-              <span className="text-amber-300 flex items-center gap-1 font-semibold">
-                <Palette className="w-3 h-3 text-amber-400" />
-                <span>MxChat Themes v2.1.6</span>
-              </span>
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                className="text-sky-400 hover:underline"
-              >
-                Customize
-              </button>
+                  {/* TAB 3: CROSS-DEVICE LOGIN SYNCED MEMORIES */}
+                  {sidePanelTab === 'memory' && (
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
+                      <div className="p-2.5 rounded-xl bg-emerald-950/25 border border-emerald-500/35 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-300">
+                          <span className="flex items-center gap-1">
+                            <Cloud className="w-3.5 h-3.5" />
+                            <span>Cross-Device Login Memory Sync</span>
+                          </span>
+                          <span className="font-mono text-[10px]">
+                            {isCloudSynced ? 'LIVE' : 'LOCAL'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-neutral-300 leading-snug">
+                          {isCloudSynced
+                            ? `Signed in as ${
+                                userEmail || userName
+                              }. Your conversations and ${
+                                memories.length
+                              } memories automatically pick up on any device.`
+                            : 'Sign in with your account in the top bar to sync all conversations and memories across every device.'}
+                        </p>
+                        {lastCloudSyncAt && (
+                          <div className="text-[10px] font-mono text-emerald-400/80">
+                            Last synced:{' '}
+                            {new Date(lastCloudSyncAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {memories
+                        .filter((m) =>
+                          searchLower
+                            ? m.content.toLowerCase().includes(searchLower) ||
+                              m.category.toLowerCase().includes(searchLower)
+                            : true
+                        )
+                        .map((mem) => (
+                          <div
+                            key={mem.id}
+                            className="p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800 space-y-1"
+                          >
+                            <div className="flex items-center justify-between text-[10px] font-mono">
+                              <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 uppercase">
+                                {mem.category}
+                              </span>
+                              <span className="text-neutral-500">Synced</span>
+                            </div>
+                            <p className="text-xs text-neutral-200 leading-snug">{mem.content}</p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-              {KARA_THEMES.map((t) => {
-                const isSelected = activeTheme === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic('modeSwitch');
-                      onSelectTheme?.(t.id);
-                    }}
-                    className={`px-2 py-1 rounded-lg border text-[10px] font-medium flex items-center gap-1.5 shrink-0 transition-all ${
-                      isSelected
-                        ? 'bg-sky-500/20 border-sky-400 text-white'
-                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
-                    }`}
-                    title={`${t.label} (MxChat Chatbot Themes v2.1.6)`}
-                  >
-                    <span
-                      className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0"
-                      style={{ backgroundColor: t.cssVars.accent }}
-                    />
-                    <span className="truncate max-w-[92px]">{t.label.replace('MxChat ', '')}</span>
-                  </button>
-                );
-              })}
+
+            {/* Side Panel Footer: Quick MxChat Chatbot Themes Version 2.1.6 Switcher */}
+            <div className="p-3 border-t border-neutral-800/90 bg-neutral-950/60 space-y-2 w-80 max-w-[86vw]">
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-amber-300 flex items-center gap-1 font-semibold">
+                  <Palette className="w-3 h-3 text-amber-400" />
+                  <span>MxChat Themes v2.1.6</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerAutoCollapseSidePanel();
+                    onOpenSettings();
+                  }}
+                  className="text-sky-400 hover:underline"
+                >
+                  Customize
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+                {KARA_THEMES.map((t) => {
+                  const isSelected = activeTheme === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('modeSwitch');
+                        onSelectTheme?.(t.id);
+                      }}
+                      className={`px-2 py-1 rounded-lg border text-[10px] font-medium flex items-center gap-1.5 shrink-0 transition-all ${
+                        isSelected
+                          ? 'bg-sky-500/20 border-sky-400 text-white'
+                          : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                      }`}
+                      title={`${t.label} (MxChat Chatbot Themes v2.1.6)`}
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0"
+                        style={{ backgroundColor: t.cssVars.accent }}
+                      />
+                      <span className="truncate max-w-[92px]">{t.label.replace('MxChat ', '')}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </aside>
-      )}
+          </motion.aside>
+        )}
+      </AnimatePresence>
 
       {/* MAIN CHAT COLUMN */}
-      <div className="flex-1 flex flex-col min-w-0 h-full">
+      <div
+        className="flex-1 flex flex-col min-w-0 h-full"
+        onClick={() => {
+          triggerAutoCollapseSidePanel();
+        }}
+      >
         {/* Clean Minimalist Top App Bar: Side Panel Toggle, Active Convo, MxChat Theme & Settings */}
         <div className="px-5 py-3 border-b kara-chat-header flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5 text-xs text-neutral-400">
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 triggerHaptic('tap');
-                setIsSidePanelOpen((prev) => !prev);
+                setIsSidePanelOpen((prev) => {
+                  const next = !prev;
+                  if (next) setIsSideSectionExpanded(true);
+                  return next;
+                });
               }}
               className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-colors ${
                 isSidePanelOpen
                   ? 'bg-sky-500/15 border-sky-500/50 text-sky-200'
                   : 'kara-chat-control-btn'
               }`}
-              title="Toggle Side Panel for Convos, History & Cross-Device Synced Memory"
+              title="Toggle Automatic-Collapsible Side Panel for Convos, History & Cross-Device Synced Memory"
             >
               <PanelLeft className="w-3.5 h-3.5 text-sky-400" />
               <span>Convos &amp; History ({sessions.length})</span>
+              <ChevronRight
+                className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                  isSidePanelOpen ? 'rotate-180 text-sky-300' : 'rotate-0 text-neutral-500'
+                }`}
+              />
             </button>
 
             <span className="font-semibold text-white">KARA</span>
@@ -4474,9 +4684,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               if (!isRecording) {
                 dictationBaseInputRef.current = nextVal.trim();
               }
+              triggerAutoCollapseSidePanel();
+              if (autoCollapseThoughtProcess && Object.keys(expandedReasoningIds).length > 0) {
+                setExpandedReasoningIds({});
+              }
               onUserTyping?.();
             }}
             onFocus={() => {
+              triggerAutoCollapseSidePanel();
               onUserTyping?.();
             }}
             onKeyDown={(e) => {
