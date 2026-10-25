@@ -13,6 +13,7 @@ import {
   getFirestore,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -394,11 +395,18 @@ export const logout = async () => {
 
 // Validation Constants synchronized with firebase-blueprint.json
 export type KaraMode = 'regular' | 'bratty' | 'uncensored' | 'romantic' | 'parent';
-export type MemoryCategory = 'preference' | 'fact' | 'emotion' | 'bond';
+export type MemoryCategory = 'preference' | 'fact' | 'emotion' | 'bond' | 'date' | 'milestone';
 
 const VALID_ID_REGEX = /^[a-zA-Z0-9_\-]+$/;
 const VALID_MODES: KaraMode[] = ['regular', 'bratty', 'uncensored', 'romantic', 'parent'];
-const VALID_CATEGORIES: MemoryCategory[] = ['preference', 'fact', 'emotion', 'bond'];
+const VALID_CATEGORIES: MemoryCategory[] = [
+  'preference',
+  'fact',
+  'emotion',
+  'bond',
+  'date',
+  'milestone',
+];
 
 export function sanitizeId(id: string): string {
   const cleaned = id.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 128);
@@ -422,6 +430,7 @@ export interface MemoryItemData {
   category: MemoryCategory;
   content: string;
   importance: number;
+  eventDate?: string;
   createdAt?: Timestamp | any;
 }
 
@@ -468,11 +477,21 @@ export async function ensureUserProfile(
   overrideDisplayName?: string
 ): Promise<UserProfileData> {
   const uid = sanitizeId(user.uid);
-  const emailPrefix = user.email ? user.email.split('@')[0] : 'Friend';
+  const rawEmailPrefix = user.email ? user.email.split('@')[0] : 'Stephen';
+  const emailNameCandidate =
+    rawEmailPrefix && !/^(login\d+|user\d*|guest\d*|admin\d*|test\d*)/i.test(rawEmailPrefix)
+      ? rawEmailPrefix
+      : 'Stephen';
   const displayName =
-    (overrideDisplayName || user.displayName || emailPrefix || 'Friend')
+    (
+      overrideDisplayName ||
+      user.displayName ||
+      (emailNameCandidate !== 'Friend' && emailNameCandidate !== 'Explorer'
+        ? emailNameCandidate
+        : 'Stephen')
+    )
       .trim()
-      .slice(0, 80) || 'Friend';
+      .slice(0, 80) || 'Stephen';
 
   if (!auth.currentUser) {
     const existingLocal = loadLocalAccountData<UserProfileData | null>(uid, 'profile', null);
@@ -503,7 +522,17 @@ export async function ensureUserProfile(
   try {
     const snap = await getDoc(userRef);
     if (snap.exists()) {
-      return snap.data() as UserProfileData;
+      const existingData = snap.data() as UserProfileData;
+      if (existingData.autoAdaptMode === undefined) {
+        try {
+          await updateDoc(userRef, {
+            autoAdaptMode: true,
+            updatedAt: serverTimestamp(),
+          });
+        } catch {}
+        return { ...existingData, autoAdaptMode: true };
+      }
+      return existingData;
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
@@ -511,7 +540,7 @@ export async function ensureUserProfile(
 
   const newProfile = {
     uid,
-    displayName,
+    displayName: (displayName || 'Friend').trim().slice(0, 80) || 'Friend',
     preferredMode: 'regular' as KaraMode,
     autoAdaptMode: true,
     soapWashCount: 0,
@@ -539,7 +568,7 @@ export async function updateUserProfileFields(
 ) {
   const safeUid = sanitizeId(uid);
 
-  if (!auth.currentUser) {
+  if (!auth.currentUser || auth.currentUser.uid !== safeUid) {
     const current = loadLocalAccountData<UserProfileData>(safeUid, 'profile', {
       uid: safeUid,
       displayName: 'Explorer',
@@ -581,7 +610,21 @@ export async function updateUserProfileFields(
   try {
     await updateDoc(doc(db, 'users', safeUid), payload);
   } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, path);
+    // If the user profile document wasn't created yet, create it with valid schema fields
+    try {
+      await setDoc(doc(db, 'users', safeUid), {
+        uid: safeUid,
+        displayName: (updates.displayName || auth.currentUser.displayName || 'Friend').trim().slice(0, 80) || 'Friend',
+        preferredMode: updates.preferredMode && VALID_MODES.includes(updates.preferredMode) ? updates.preferredMode : 'regular',
+        autoAdaptMode: updates.autoAdaptMode !== undefined ? Boolean(updates.autoAdaptMode) : true,
+        soapWashCount: updates.soapWashCount !== undefined ? Math.max(0, Math.min(100000, Math.floor(updates.soapWashCount))) : 0,
+        bondLevel: updates.bondLevel !== undefined ? Math.max(0, Math.min(100, Math.floor(updates.bondLevel))) : 12,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
   }
 }
 
@@ -595,7 +638,7 @@ export async function saveChatMessage(
   );
   if (!VALID_ID_REGEX.test(msgId)) return;
 
-  if (!auth.currentUser) {
+  if (!auth.currentUser || auth.currentUser.uid !== safeUid) {
     const list = loadLocalAccountData<ChatMessageData[]>(safeUid, 'messages', []);
     const newEntry: ChatMessageData = {
       id: msgId,
@@ -632,7 +675,7 @@ export async function saveChatMessage(
   try {
     await setDoc(doc(db, 'users', safeUid, 'messages', msgId), payload);
   } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
+    handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
@@ -660,11 +703,11 @@ export async function deleteChatMessage(uid: string, msgId: string) {
 
 export async function saveMemoryItem(
   uid: string,
-  memory: { category: MemoryCategory; content: string; importance: number }
+  memory: { id?: string; category: MemoryCategory; content: string; importance: number }
 ) {
   const safeUid = sanitizeId(uid);
   const memId = sanitizeId(
-    `mem_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    memory.id || `mem_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
   );
 
   if (!auth.currentUser) {
@@ -677,7 +720,8 @@ export async function saveMemoryItem(
       importance: Math.max(1, Math.min(5, Math.floor(memory.importance || 3))),
       createdAt: Date.now(),
     };
-    saveLocalAccountData(safeUid, 'memories', [entry, ...list].slice(0, 60));
+    const filtered = list.filter((m) => m.id !== memId);
+    saveLocalAccountData(safeUid, 'memories', [entry, ...filtered].slice(0, 60));
     return entry;
   }
 
@@ -770,4 +814,86 @@ export async function resolveSoapIncident(uid: string, incidentId: string) {
   }
 }
 
+/**
+ * Completely wipe all cloud-synced and local account data (messages, memories, and profile stats)
+ * so KARA is 100% wiped and completely brand new after a Hard Reset.
+ */
+export async function wipeAllUserCloudAndLocalData(uid: string) {
+  const safeUid = sanitizeId(uid);
+
+  // 1. Wipe local account fallback storage
+  try {
+    localStorage.removeItem(`kara_messages_${safeUid}`);
+    localStorage.removeItem(`kara_memories_${safeUid}`);
+    saveLocalAccountData<UserProfileData>(safeUid, 'profile', {
+      uid: safeUid,
+      displayName: 'Friend',
+      preferredMode: 'regular',
+      autoAdaptMode: true,
+      soapWashCount: 0,
+      bondLevel: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  } catch {}
+
+  if (!auth.currentUser || auth.currentUser.uid !== safeUid) {
+    return;
+  }
+
+  // 2. Reset Firestore user profile to brand-new Stranger (0% bond, 0 soap, regular mode)
+  await updateUserProfileFields(safeUid, {
+    displayName: 'Friend',
+    preferredMode: 'regular',
+    autoAdaptMode: true,
+    bondLevel: 0,
+    soapWashCount: 0,
+  });
+
+  // 3. Query & delete all Firestore messages for this user
+  const msgCollectionPath = `users/${safeUid}/messages`;
+  try {
+    const msgQuery = query(
+      collection(db, 'users', safeUid, 'messages'),
+      where('userId', '==', safeUid)
+    );
+    const msgSnap = await getDocs(msgQuery);
+    const deletePromises: Promise<void>[] = [];
+    msgSnap.forEach((docSnap) => {
+      const docPath = `users/${safeUid}/messages/${docSnap.id}`;
+      deletePromises.push(
+        deleteDoc(doc(db, 'users', safeUid, 'messages', docSnap.id)).catch((err) =>
+          handleFirestoreError(err, OperationType.DELETE, docPath)
+        )
+      );
+    });
+    await Promise.all(deletePromises);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, msgCollectionPath);
+  }
+
+  // 4. Query & delete all Firestore memories (including synced themes/titles) for this user
+  const memCollectionPath = `users/${safeUid}/memories`;
+  try {
+    const memQuery = query(
+      collection(db, 'users', safeUid, 'memories'),
+      where('userId', '==', safeUid)
+    );
+    const memSnap = await getDocs(memQuery);
+    const deleteMemPromises: Promise<void>[] = [];
+    memSnap.forEach((docSnap) => {
+      const docPath = `users/${safeUid}/memories/${docSnap.id}`;
+      deleteMemPromises.push(
+        deleteDoc(doc(db, 'users', safeUid, 'memories', docSnap.id)).catch((err) =>
+          handleFirestoreError(err, OperationType.DELETE, docPath)
+        )
+      );
+    });
+    await Promise.all(deleteMemPromises);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, memCollectionPath);
+  }
+}
+
 export { collection, query, where, orderBy, limit, onSnapshot, doc };
+

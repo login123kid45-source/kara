@@ -182,6 +182,41 @@ class KaraRoomDatabase {
       }
     });
   }
+
+  /**
+   * Completely wipe the entire Room database and all localStorage sync mirrors
+   * so KARA starts 100% brand new after a Hard Reset.
+   */
+  public async wipeAllDatabase(): Promise<void> {
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(SYNC_MIRROR_PREFIX)) {
+          keysToRemove.push(key);
+        }
+      }
+      for (const k of keysToRemove) {
+        localStorage.removeItem(k);
+      }
+    } catch {}
+
+    const db = await this.getDb();
+    if (!db) return;
+
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(MESSAGES_TABLE, 'readwrite');
+        const store = tx.objectStore(MESSAGES_TABLE);
+        store.clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  }
 }
 
 export const karaRoomDb = new KaraRoomDatabase();
+

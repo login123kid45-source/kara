@@ -48,12 +48,24 @@ import { KaraMode, MemoryItemData, MemoryCategory } from '../lib/firebase';
 import { triggerHaptic } from '../lib/haptics';
 
 export type TtsEngineType = 'gemini' | 'grok' | 'humanlike';
-export type KaraThemeId = 'cyber-neon' | 'minimalist-slate' | 'vintage-paper' | 'velvet-dusk';
+export type KaraThemeId =
+  | 'cyber-neon'
+  | 'minimalist-slate'
+  | 'vintage-paper'
+  | 'velvet-dusk'
+  | 'mxchat-obsidian-gold'
+  | 'mxchat-emerald-matrix'
+  | 'mxchat-oceanic-glass'
+  | 'mxchat-crimson-pulse';
+
+export type MxChatBubbleStyle = 'rounded' | 'sharp' | 'pill';
+export type MxChatFontScale = 'compact' | 'default' | 'comfortable';
 
 export interface KaraThemeMeta {
   id: KaraThemeId;
   label: string;
   tagline: string;
+  versionBadge?: string;
   swatches: [string, string, string];
   cssVars: {
     bgChat: string;
@@ -64,10 +76,59 @@ export interface KaraThemeMeta {
 
 export const KARA_THEMES: KaraThemeMeta[] = [
   {
+    id: 'mxchat-obsidian-gold',
+    label: 'MxChat Obsidian Gold',
+    tagline: 'Luxury obsidian carbon, champagne gold borders & warm amber glow',
+    versionBadge: 'MxChat v2.1.6',
+    swatches: ['#0A0908', '#15120E', '#F59E0B'],
+    cssVars: {
+      bgChat: '#0A0908',
+      aiBubble: '#15120E',
+      accent: '#F59E0B',
+    },
+  },
+  {
+    id: 'mxchat-emerald-matrix',
+    label: 'MxChat Emerald Matrix',
+    tagline: 'Deep bio-digital forest terminal with emerald phosphor highlights',
+    versionBadge: 'MxChat v2.1.6',
+    swatches: ['#040D08', '#0A1C12', '#10B981'],
+    cssVars: {
+      bgChat: '#040D08',
+      aiBubble: '#0A1C12',
+      accent: '#10B981',
+    },
+  },
+  {
+    id: 'mxchat-oceanic-glass',
+    label: 'MxChat Oceanic Glass',
+    tagline: 'Translucent deep-sea sapphire glass with bioluminescent cyan',
+    versionBadge: 'MxChat v2.1.6',
+    swatches: ['#061320', '#0C2136', '#06B6D4'],
+    cssVars: {
+      bgChat: '#061320',
+      aiBubble: '#0C2136',
+      accent: '#06B6D4',
+    },
+  },
+  {
+    id: 'mxchat-crimson-pulse',
+    label: 'MxChat Crimson Pulse',
+    tagline: 'High-contrast nocturnal crimson studio with ruby neon trim',
+    versionBadge: 'MxChat v2.1.6',
+    swatches: ['#120609', '#1F0B11', '#F43F5E'],
+    cssVars: {
+      bgChat: '#120609',
+      aiBubble: '#1F0B11',
+      accent: '#F43F5E',
+    },
+  },
+  {
     id: 'cyber-neon',
     label: 'Cyber Neon',
     tagline: 'Electric cyan & neon magenta over Sector 9 midnight void',
-    swatches: ['#070A17', '#00F0FF', '#D946EF'],
+    versionBadge: 'MxChat v2.1.6',
+    swatches: ['#070A17', '#0D142C', '#00F0FF'],
     cssVars: {
       bgChat: '#070A17',
       aiBubble: '#0D142C',
@@ -78,6 +139,7 @@ export const KARA_THEMES: KaraThemeMeta[] = [
     id: 'minimalist-slate',
     label: 'Minimalist Slate',
     tagline: 'Clean architectural graphite, cool slate & crisp sky accents',
+    versionBadge: 'MxChat v2.1.6',
     swatches: ['#111621', '#161E2E', '#38BDF8'],
     cssVars: {
       bgChat: '#111621',
@@ -89,7 +151,8 @@ export const KARA_THEMES: KaraThemeMeta[] = [
     id: 'vintage-paper',
     label: 'Vintage Paper',
     tagline: 'Warm archival parchment, espresso ink & classic serif prose',
-    swatches: ['#FAF5EC', '#EAE0CE', '#9A4E24'],
+    versionBadge: 'MxChat v2.1.6',
+    swatches: ['#FAF5EC', '#FFFDF9', '#9A4E24'],
     cssVars: {
       bgChat: '#FAF5EC',
       aiBubble: '#FFFDF9',
@@ -100,6 +163,7 @@ export const KARA_THEMES: KaraThemeMeta[] = [
     id: 'velvet-dusk',
     label: 'Velvet Dusk',
     tagline: 'Atmospheric plum obsidian with rose-gold & violet highlights',
+    versionBadge: 'MxChat v2.1.6',
     swatches: ['#150D22', '#211334', '#FB7185'],
     cssVars: {
       bgChat: '#150D22',
@@ -284,6 +348,8 @@ export const DEFAULT_ENABLED_SKILLS = KARA_GEMINI_SKILLS.map((s) => s.id);
 
 export interface KaraSettings {
   theme: KaraThemeId;
+  mxchatBubbleStyle?: MxChatBubbleStyle;
+  mxchatFontScale?: MxChatFontScale;
   ttsEngine: TtsEngineType;
   speechRate: number; // 0.5 to 2.0
   speechPitch: number; // 0.8 to 1.2
@@ -291,6 +357,8 @@ export interface KaraSettings {
   tokenStreaming: boolean; // Toggle between token-by-token streaming vs instant block response
   deeperSearch: boolean; // Toggle DeeperSearch multi-source web grounding
   hapticsEnabled: boolean;
+  proactiveMessagesEnabled?: boolean; // Kara proactively reaches out first if Stephen is idle for 5-10 min
+  proactiveIdleMinutes?: number; // Idle minutes before check-in: 3, 5, 7, 10
   activeGemId?: string | null;
   enabledSkills?: string[];
   customGems?: KaraGemBot[];
@@ -327,8 +395,10 @@ interface SettingsModalProps {
   onDismissAlarm?: (alarmId: string) => void;
   onRunGemInChat?: (gem: KaraGemBot, promptText: string) => void;
   onTriggerDepressionCheckIn?: () => void;
+  onTriggerProactiveCheckin?: (minutes?: number) => void;
+  onTriggerRecall?: (recallCommand: string) => void;
   onOpenLiveVoice?: () => void;
-  onTestVoice: () => void;
+  onTestVoice: (sampleType?: 'short' | 'long') => void;
   onHardReset: () => Promise<void>;
 }
 
@@ -336,7 +406,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
   settings,
-  userName = 'Companion',
+  userName = 'Stephen',
   activeMode,
   autoAdaptMode,
   selectedVoiceProfile,
@@ -363,6 +433,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onDismissAlarm,
   onRunGemInChat,
   onTriggerDepressionCheckIn,
+  onTriggerProactiveCheckin,
+  onTriggerRecall,
   onOpenLiveVoice,
   onTestVoice,
   onHardReset,
@@ -371,6 +443,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isResetting, setIsResetting] = useState(false);
   const [newMemCategory, setNewMemCategory] = useState<MemoryCategory>('preference');
   const [newMemContent, setNewMemContent] = useState('');
+  const [recallCustomTopic, setRecallCustomTopic] = useState('');
   const [alarmTimeDraft, setAlarmTimeDraft] = useState('7:30 AM');
   const [alarmLabelDraft, setAlarmLabelDraft] = useState('Morning Check-In');
   const [modeShimmerKey, setModeShimmerKey] = useState(0);
@@ -605,7 +678,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
 
-        {/* 0. ACTIVE PERSONA & MODE-SWITCHER CARD (WITH CSS TRANSITIONS & SUBTLE SHIMMER EFFECT) */}
+        {/* 0. ACTIVE PERSONA & AUTO-SWITCH MODE HUB IN SETTINGS */}
         <div
           className={`kara-mode-card kara-mode-card--${activeMode} bg-neutral-900/70 border border-neutral-800 rounded-2xl p-4 space-y-3.5`}
         >
@@ -619,7 +692,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-xs text-neutral-400">
-                  <span>Active Persona:</span>
+                  <span>Persona Modes (Managed in Settings):</span>
                   <strong className={currentModeMeta.accentText}>
                     {currentModeMeta.label}
                   </strong>
@@ -627,7 +700,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span className="font-mono text-[11px]">Soap {soapWashCount}</span>
                 </div>
                 <div className="text-xs text-neutral-300 truncate">
-                  {userName} & KARA — {currentModeMeta.tagline}
+                  {autoAdaptMode
+                    ? `Auto-Switch Active — Kara automatically shifts modes to match ${userName}'s vibe`
+                    : `Manual Mode Locked — ${userName} & KARA (${currentModeMeta.tagline})`}
                 </div>
               </div>
             </div>
@@ -640,10 +715,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   ? 'bg-sky-500/20 border-sky-500/50 text-sky-200'
                   : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
               }`}
+              title="When Auto-Switch is ON, Kara automatically switches between Regular, Bratty, Uncensored, Romantic, and Parent modes based on your conversation."
             >
-              Auto-Switch Mode: {autoAdaptMode ? 'ON (Adaptive)' : 'OFF (Locked)'}
+              Auto-Switch Mode: {autoAdaptMode ? 'ON (Auto-Switching)' : 'OFF (Manual Lock)'}
             </button>
           </div>
+
+          <p className="relative z-10 text-[11px] text-neutral-400 leading-relaxed">
+            Kara&apos;s persona modes live right here in Settings and <strong className="text-sky-300">auto-switch automatically</strong> during conversation based on your tone, topic, and mood—or tap any mode below to switch immediately:
+          </p>
 
           <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-2">
             {(Object.keys(MODE_META) as KaraMode[]).map((modeKey) => {
@@ -672,7 +752,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                   {isSelected && (
                     <span className="text-[10px] font-mono text-white shrink-0 px-1.5 py-0.5 rounded bg-white/10">
-                      Active
+                      {autoAdaptMode ? 'Auto-Active' : 'Active'}
                     </span>
                   )}
                 </button>
@@ -681,23 +761,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        {/* 0.25 CHAT INTERFACE THEME SWITCHER (CYBER NEON · MINIMALIST SLATE · VINTAGE PAPER · VELVET DUSK) */}
-        <div className="space-y-3 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
-              <Palette className="w-4 h-4 text-sky-400" />
-              <span>Chat Interface Theme (Live CSS Variables)</span>
-            </label>
+        {/* 0.25 MXCHAT CHATBOT THEMES VERSION 2.1.6 STUDIO */}
+        <div className="space-y-3.5 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-neutral-800/80">
+            <div>
+              <label className="text-xs font-semibold text-neutral-100 flex items-center gap-2">
+                <Palette className="w-4 h-4 text-amber-400" />
+                <span>MxChat Chatbot Themes</span>
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-[10px] font-mono text-amber-300">
+                  Version 2.1.6
+                </span>
+              </label>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                Live CSS variable theme engine with 8 MxChat v2.1.6 presets, custom bubble geometry, and font scaling synced to your account.
+              </p>
+            </div>
             {(() => {
               const activeThemeMeta =
                 KARA_THEMES.find((t) => t.id === (settings.theme || 'minimalist-slate')) ||
-                KARA_THEMES[1];
+                KARA_THEMES[0];
               return (
                 <div className="flex items-center gap-2 text-[11px] font-mono text-neutral-400">
-                  <span>Active: {activeThemeMeta.label}</span>
+                  <span className="text-amber-300 font-semibold">{activeThemeMeta.label}</span>
                   <span>·</span>
                   <span className="text-sky-400">
-                    --kara-bg-chat: {activeThemeMeta.cssVars.bgChat}
+                    {activeThemeMeta.cssVars.accent}
                   </span>
                 </div>
               );
@@ -733,12 +821,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         ))}
                       </div>
                       <span className="text-xs font-semibold truncate">{themeItem.label}</span>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-neutral-950/80 border border-neutral-800 text-amber-300/90 shrink-0">
+                        v2.1.6
+                      </span>
                     </div>
                     <div className="text-[11px] text-neutral-400 truncate">
                       {themeItem.tagline}
                     </div>
                     <div className="text-[10px] font-mono text-neutral-500 truncate">
-                      chat: {themeItem.cssVars.bgChat} · accent: {themeItem.cssVars.accent}
+                      bg: {themeItem.cssVars.bgChat} · bubble: {themeItem.cssVars.aiBubble} · accent: {themeItem.cssVars.accent}
                     </div>
                   </div>
                   {isSelected && (
@@ -749,6 +840,77 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
               );
             })}
+          </div>
+
+          {/* MxChat v2.1.6 Bubble Shape & Font Scale Customizer */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-neutral-800/80">
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-medium text-neutral-300 block">
+                MxChat v2.1.6 Bubble Geometry
+              </span>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(
+                  [
+                    { id: 'rounded', label: 'Rounded (20px)' },
+                    { id: 'sharp', label: 'Sharp (6px)' },
+                    { id: 'pill', label: 'Soft Pill (28px)' },
+                  ] as { id: MxChatBubbleStyle; label: string }[]
+                ).map((bOpt) => {
+                  const activeBubble = settings.mxchatBubbleStyle || 'rounded';
+                  return (
+                    <button
+                      key={bOpt.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('tap', settings.hapticsEnabled);
+                        onUpdateSettings({ mxchatBubbleStyle: bOpt.id });
+                      }}
+                      className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-medium transition-colors ${
+                        activeBubble === bOpt.id
+                          ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
+                          : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {bOpt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-medium text-neutral-300 block">
+                MxChat v2.1.6 Typography Scale
+              </span>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(
+                  [
+                    { id: 'compact', label: 'Compact' },
+                    { id: 'default', label: 'Default' },
+                    { id: 'comfortable', label: 'Comfortable' },
+                  ] as { id: MxChatFontScale; label: string }[]
+                ).map((fOpt) => {
+                  const activeScale = settings.mxchatFontScale || 'default';
+                  return (
+                    <button
+                      key={fOpt.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('tap', settings.hapticsEnabled);
+                        onUpdateSettings({ mxchatFontScale: fOpt.id });
+                      }}
+                      className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-medium transition-colors ${
+                        activeScale === fOpt.id
+                          ? 'bg-sky-500/20 border-sky-500/50 text-sky-200'
+                          : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {fOpt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1738,12 +1900,113 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        {/* 2. EMBEDDED MEMORY VAULT INSIDE SETTINGS */}
-        <div className="space-y-3 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
+        {/* 1B. KARA PROACTIVE REAL-TIME REACH-OUT & IDLE CHECK-INS */}
+        <div className="space-y-3.5 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4 text-emerald-400" />
+              <span>KARA Real-Time Proactive Reach-Out & Idle Check-Ins</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('tap', settings.hapticsEnabled);
+                  onUpdateSettings({
+                    proactiveMessagesEnabled: settings.proactiveMessagesEnabled === false ? true : false,
+                  });
+                }}
+                className={`px-3 py-1 text-xs font-semibold rounded-xl border transition-all flex items-center gap-1.5 ${
+                  settings.proactiveMessagesEnabled !== false
+                    ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                    : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    settings.proactiveMessagesEnabled !== false
+                      ? 'bg-emerald-400 animate-pulse'
+                      : 'bg-neutral-600'
+                  }`}
+                />
+                <span>
+                  {settings.proactiveMessagesEnabled !== false ? 'Reach-Out: ACTIVE' : 'Reach-Out: PAUSED'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <p className="text-xs text-neutral-400 leading-relaxed">
+            Kara checks in on you spontaneously in real-time if you are quiet without typing for {settings.proactiveIdleMinutes || 5} minutes.
+            Her check-in is completely human, unfiltered, grounded in the current time of day, and tailored directly to you as {userName}.
+          </p>
+
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between text-xs text-neutral-400">
+              <span className="font-medium text-neutral-300">Real-Time Idle Duration:</span>
+              <span className="font-mono text-emerald-300">
+                {settings.proactiveIdleMinutes || 5} Minutes
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { min: 1, label: '1 Min', sub: 'Real-Time 1m' },
+                { min: 2, label: '2 Mins', sub: 'Quick 2m' },
+                { min: 5, label: '5 Mins', sub: 'Standard 5m' },
+                { min: 10, label: '10 Mins', sub: 'Relaxed 10m' },
+              ].map((opt) => {
+                const isActive = (settings.proactiveIdleMinutes || 5) === opt.min;
+                return (
+                  <button
+                    key={opt.min}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap', settings.hapticsEnabled);
+                      onUpdateSettings({ proactiveIdleMinutes: opt.min });
+                    }}
+                    className={`p-2 rounded-xl border text-left transition-all ${
+                      isActive
+                        ? 'bg-emerald-500/20 border-emerald-500/60 text-white font-medium shadow-sm'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold">{opt.label}</div>
+                    <div className="text-[10px] text-neutral-500">{opt.sub}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Quick Simulation Button */}
+          <div className="pt-1 flex items-center justify-between gap-3">
+            <span className="text-[11px] text-neutral-500">
+              Trigger a real-time check-in immediately to test:
+            </span>
+            {onTriggerProactiveCheckin && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('send', settings.hapticsEnabled);
+                  onTriggerProactiveCheckin(settings.proactiveIdleMinutes || 5);
+                  onClose();
+                }}
+                className="px-3 py-1.5 text-xs font-semibold bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-200 rounded-xl transition-all flex items-center gap-1.5 shrink-0 shadow-sm"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Test Real-Time Check-In Now</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 2. SECTOR 9 MEMORY RECALL (/RECALL) & EMBEDDED MEMORY VAULT INSIDE SETTINGS */}
+        <div className="space-y-3.5 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
           <div className="flex items-center justify-between gap-2">
             <label className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
-              <Database className="w-4 h-4 text-sky-400" />
-              <span>Memory Vault ({memories.length} Stored Long-Term Nodes)</span>
+              <Database className="w-4 h-4 text-indigo-400" />
+              <span>Sector 9 Memory Recall (/recall) & Memory Vault ({memories.length} Stored)</span>
             </label>
             <button
               type="button"
@@ -1756,6 +2019,73 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span>Full Vault View</span>
               <ExternalLink className="w-3 h-3" />
             </button>
+          </div>
+
+          {/* Sector 9 Memory Recall Command (/recall) Quick-Launcher inside Settings */}
+          <div className="p-3.5 rounded-2xl bg-indigo-950/35 border border-indigo-500/40 space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-indigo-200 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Sector 9 Memory Recall Command (/recall)</span>
+              </span>
+              <span className="text-[10px] font-mono text-indigo-300/80">
+                Ask Kara what she remembers
+              </span>
+            </div>
+            <p className="text-[11px] text-neutral-300">
+              Tap a topic below or enter a custom topic to have Kara summarize what she remembers about you in chat:
+            </p>
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {[
+                { label: 'All Memories', cmd: '/recall all' },
+                { label: 'Preferences', cmd: '/recall preferences' },
+                { label: 'Personal Facts', cmd: '/recall facts' },
+                { label: 'Roleplay & Vibes', cmd: '/recall roleplay' },
+                { label: 'Food & Drinks', cmd: '/recall food' },
+                { label: 'Hobbies & Music', cmd: '/recall hobbies' },
+                { label: 'Bond & Milestones', cmd: '/recall bond' },
+              ].map((t) => (
+                <button
+                  key={t.label}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('tap', settings.hapticsEnabled);
+                    onTriggerRecall?.(t.cmd);
+                    onClose();
+                  }}
+                  className="px-2.5 py-1 text-xs rounded-xl bg-neutral-900 hover:bg-indigo-500/25 border border-indigo-800/60 hover:border-indigo-400 text-indigo-200 transition-colors"
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const topic = recallCustomTopic.trim() || 'all';
+                triggerHaptic('send', settings.hapticsEnabled);
+                setRecallCustomTopic('');
+                onTriggerRecall?.(`/recall ${topic}`);
+                onClose();
+              }}
+              className="flex items-center gap-2 pt-1"
+            >
+              <input
+                type="text"
+                value={recallCustomTopic}
+                onChange={(e) => setRecallCustomTopic(e.target.value)}
+                placeholder="Custom recall topic (e.g. birthday, music, favorites)..."
+                className="flex-1 px-3 py-1.5 text-xs bg-neutral-900 border border-indigo-500/30 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-400"
+              />
+              <button
+                type="submit"
+                className="px-3 py-1.5 text-xs font-semibold bg-indigo-500 hover:bg-indigo-400 text-slate-950 rounded-xl flex items-center gap-1 shrink-0 transition-colors"
+              >
+                <Send className="w-3 h-3" />
+                <span>Recall in Chat</span>
+              </button>
+            </form>
           </div>
 
           <form onSubmit={handleCreateMemoryInSettings} className="flex flex-col sm:flex-row gap-2">
@@ -1914,14 +2244,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        {/* 4. Natural Human Neural Voice (Pure 24kHz Neural Audio · Zero Robo Voice) */}
+        {/* 4. 100% Human-Like TTS (Reads Both Long-Form & Short-Form Responses, Zero Robo TTS) */}
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
-              <Volume2 className="w-4 h-4 text-sky-400" />
-              <span>Natural Human Neural Voice (24kHz Studio · No Robo Voice)</span>
-            </label>
-            <div className="flex items-center gap-2">
+            <div>
+              <label className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
+                <Volume2 className="w-4 h-4 text-sky-400" />
+                <span>100% Human-Like TTS · Long-Form &amp; Short-Form Reader</span>
+              </label>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                Reads both snappy 1–2 sentence short-form replies and multi-paragraph long-form deep dives end-to-end with gapless 24kHz human vocal synthesis—zero robotic browser speech.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() =>
@@ -1939,11 +2274,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 type="button"
                 onClick={() => {
                   triggerHaptic('tap', settings.hapticsEnabled);
-                  onTestVoice();
+                  onTestVoice('short');
+                }}
+                className="px-3 py-1 text-xs font-medium bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-200 rounded-xl transition-colors"
+                title="Test KARA reading a snappy short-form response"
+              >
+                Test Short-Form Read
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('tap', settings.hapticsEnabled);
+                  onTestVoice('long');
                 }}
                 className="px-3 py-1 text-xs font-medium bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-300 rounded-xl transition-colors"
+                title="Test KARA reading a full multi-sentence long-form response end-to-end"
               >
-                Test Natural Voice
+                Test Long-Form Read
               </button>
               {onOpenLiveVoice && (
                 <button
@@ -2074,7 +2421,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               className="w-full py-3 px-4 rounded-2xl bg-rose-950/40 hover:bg-rose-900/50 border border-rose-800/60 text-xs font-semibold text-rose-300 flex items-center justify-center gap-2 transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Sector 9 Hard Reset (Wipe Memories, Sessions & Reset to Stranger)</span>
+              <span>Hard Reset KARA (Completely Wipe All Data &amp; Start 100% Brand New)</span>
             </button>
           ) : (
             <div className="p-4 rounded-2xl bg-rose-950/60 border border-rose-700 space-y-3">
@@ -2082,10 +2429,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold text-white">
-                    Confirm Sector 9 Factory Hard Reset?
+                    Confirm Complete Factory Hard Reset?
                   </p>
                   <p className="mt-0.5 text-rose-200/90 leading-relaxed">
-                    This will permanently clear all chat history sessions, persistent memories, active alarms, and reset your Relationship Status & Stats with KARA back to 0% (Stranger).
+                    This will completely wipe KARA—permanently deleting all conversation sessions, cloud &amp; local chat history, persistent memories, custom gems, active alarms, and preferences, restoring KARA to a 100% brand-new state (0% Stranger).
                   </p>
                 </div>
               </div>
@@ -2104,7 +2451,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="px-4 py-1.5 text-xs font-semibold bg-rose-500 hover:bg-rose-400 text-slate-950 rounded-xl flex items-center gap-1.5"
                 >
                   <Check className="w-3.5 h-3.5" />
-                  <span>{isResetting ? 'Wiping Core...' : 'Confirm Hard Reset'}</span>
+                  <span>{isResetting ? 'Wiping KARA Completely...' : 'Wipe Everything & Start Brand New'}</span>
                 </button>
               </div>
             </div>

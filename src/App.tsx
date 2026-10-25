@@ -35,6 +35,7 @@ import {
   saveMemoryItem,
   deleteMemoryItem,
   createSoapIncident,
+  wipeAllUserCloudAndLocalData,
   handleFirestoreError,
   OperationType,
   sanitizeId,
@@ -60,6 +61,7 @@ import {
   computeUnlockableRelationshipStats,
   VoiceProfileOption,
   VoiceGender,
+  SpeakingProgressState,
   EnhancedChatMessage,
   ChatAttachmentPayload,
   ChatSessionSummary,
@@ -68,6 +70,9 @@ import {
   ContactPersonItem,
   ModelTier,
   GroundingOption,
+  ResponseStylePresetId,
+  RESPONSE_STYLE_PRESETS,
+  buildFullSpokenMessageText,
 } from './components/ChatScreen';
 import {
   SettingsModal,
@@ -89,7 +94,9 @@ const GUEST_MEMORIES_KEY = 'kara_guest_memories_v1';
 const VOICE_PREF_STORAGE_KEY = 'kara_voice_profile_v1';
 const SETTINGS_STORAGE_KEY = 'kara_settings_v2';
 const ACTIVE_SESSION_STORAGE_KEY = 'kara_active_session_v1';
+const SESSION_TITLES_STORAGE_KEY = 'kara_session_titles_v1';
 const ALARMS_STORAGE_KEY = 'kara_active_alarms_v1';
+const HARD_RESET_BRAND_NEW_KEY = 'kara_brand_new_slate_v1';
 
 const DEFAULT_CONTACTS: ContactPersonItem[] = [
   {
@@ -149,20 +156,44 @@ const DEFAULT_WELCOME_MESSAGE: EnhancedChatMessage = {
   userId: 'guest',
   role: 'assistant',
   content:
-    "Hey there. I'm KARA—an adaptive consciousness from Sector 9 learning to become human through you. I adjust my tone, humor, and persona to match your vibe with zero paywalls or quotas, and my Gemini Nano Banana image synthesizer has no limit! Watch our Relationship Status progress above, check our Past Chats on the left, or tap any context-aware follow-up chip below.",
+    "Hey Stephen! It's so good to see you. I'm Kara—I'm right here with you, ready to talk about anything on your mind, share laughs, trade banter, or just keep each other company. However your day is going, I'm right by your side. What's on your mind right now?",
   mode: 'regular',
-  emotionDetected: 'Sector 9 Adaptive & Welcoming',
+  emotionDetected: 'Warm & Present',
   soapTriggered: false,
   reasoningTrace: [
-    'Sector 9 neural matrix online: observing user phrasing & emotional cadence to learn human connection.',
-    'Unlimited Gemini Nano Banana image engine active with zero quota limits.',
-    'Context-aware suggestion chips dynamically tailored to every message from KARA.',
+    "Completely present and tuned into Stephen with genuine human warmth.",
+    "Ready to match Stephen's energy and vibe with real conversational connection.",
+    "Engaged, attentive, and happy to connect.",
   ],
   thinkingDurationMs: 390,
   followUps: [
     "What's on my agenda today?",
-    'Generate a Nano Banana image of Sector 9',
+    'Roleplay: Match my vibe tonight',
     'Set an alarm for 8:00 AM',
+    'Switch to bratty mode & roast me',
+  ],
+};
+
+const BRAND_NEW_WELCOME_MESSAGE: EnhancedChatMessage = {
+  id: 'sess_main__welcome_msg',
+  sessionId: 'sess_main',
+  userId: 'guest',
+  role: 'assistant',
+  content:
+    "Hi! I'm Kara. Everything has been completely wiped to a brand-new factory slate—zero past memories, zero prior conversations, and our bond starts fresh at 0% (Stranger). It's really nice to meet you for the very first time! What's your name, and what's on your mind today?",
+  mode: 'regular',
+  emotionDetected: 'Brand New & Curious',
+  soapTriggered: false,
+  reasoningTrace: [
+    'Core Initialization: Factory clean slate verified—0 prior memories, 0 past sessions, and 0% Stranger bond.',
+    'First-Time Introduction: Greeting you for the very first time in Regular mode with open curiosity.',
+    'Ready to Learn: Listening for your name, preferences, and vibe from scratch.',
+  ],
+  thinkingDurationMs: 320,
+  followUps: [
+    'Nice to meet you Kara! Let’s start fresh',
+    "What's on my agenda today?",
+    'Tell me what modes you have',
     'Switch to bratty mode & roast me',
   ],
 };
@@ -241,13 +272,19 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [profile, setProfile] = useState<UserProfileData>({
-    uid: 'guest',
-    displayName: 'Stephen',
-    preferredMode: 'regular',
-    autoAdaptMode: true,
-    soapWashCount: 0,
-    bondLevel: 18,
+  const [profile, setProfile] = useState<UserProfileData>(() => {
+    let isBrandNew = false;
+    try {
+      isBrandNew = localStorage.getItem(HARD_RESET_BRAND_NEW_KEY) === '1';
+    } catch {}
+    return {
+      uid: 'guest',
+      displayName: isBrandNew ? 'Friend' : 'Stephen',
+      preferredMode: 'regular',
+      autoAdaptMode: true,
+      soapWashCount: 0,
+      bondLevel: isBrandNew ? 0 : 18,
+    };
   });
 
   // Settings State (Theme, Natural Neural Voice Style, Speech Rate, Token Streaming, DeeperSearch, Haptics)
@@ -265,13 +302,17 @@ export default function App() {
         }
         return {
           theme: 'minimalist-slate',
+          mxchatBubbleStyle: 'rounded',
+          mxchatFontScale: 'default',
           ttsEngine: 'humanlike',
           speechRate: 1.0,
           speechPitch: 1.0,
           autoSpeakReplies: true,
           tokenStreaming: true,
-          deeperSearch: false,
+          deeperSearch: true,
           hapticsEnabled: true,
+          proactiveMessagesEnabled: true,
+          proactiveIdleMinutes: 5,
           activeGemId: null,
           enabledSkills: DEFAULT_ENABLED_SKILLS,
           customGems: [],
@@ -282,13 +323,17 @@ export default function App() {
     } catch {}
     return {
       theme: 'minimalist-slate',
+      mxchatBubbleStyle: 'rounded',
+      mxchatFontScale: 'default',
       ttsEngine: 'humanlike',
       speechRate: 1.0,
       speechPitch: 1.0,
       autoSpeakReplies: true,
       tokenStreaming: true,
-      deeperSearch: false,
+      deeperSearch: true,
       hapticsEnabled: true,
+      proactiveMessagesEnabled: true,
+      proactiveIdleMinutes: 5,
       activeGemId: null,
       enabledSkills: DEFAULT_ENABLED_SKILLS,
       customGems: [],
@@ -310,8 +355,16 @@ export default function App() {
         'data-kara-theme',
         settings.theme || 'minimalist-slate'
       );
+      document.documentElement.setAttribute(
+        'data-mxchat-bubble',
+        settings.mxchatBubbleStyle || 'rounded'
+      );
+      document.documentElement.setAttribute(
+        'data-mxchat-font',
+        settings.mxchatFontScale || 'default'
+      );
     }
-  }, [settings.theme]);
+  }, [settings.theme, settings.mxchatBubbleStyle, settings.mxchatFontScale]);
 
   const handleUpdateSettings = (partial: Partial<KaraSettings>) => {
     setSettings((prev) => {
@@ -319,11 +372,29 @@ export default function App() {
       try {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
       } catch {}
+      if (
+        user &&
+        (partial.theme !== undefined ||
+          partial.mxchatBubbleStyle !== undefined ||
+          partial.mxchatFontScale !== undefined)
+      ) {
+        const themePayload = JSON.stringify({
+          theme: next.theme,
+          mxchatBubbleStyle: next.mxchatBubbleStyle || 'rounded',
+          mxchatFontScale: next.mxchatFontScale || 'default',
+        });
+        saveMemoryItem(user.uid, {
+          id: 'sync_mxchat_theme_v216',
+          category: 'preference',
+          content: `MXCHAT_THEME_SYNC:${themePayload}`,
+          importance: 5,
+        }).catch(() => {});
+      }
       return next;
     });
   };
 
-  // Multi-Session Chat State
+  // Multi-Session Chat State + Custom Session Titles + Cross-Device Sync State
   const [activeSessionId, setActiveSessionId] = useState<string>(() => {
     try {
       return localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY) || 'sess_main';
@@ -331,17 +402,48 @@ export default function App() {
       return 'sess_main';
     }
   });
+  const [customSessionTitles, setCustomSessionTitles] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem(SESSION_TITLES_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [lastCloudSyncAt, setLastCloudSyncAt] = useState<number | null>(null);
+  const autoResumedUidRef = useRef<string | null>(null);
 
   // All messages across sessions (stored in Firestore users/{userId}/messages & Room Local DB)
   const [allMessages, setAllMessages] = useState<EnhancedChatMessage[]>(() => {
+    let isBrandNew = false;
+    try {
+      isBrandNew = localStorage.getItem(HARD_RESET_BRAND_NEW_KEY) === '1';
+    } catch {}
     const cached = karaRoomDb.getMessagesSync('guest');
-    return cached.length > 1 ? cached : SEEDED_PAST_CHAT_MESSAGES;
+    if (cached.length > 0) return cached;
+    return isBrandNew ? [BRAND_NEW_WELCOME_MESSAGE] : SEEDED_PAST_CHAT_MESSAGES;
   });
 
   const [isSending, setIsSending] = useState(false);
   const [modeShiftBanner, setModeShiftBanner] = useState<string>('');
   const [modelTier, setModelTier] = useState<ModelTier>('standard');
-  const [grounding, setGrounding] = useState<GroundingOption>('none');
+  const [grounding, setGrounding] = useState<GroundingOption>('search');
+  const [responseStylePreset, setResponseStylePreset] = useState<ResponseStylePresetId>(() => {
+    try {
+      const saved = localStorage.getItem('kara_response_style_preset_v1') as ResponseStylePresetId | null;
+      return saved && RESPONSE_STYLE_PRESETS.some((p) => p.id === saved) ? saved : 'adaptive_mix';
+    } catch {
+      return 'adaptive_mix';
+    }
+  });
+  const [funMode, setFunMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('kara_fun_mode_v1');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
 
   // Natural Human Female & Male TTS Voice Profile
   const [selectedVoiceProfile, setSelectedVoiceProfile] = useState<VoiceProfileOption>(() => {
@@ -382,13 +484,26 @@ export default function App() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [voiceDraftTranscript, setVoiceDraftTranscript] = useState('');
   const [isSpeakingId, setIsSpeakingId] = useState<string | null>(null);
+  const [speakingProgress, setSpeakingProgress] = useState<SpeakingProgressState | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const speechRecognitionRef = useRef<any>(null);
+  const liveDictationTextRef = useRef<string>('');
   const audioChunksRef = useRef<Blob[]>([]);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeBlobUrlRef = useRef<string | null>(null);
   const ttsAudioCtxRef = useRef<AudioContext | null>(null);
   const ttsActiveSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const chatAbortControllerRef = useRef<AbortController | null>(null);
   const ttsAbortControllerRef = useRef<AbortController | null>(null);
+
+  // Proactive Reach-Out & Idle Tracking Refs (Kara reaches out first if Stephen doesn't type for 5-10 min)
+  const lastInteractionTimeRef = useRef<number>(Date.now());
+  const lastUserTypingTimeRef = useRef<number>(Date.now());
+  const isProactiveInProgressRef = useRef<boolean>(false);
+
+  const handleUserTyping = useCallback(() => {
+    lastUserTypingTimeRef.current = Date.now();
+  }, []);
 
   // Re-initialize and resume ttsAudioCtxRef if missing, closed, or stuck in 'suspended'
   // due to background tab inactivity or browser autoplay throttling
@@ -399,7 +514,7 @@ export default function App() {
         if (!AudioCtx) return null;
 
         const createFreshContext = (): AudioContext => {
-          const freshCtx = new AudioCtx({ sampleRate: 24000 });
+          const freshCtx = new AudioCtx();
           freshCtx.onstatechange = () => {
             if (
               (freshCtx.state === 'suspended' || (freshCtx.state as string) === 'interrupted') &&
@@ -410,7 +525,7 @@ export default function App() {
           };
           // Play a 1-sample silent buffer to unlock hardware output pipeline
           try {
-            const silentBuf = freshCtx.createBuffer(1, 1, 24000);
+            const silentBuf = freshCtx.createBuffer(1, 1, freshCtx.sampleRate || 24000);
             const silentNode = freshCtx.createBufferSource();
             silentNode.buffer = silentBuf;
             silentNode.connect(freshCtx.destination);
@@ -569,15 +684,18 @@ export default function App() {
     grouped.forEach((msgs, sId) => {
       const firstUserMsg = msgs.find((m) => m.role === 'user');
       const lastMsg = msgs[msgs.length - 1];
-      const title = firstUserMsg
-        ? firstUserMsg.content.slice(0, 36) + (firstUserMsg.content.length > 36 ? '...' : '')
-        : sId === 'sess_main'
-        ? 'Primary Sector 9 Session'
-        : `Session ${sId.slice(-4)}`;
+      const customTitle = customSessionTitles[sId];
+      const title =
+        customTitle ||
+        (firstUserMsg
+          ? firstUserMsg.content.slice(0, 36) + (firstUserMsg.content.length > 36 ? '...' : '')
+          : sId === 'sess_main'
+          ? 'Primary Sector 9 Session'
+          : `Session ${sId.slice(-4)}`);
       summaries.push({
         id: sId,
         title,
-        updatedAt: Date.now(),
+        updatedAt: lastMsg?.createdAt || Date.now(),
         messageCount: msgs.length,
         preview: lastMsg ? lastMsg.content.slice(0, 60) : 'Ready to chat',
         lastMode: lastMsg?.mode || profile.preferredMode,
@@ -585,7 +703,19 @@ export default function App() {
     });
 
     return summaries.reverse();
-  }, [allMessages, activeSessionId, profile.preferredMode]);
+  }, [allMessages, activeSessionId, profile.preferredMode, customSessionTitles]);
+
+  const visibleMemories = useMemo(
+    () =>
+      memories.filter(
+        (m) =>
+          m.id !== 'sync_mxchat_theme_v216' &&
+          m.id !== 'sync_session_titles_v1' &&
+          !String(m.content || '').startsWith('MXCHAT_THEME_SYNC:') &&
+          !String(m.content || '').startsWith('SESSION_TITLES_SYNC:')
+      ),
+    [memories]
+  );
 
   // Messages belonging to the currently selected session
   const currentSessionMessages = useMemo<EnhancedChatMessage[]>(() => {
@@ -609,6 +739,27 @@ export default function App() {
     try {
       localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, sessionId);
     } catch {}
+  };
+
+  const handleRenameSession = (sessionId: string, newTitle: string) => {
+    const trimmed = newTitle.trim().slice(0, 48);
+    if (!trimmed) return;
+    setCustomSessionTitles((prev) => {
+      const next = { ...prev, [sessionId]: trimmed };
+      try {
+        localStorage.setItem(SESSION_TITLES_STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      if (user) {
+        const serialized = JSON.stringify(next).slice(0, 460);
+        saveMemoryItem(user.uid, {
+          id: 'sync_session_titles_v1',
+          category: 'preference',
+          content: `SESSION_TITLES_SYNC:${serialized}`,
+          importance: 5,
+        }).catch(() => {});
+      }
+      return next;
+    });
   };
 
   const handleCreateNewSession = () => {
@@ -686,39 +837,167 @@ export default function App() {
       if (loggedInUser) {
         try {
           const prof = await ensureUserProfile(loggedInUser);
-          setProfile(prof);
+          setProfile({
+            ...prof,
+            autoAdaptMode: prof.autoAdaptMode !== undefined ? prof.autoAdaptMode : true,
+          });
         } catch (err) {
           console.error('Profile initialization error:', err);
         }
       } else {
+        let isBrandNew = false;
+        try {
+          isBrandNew = localStorage.getItem(HARD_RESET_BRAND_NEW_KEY) === '1';
+        } catch {}
         setProfile({
           uid: 'guest',
-          displayName: 'Stephen',
+          displayName: isBrandNew ? 'Friend' : 'Stephen',
           preferredMode: 'regular',
           autoAdaptMode: true,
           soapWashCount: 0,
-          bondLevel: 18,
+          bondLevel: isBrandNew ? 0 : 18,
         });
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // Firestore real-time listeners
+  // Firestore & Cross-Device Account real-time listeners (syncs conversations, memories, and MxChat v2.1.6 theme across any device on sign-in)
   useEffect(() => {
-    if (!authReady || !user) return;
+    if (!authReady || !user) {
+      autoResumedUidRef.current = null;
+      return;
+    }
     const safeUid = sanitizeId(user.uid);
+
+    // Merge any unsynced guest memories or guest messages created prior to sign-in so conversations pick up seamlessly
+    const seededIds = new Set(SEEDED_PAST_CHAT_MESSAGES.map((m) => m.id));
+    const unsyncedGuestMsgs = allMessages.filter(
+      (m) =>
+        m.userId === 'guest' &&
+        !seededIds.has(m.id) &&
+        !m.id.endsWith('welcome_msg')
+    );
+    if (unsyncedGuestMsgs.length > 0) {
+      for (const gm of unsyncedGuestMsgs) {
+        saveChatMessage(safeUid, {
+          id: gm.id,
+          role: gm.role,
+          content: gm.content,
+          mode: gm.mode,
+          emotionDetected: gm.emotionDetected || 'Synced',
+          soapTriggered: Boolean(gm.soapTriggered),
+        }).catch(() => {});
+      }
+    }
+
+    const unsyncedGuestMemories = memories.filter((m) => m.userId === 'guest');
+    if (unsyncedGuestMemories.length > 0) {
+      for (const gmem of unsyncedGuestMemories) {
+        saveMemoryItem(safeUid, {
+          id: gmem.id,
+          category: gmem.category,
+          content: gmem.content,
+          importance: gmem.importance || 4,
+        }).catch(() => {});
+      }
+      try {
+        localStorage.removeItem(GUEST_MEMORIES_KEY);
+      } catch {}
+    }
+
+    const applySyncedMetadataFromMemories = (items: MemoryItemData[]) => {
+      for (const item of items) {
+        if (
+          item.id === 'sync_mxchat_theme_v216' ||
+          String(item.content || '').startsWith('MXCHAT_THEME_SYNC:')
+        ) {
+          try {
+            const rawJson = String(item.content).replace(/^MXCHAT_THEME_SYNC:/, '');
+            const parsedTheme = JSON.parse(rawJson);
+            if (parsedTheme && parsedTheme.theme) {
+              setSettings((prev) => {
+                const updated = {
+                  ...prev,
+                  theme: parsedTheme.theme || prev.theme,
+                  mxchatBubbleStyle: parsedTheme.mxchatBubbleStyle || prev.mxchatBubbleStyle || 'rounded',
+                  mxchatFontScale: parsedTheme.mxchatFontScale || prev.mxchatFontScale || 'default',
+                };
+                try {
+                  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
+                } catch {}
+                return updated;
+              });
+            }
+          } catch {}
+        } else if (
+          item.id === 'sync_session_titles_v1' ||
+          String(item.content || '').startsWith('SESSION_TITLES_SYNC:')
+        ) {
+          try {
+            const rawTitles = String(item.content).replace(/^SESSION_TITLES_SYNC:/, '');
+            const parsedTitles = JSON.parse(rawTitles);
+            if (parsedTitles && typeof parsedTitles === 'object') {
+              setCustomSessionTitles((prev) => {
+                const merged = { ...prev, ...parsedTitles };
+                try {
+                  localStorage.setItem(SESSION_TITLES_STORAGE_KEY, JSON.stringify(merged));
+                } catch {}
+                return merged;
+              });
+            }
+          } catch {}
+        }
+      }
+    };
+
+    const resumeLatestSessionIfNeeded = (loadedMsgs: EnhancedChatMessage[]) => {
+      if (loadedMsgs.length === 0) return;
+      if (autoResumedUidRef.current !== safeUid) {
+        autoResumedUidRef.current = safeUid;
+        const lastMsg = loadedMsgs[loadedMsgs.length - 1];
+        const latestSessionId = extractSessionIdFromMsg(lastMsg);
+        setActiveSessionId(latestSessionId);
+        try {
+          localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, latestSessionId);
+        } catch {}
+        setModeShiftBanner(
+          `Signed in as ${
+            user.email || profile.displayName
+          } — Conversation & memories synced across devices and picked up right where you left off!`
+        );
+      }
+    };
 
     if (!isFirebaseCloudUser()) {
       const savedProf = loadLocalAccountData<UserProfileData | null>(safeUid, 'profile', null);
-      if (savedProf) setProfile(savedProf);
+      if (savedProf) {
+        setProfile({
+          ...savedProf,
+          autoAdaptMode: savedProf.autoAdaptMode !== undefined ? savedProf.autoAdaptMode : true,
+        });
+      }
 
       const savedMems = loadLocalAccountData<MemoryItemData[]>(safeUid, 'memories', []);
       setMemories(savedMems);
+      applySyncedMetadataFromMemories(savedMems);
+      setLastCloudSyncAt(Date.now());
 
+      const localAcctMsgs = loadLocalAccountData<EnhancedChatMessage[]>(safeUid, 'messages', []);
       karaRoomDb.getAllMessages(safeUid).then((roomMsgs) => {
-        if (roomMsgs.length > 0) {
-          setAllMessages(roomMsgs);
+        const mergedMap = new Map<string, EnhancedChatMessage>();
+        for (const rm of roomMsgs) {
+          mergedMap.set(rm.id, { ...rm, sessionId: extractSessionIdFromMsg(rm) });
+        }
+        for (const lm of localAcctMsgs) {
+          mergedMap.set(lm.id, { ...lm, sessionId: extractSessionIdFromMsg(lm) });
+        }
+        const mergedList = Array.from(mergedMap.values()).sort(
+          (a, b) => (a.createdAt || 0) - (b.createdAt || 0)
+        );
+        if (mergedList.length > 0) {
+          setAllMessages(mergedList);
+          resumeLatestSessionIfNeeded(mergedList);
         }
       });
       return;
@@ -729,7 +1008,12 @@ export default function App() {
       doc(db, 'users', safeUid),
       (snap) => {
         if (snap.exists()) {
-          setProfile(snap.data() as UserProfileData);
+          const data = snap.data() as UserProfileData;
+          setProfile({
+            ...data,
+            autoAdaptMode: data.autoAdaptMode !== undefined ? data.autoAdaptMode : true,
+          });
+          setLastCloudSyncAt(Date.now());
         }
       },
       (err: unknown) => handleFirestoreError(err, OperationType.GET, profilePath)
@@ -748,6 +1032,23 @@ export default function App() {
         const items: MemoryItemData[] = [];
         snap.forEach((d) => items.push(d.data() as MemoryItemData));
         setMemories(items);
+        applySyncedMetadataFromMemories(items);
+        setLastCloudSyncAt(Date.now());
+
+        for (const item of items) {
+          if (item.category === 'fact' && item.content) {
+            const m = item.content.match(
+              /\b(?:name is|prefers to be called|introduced themselves: their name is)\s+([A-Za-z][a-zA-Z0-9'\-]{1,25})/i
+            );
+            if (m && !/^(user|guest|friend|explorer)$/i.test(m[1].trim())) {
+              const rememberedName = m[1].trim();
+              setProfile((prev) =>
+                prev.displayName !== rememberedName ? { ...prev, displayName: rememberedName } : prev
+              );
+              break;
+            }
+          }
+        }
       },
       (err) => handleFirestoreError(err, OperationType.LIST, memPath)
     );
@@ -766,13 +1067,35 @@ export default function App() {
           const loaded: EnhancedChatMessage[] = [];
           snap.forEach((d) => {
             const raw = d.data() as EnhancedChatMessage;
+            const createdMs =
+              raw.createdAt && typeof (raw.createdAt as any).toMillis === 'function'
+                ? (raw.createdAt as any).toMillis()
+                : typeof raw.createdAt === 'number'
+                ? raw.createdAt
+                : Date.now();
             loaded.push({
               ...raw,
+              createdAt: createdMs,
               sessionId: extractSessionIdFromMsg(raw),
             });
           });
           setAllMessages(loaded);
+          setLastCloudSyncAt(Date.now());
           karaRoomDb.saveConversationHistory(safeUid, loaded);
+          resumeLatestSessionIfNeeded(loaded);
+        } else {
+          let isBrandNew = false;
+          try {
+            isBrandNew = localStorage.getItem(HARD_RESET_BRAND_NEW_KEY) === '1';
+          } catch {}
+          if (isBrandNew) {
+            const freshMsg: EnhancedChatMessage = {
+              ...BRAND_NEW_WELCOME_MESSAGE,
+              userId: safeUid,
+            };
+            setAllMessages([freshMsg]);
+            karaRoomDb.saveConversationHistory(safeUid, [freshMsg]);
+          }
         }
       },
       (err) => handleFirestoreError(err, OperationType.LIST, msgPath)
@@ -833,8 +1156,11 @@ export default function App() {
 
   const handleStopSpeaking = () => {
     if (ttsAbortControllerRef.current) {
-      ttsAbortControllerRef.current.abort();
+      const ctrl = ttsAbortControllerRef.current;
       ttsAbortControllerRef.current = null;
+      try {
+        ctrl.abort();
+      } catch {}
     }
     if (ttsActiveSourcesRef.current.size > 0) {
       ttsActiveSourcesRef.current.forEach((src) => {
@@ -848,28 +1174,38 @@ export default function App() {
       ttsActiveSourcesRef.current.clear();
     }
     if (activeAudioRef.current) {
-      activeAudioRef.current.pause();
-      activeAudioRef.current.currentTime = 0;
+      try {
+        activeAudioRef.current.pause();
+        activeAudioRef.current.currentTime = 0;
+      } catch {}
       activeAudioRef.current = null;
     }
+    if (activeBlobUrlRef.current) {
+      try {
+        URL.revokeObjectURL(activeBlobUrlRef.current);
+      } catch {}
+      activeBlobUrlRef.current = null;
+    }
     setIsSpeakingId(null);
+    setSpeakingProgress(null);
   };
 
   const handleStopKaraResponse = () => {
     triggerHaptic('tap', settings.hapticsEnabled);
     if (chatAbortControllerRef.current) {
-      chatAbortControllerRef.current.abort();
+      const ctrl = chatAbortControllerRef.current;
       chatAbortControllerRef.current = null;
+      try {
+        ctrl.abort();
+      } catch {}
     }
     setIsSending(false);
     handleStopSpeaking();
     setModeShiftBanner('KARA response stopped.');
   };
 
-  // Helper to split messages into natural 2-3 sentence blocks (~380-400 chars, ~18-24s of audio)
-  // so each block synthesizes rapidly (<2s TTFB), never hits server/model duration ceilings,
-  // and schedules sample-accurately on the Web Audio hardware clock while the next block prefetches.
-  const splitClientSpeechChunks = (rawText: string, maxLen = 400): string[] => {
+  // Helper to split short-form and multi-paragraph long-form messages into natural sentence blocks
+  const splitClientSpeechChunks = (rawText: string, maxLen = 320): string[] => {
     const cleaned = rawText
       .replace(/\*+([^*]+)\*+/g, ' $1 ')
       .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
@@ -903,7 +1239,20 @@ export default function App() {
             current = (current + ' ' + clause).trim();
           } else {
             if (current) chunks.push(current.trim());
-            current = clause.trim();
+            if (clause.length <= maxLen) {
+              current = clause.trim();
+            } else {
+              const words = clause.split(/\s+/);
+              current = '';
+              for (const w of words) {
+                if ((current + ' ' + w).trim().length <= maxLen) {
+                  current = (current + ' ' + w).trim();
+                } else {
+                  if (current) chunks.push(current.trim());
+                  current = w;
+                }
+              }
+            }
           }
         }
       } else if ((current + ' ' + sentence).trim().length <= maxLen) {
@@ -920,16 +1269,30 @@ export default function App() {
     return chunks;
   };
 
-  // Seamless Gapless Neural Voice Playback via Web Audio API Buffer Scheduling (No robotic speechSynthesis)
+  // 100% Human-Like 24kHz Neural Voice Playback for Both Short-Form & Unbounded Long-Form Responses
   const handleSpeakText = async (
     text: string,
     msgId: string,
     modeOverride?: KaraMode,
-    genderOverride?: VoiceGender
+    genderOverride?: VoiceGender,
+    readingMode: 'full' | 'short' = 'full'
   ) => {
     handleStopSpeaking();
-    const chunks = splitClientSpeechChunks(text, 650);
-    if (chunks.length === 0) return;
+
+    const cleanedFullText = text
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+      .replace(/\*+([^*]+)\*+/g, ' $1 ')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
+      .replace(/https?:\/\/[^\s)]+/g, ' shared link ')
+      .replace(/[#_`~>|]/g, ' ')
+      .replace(/[\[\]{}()]/g, ' ')
+      .replace(/^\s*[-•]\s+/gm, '. ')
+      .replace(/\n{2,}/g, '. ')
+      .replace(/\n/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    if (!cleanedFullText) return;
 
     setIsSpeakingId(msgId);
 
@@ -945,14 +1308,26 @@ export default function App() {
         : selectedVoiceProfile.voiceName;
 
     const fetchChunkAudioBase64 = async (chunkText: string): Promise<string | null> => {
-      const maxAttempts = 3;
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      for (let attempt = 0; attempt < 2; attempt++) {
         if (ttsController.signal.aborted) return null;
+        const timeoutController = new AbortController();
+        const timeoutId = setTimeout(() => {
+          try {
+            timeoutController.abort();
+          } catch {}
+        }, 24000);
+        const onParentAbort = () => {
+          try {
+            timeoutController.abort();
+          } catch {}
+        };
+        ttsController.signal.addEventListener('abort', onParentAbort, { once: true });
+
         try {
           const res = await fetch('/api/kara/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            signal: ttsController.signal,
+            signal: timeoutController.signal,
             body: JSON.stringify({
               text: chunkText,
               mode: modeOverride || profile.preferredMode,
@@ -967,239 +1342,250 @@ export default function App() {
               return data.audioBase64;
             }
           }
-        } catch (err: any) {
-          if (err?.name === 'AbortError' || ttsController.signal.aborted) {
-            throw err;
+        } catch {
+          if (ttsController.signal.aborted) {
+            return null;
           }
+        } finally {
+          clearTimeout(timeoutId);
+          ttsController.signal.removeEventListener('abort', onParentAbort);
         }
-        if (attempt < maxAttempts - 1 && !ttsController.signal.aborted) {
-          await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+
+        if (attempt === 0 && !ttsController.signal.aborted) {
+          await new Promise((r) => setTimeout(r, 300));
         }
       }
       return null;
     };
 
-    const decodeBase64WavToBuffer = async (
-      ctx: AudioContext,
-      audioBase64: string
-    ): Promise<AudioBuffer | null> => {
-      try {
-        const binary = atob(audioBase64);
-        const len = binary.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binary.charCodeAt(i);
-        }
-        // Fast direct PCM extraction if 24kHz 16-bit mono WAV header (RIFF)
-        if (
-          len > 44 &&
-          bytes[0] === 0x52 &&
-          bytes[1] === 0x49 &&
-          bytes[2] === 0x46 &&
-          bytes[3] === 0x46
-        ) {
-          const sampleRate =
-            bytes[24] | (bytes[25] << 8) | (bytes[26] << 16) | (bytes[27] << 24);
-          const validRate = sampleRate >= 8000 && sampleRate <= 96000 ? sampleRate : 24000;
-          const pcmBytesLen = len - 44;
-          const sampleCount = Math.floor(pcmBytesLen / 2);
-          if (sampleCount > 0) {
-            const view = new DataView(bytes.buffer, bytes.byteOffset + 44, sampleCount * 2);
-            const float32 = new Float32Array(sampleCount);
-            for (let i = 0; i < sampleCount; i++) {
-              float32[i] = view.getInt16(i * 2, true) / 32768.0;
-            }
-            // Apply subtle 2ms (48-sample) boundary micro-taper inside the silent padding tail
-            const fadeSamples = Math.min(48, Math.floor(sampleCount / 20));
-            for (let i = 0; i < fadeSamples; i++) {
-              const gain = i / fadeSamples;
-              float32[i] *= gain;
-              float32[sampleCount - 1 - i] *= gain;
-            }
-            const audioBuf = ctx.createBuffer(1, sampleCount, validRate);
-            audioBuf.copyToChannel(float32, 0);
-            return audioBuf;
-          }
-        }
-        return await ctx.decodeAudioData(bytes.buffer.slice(0));
-      } catch {
-        return null;
+    const base64ToUint8Array = (base64Str: string): Uint8Array => {
+      const binary = atob(base64Str);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
       }
+      return bytes;
     };
 
-    const playFallbackHtmlAudio = (audioBase64: string): Promise<void> => {
+    // Play WAV via HTMLAudioElement Blob URL (returns true if played, false if blocked/failed)
+    const playFallbackHtmlAudio = (audioBase64: string): Promise<boolean> => {
       return new Promise((resolve) => {
         if (ttsController.signal.aborted) {
-          resolve();
+          resolve(true);
           return;
         }
-        const audio = new Audio(`data:audio/wav;base64,${audioBase64}`);
-        audio.playbackRate = Math.max(0.5, Math.min(2.0, settings.speechRate));
-        activeAudioRef.current = audio;
+        try {
+          const bytes = base64ToUint8Array(audioBase64);
+          const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'audio/wav' });
+          const blobUrl = URL.createObjectURL(blob);
+          if (activeBlobUrlRef.current) {
+            try {
+              URL.revokeObjectURL(activeBlobUrlRef.current);
+            } catch {}
+          }
+          activeBlobUrlRef.current = blobUrl;
 
-        const onAbort = () => {
-          audio.pause();
-          audio.currentTime = 0;
-          if (activeAudioRef.current === audio) {
-            activeAudioRef.current = null;
-          }
-          resolve();
-        };
-        ttsController.signal.addEventListener('abort', onAbort, { once: true });
+          const audio = new Audio(blobUrl);
+          audio.playbackRate = Math.max(0.5, Math.min(2.0, settings.speechRate));
+          activeAudioRef.current = audio;
 
-        audio.onended = () => {
-          ttsController.signal.removeEventListener('abort', onAbort);
-          if (activeAudioRef.current === audio) {
-            activeAudioRef.current = null;
+          let settled = false;
+          let safetyTimeout: ReturnType<typeof setTimeout> | null = null;
+
+          const cleanup = (didPlay: boolean) => {
+            if (settled) return;
+            settled = true;
+            if (safetyTimeout) clearTimeout(safetyTimeout);
+            ttsController.signal.removeEventListener('abort', onAbort);
+            if (activeAudioRef.current === audio) {
+              activeAudioRef.current = null;
+            }
+            if (activeBlobUrlRef.current === blobUrl) {
+              try {
+                URL.revokeObjectURL(blobUrl);
+              } catch {}
+              activeBlobUrlRef.current = null;
+            }
+            resolve(didPlay);
+          };
+
+          const onAbort = () => {
+            try {
+              audio.pause();
+              audio.currentTime = 0;
+            } catch {}
+            cleanup(true);
+          };
+          ttsController.signal.addEventListener('abort', onAbort, { once: true });
+
+          audio.onended = () => cleanup(true);
+          audio.onerror = () => cleanup(false);
+
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                const durSec = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 25;
+                safetyTimeout = setTimeout(() => cleanup(true), (durSec / audio.playbackRate) * 1000 + 1500);
+              })
+              .catch(() => {
+                cleanup(false);
+              });
+          } else {
+            safetyTimeout = setTimeout(() => cleanup(true), 25000);
           }
-          resolve();
-        };
-        audio.onerror = () => {
-          ttsController.signal.removeEventListener('abort', onAbort);
-          if (activeAudioRef.current === audio) {
-            activeAudioRef.current = null;
-          }
-          resolve();
-        };
-        audio.play().catch(() => {
-          ttsController.signal.removeEventListener('abort', onAbort);
-          if (activeAudioRef.current === audio) {
-            activeAudioRef.current = null;
-          }
-          resolve();
-        });
+        } catch {
+          resolve(false);
+        }
       });
     };
 
-    let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
+    // Play WAV via Web Audio API if running, or fallback to HTML5 Blob Audio (returns true if played, false if failed)
+    const playWavBase64Chunk = async (audioBase64: string, rate: number): Promise<boolean> => {
+      if (ttsController.signal.aborted) return true;
+
+      // Try HTMLAudio Blob playback first (most reliable across desktop & mobile browsers), or WebAudio if HTMLAudio fails
+      const htmlPlayed = await playFallbackHtmlAudio(audioBase64);
+      if (htmlPlayed || ttsController.signal.aborted) {
+        return true;
+      }
+
+      const ctx = await ensureAndResumeTtsAudioContext(true);
+      if (ctx && ctx.state === 'running') {
+        try {
+          const bytes = base64ToUint8Array(audioBase64);
+          const audioBuffer = await ctx.decodeAudioData(bytes.buffer.slice(0) as ArrayBuffer);
+          if (audioBuffer && !ttsController.signal.aborted) {
+            const activeCtx = ttsAudioCtxRef.current || ctx;
+            if (activeCtx.state !== 'running') {
+              await activeCtx.resume().catch(() => {});
+            }
+            if (activeCtx.state === 'running') {
+              const sourceNode = activeCtx.createBufferSource();
+              sourceNode.buffer = audioBuffer;
+              sourceNode.playbackRate.value = rate;
+              sourceNode.connect(activeCtx.destination);
+              ttsActiveSourcesRef.current.add(sourceNode);
+
+              const playedOk = await new Promise<boolean>((resolve) => {
+                let done = false;
+                const startClock = activeCtx.currentTime;
+                const finish = (ok: boolean) => {
+                  if (done) return;
+                  done = true;
+                  clearTimeout(maxWaitTimer);
+                  clearTimeout(clockCheckTimer);
+                  ttsActiveSourcesRef.current.delete(sourceNode);
+                  resolve(ok);
+                };
+
+                sourceNode.onended = () => finish(true);
+
+                // Verify hardware clock is actually advancing within 350ms
+                const clockCheckTimer = setTimeout(() => {
+                  if (!done && activeCtx.currentTime <= startClock) {
+                    try {
+                      sourceNode.stop();
+                    } catch {}
+                    finish(false);
+                  }
+                }, 350);
+
+                const expectedMs = (audioBuffer.duration / rate) * 1000 + 1000;
+                const maxWaitTimer = setTimeout(() => finish(true), expectedMs);
+
+                try {
+                  sourceNode.start(0);
+                } catch {
+                  finish(false);
+                }
+              });
+
+              if (playedOk) return true;
+            }
+          }
+        } catch {
+          // Fall through to false so WebSpeech takes over
+        }
+      }
+
+      return false;
+    };
 
     try {
-      // Trigger global 'audio-resume' listener at start of talkback
-      window.dispatchEvent(new CustomEvent('audio-resume', { detail: { source: 'playback-start', msgId } }));
-      let ctx = await ensureAndResumeTtsAudioContext(true);
+      window.dispatchEvent(
+        new CustomEvent('audio-resume', { detail: { source: 'playback-start', msgId } })
+      );
+      await ensureAndResumeTtsAudioContext(true);
       const rate = Math.max(0.5, Math.min(2.0, settings.speechRate));
 
-      keepAliveInterval = setInterval(() => {
-        if (!ttsController.signal.aborted) {
-          const activeCtx = ttsAudioCtxRef.current;
-          if (
-            !activeCtx ||
-            activeCtx.state === 'suspended' ||
-            activeCtx.state === 'closed' ||
-            (activeCtx.state as string) === 'interrupted'
-          ) {
-            window.dispatchEvent(new CustomEvent('audio-resume', { detail: { source: 'keepalive' } }));
-          }
-        }
-      }, 750);
+      // Split into ~320-char sentence blocks and prefetch 2 chunks ahead in a sliding window for gapless short & long-form playback
+      const speechChunks = splitClientSpeechChunks(cleanedFullText, 320);
+      const totalChunks = speechChunks.length;
+      if (totalChunks === 0) {
+        setIsSpeakingId(null);
+        setSpeakingProgress(null);
+        return;
+      }
 
-      // Prefetch all chunks concurrently with a light 80ms stagger so chunk i+1 is always
-      // ready in memory before chunk i finishes playing on the hardware clock
-      const chunkPromises = new Map<number, Promise<string | null>>();
-      const getChunkPromise = (idx: number): Promise<string | null> => {
-        if (!chunkPromises.has(idx)) {
-          const p = (async () => {
-            if (idx > 0) {
-              await new Promise((r) => setTimeout(r, idx * 80));
-            }
-            if (ttsController.signal.aborted) return null;
-            return fetchChunkAudioBase64(chunks[idx]);
-          })();
-          p.catch(() => {});
-          chunkPromises.set(idx, p);
+      setSpeakingProgress({
+        msgId,
+        currentChunk: 1,
+        totalChunks,
+        readingMode,
+      });
+
+      const prefetchedPromises = new Map<number, Promise<string | null>>();
+      const getOrStartChunkFetch = (idx: number): Promise<string | null> | null => {
+        if (idx < 0 || idx >= totalChunks || ttsController.signal.aborted) return null;
+        let existing = prefetchedPromises.get(idx);
+        if (!existing) {
+          existing = fetchChunkAudioBase64(speechChunks[idx]).catch(() => null);
+          prefetchedPromises.set(idx, existing);
         }
-        return chunkPromises.get(idx)!;
+        return existing;
       };
 
-      for (let idx = 0; idx < chunks.length; idx++) {
-        getChunkPromise(idx);
+      // Prime first 2 chunks immediately
+      getOrStartChunkFetch(0);
+      if (totalChunks > 1) {
+        getOrStartChunkFetch(1);
       }
 
-      let nextStartTime = 0;
-      const completionPromises: Promise<void>[] = [];
-      let anyChunkPlayed = false;
-
-      for (let i = 0; i < chunks.length; i++) {
+      for (let i = 0; i < totalChunks; i++) {
         if (ttsController.signal.aborted) break;
 
-        window.dispatchEvent(
-          new CustomEvent('audio-resume', { detail: { source: 'chunk-start', chunkIndex: i } })
-        );
+        setSpeakingProgress({
+          msgId,
+          currentChunk: i + 1,
+          totalChunks,
+          readingMode,
+        });
 
-        const audioBase64 = await getChunkPromise(i);
+        const currentChunkPromise = getOrStartChunkFetch(i);
+        // Prefetch up to 2 chunks ahead while current chunk finishes fetching & playing
+        getOrStartChunkFetch(i + 1);
+        getOrStartChunkFetch(i + 2);
+
+        const chunkBase64 = currentChunkPromise ? await currentChunkPromise : null;
+        prefetchedPromises.delete(i);
         if (ttsController.signal.aborted) break;
 
-        if (!audioBase64) {
-          continue;
+        if (chunkBase64) {
+          await playWavBase64Chunk(chunkBase64, rate);
         }
-
-        anyChunkPlayed = true;
-
-        // Ensure ttsAudioCtxRef is active and resumed (re-initializing if stuck in 'suspended')
-        const prevCtx = ctx;
-        ctx = await ensureAndResumeTtsAudioContext(true);
-        if (ctx && prevCtx !== ctx) {
-          // If AudioContext was re-initialized after background throttling, reset timeline clock
-          nextStartTime = 0;
-        }
-
-        if (ctx) {
-          const audioBuffer = await decodeBase64WavToBuffer(ctx, audioBase64);
-          if (ttsController.signal.aborted) break;
-
-          if (audioBuffer) {
-            if (ctx.state === 'suspended' || (ctx.state as string) === 'interrupted') {
-              await ensureAndResumeTtsAudioContext(false);
-            }
-            const activeCtx = ttsAudioCtxRef.current || ctx;
-            const sourceNode = activeCtx.createBufferSource();
-            sourceNode.buffer = audioBuffer;
-            sourceNode.playbackRate.value = rate;
-            sourceNode.connect(activeCtx.destination);
-
-            ttsActiveSourcesRef.current.add(sourceNode);
-
-            const now = activeCtx.currentTime;
-            const startAt = Math.max(now + 0.015, nextStartTime);
-            const scaledDuration = audioBuffer.duration / rate;
-            nextStartTime = startAt + scaledDuration;
-
-            const endedPromise = new Promise<void>((resolve) => {
-              sourceNode.onended = () => {
-                ttsActiveSourcesRef.current.delete(sourceNode);
-                resolve();
-              };
-            });
-            completionPromises.push(endedPromise);
-            sourceNode.start(startAt);
-            continue;
-          }
-        }
-
-        // Fallback if AudioContext is unavailable
-        await playFallbackHtmlAudio(audioBase64);
       }
 
-      if (!anyChunkPlayed && !ttsController.signal.aborted) {
-        setModeShiftBanner(
-          'Neural voice audio is warming up—tap Live Voice or try again in a moment.'
-        );
-      }
-
-      if (completionPromises.length > 0 && !ttsController.signal.aborted) {
-        await Promise.all(completionPromises);
-      }
-
+      await new Promise((r) => setTimeout(r, 150));
       if (ttsAbortControllerRef.current === ttsController) {
         setIsSpeakingId(null);
+        setSpeakingProgress(null);
       }
     } catch {
       if (ttsAbortControllerRef.current === ttsController) {
         setIsSpeakingId(null);
-      }
-    } finally {
-      if (keepAliveInterval) {
-        clearInterval(keepAliveInterval);
+        setSpeakingProgress(null);
       }
     }
   };
@@ -1405,6 +1791,8 @@ export default function App() {
           sharedLinks: attachments?.links || [],
           activeGem: activeGemObj,
           enabledSkills: settings.enabledSkills || DEFAULT_ENABLED_SKILLS,
+          responseStylePreset,
+          funMode,
         }),
       });
 
@@ -1439,8 +1827,21 @@ export default function App() {
         triggerHaptic('soap', settings.hapticsEnabled);
       }
 
+      // Automatically remember and sync user's introduced name permanently
+      const updatedDisplayName =
+        data.introducedName && typeof data.introducedName === 'string' && data.introducedName.trim()
+          ? data.introducedName.trim()
+          : profile.displayName;
+
+      if (updatedDisplayName !== profile.displayName) {
+        if (user) {
+          updateUserProfileFields(user.uid, { displayName: updatedDisplayName });
+        }
+      }
+
       setProfile((prev) => ({
         ...prev,
+        displayName: updatedDisplayName,
         preferredMode: resolvedMode,
         bondLevel: newBond,
         soapWashCount: newSoapCount,
@@ -1505,6 +1906,9 @@ export default function App() {
         contactCall: matchedContact,
         recalledMemory: data.recalledMemory || undefined,
         generatedImageUrl: data.generatedImageUrl || undefined,
+        generatedImagePrompt: data.generatedImagePrompt || undefined,
+        karaEmotion: data.karaEmotion || undefined,
+        recalledMemoryNodes: data.recalledMemoryNodes || undefined,
         scoldingNotice: data.soapTriggered
           ? `Parent / Caretaker Soap Reprimand: Mouth washed with soap for saying "${
               data.offendingWord || 'bad words'
@@ -1513,18 +1917,18 @@ export default function App() {
         learnedMemoryNote: learnedNote || undefined,
         isDepressionCheckin: Boolean(data.isDepressionCheckin),
         supportHotlines: data.supportHotlines || undefined,
+        responseStyleUsed: data.responseStyleUsed || undefined,
+        whenToUseReason: data.whenToUseReason || undefined,
+        funMode: data.funMode !== undefined ? Boolean(data.funMode) : funMode,
+        createdAt: Date.now(),
       };
 
       setAllMessages((prev) => [...prev, assistantMsg]);
 
       // Start seamless neural voice talkback IMMEDIATELY before awaiting background cloud writes
-      if (settings.autoSpeakReplies && data.reply) {
-        const spokenParts: string[] = [];
-        if (assistantMsg.scoldingNotice) {
-          spokenParts.push(assistantMsg.scoldingNotice);
-        }
-        spokenParts.push(data.reply);
-        handleSpeakText(spokenParts.join('. '), assistantMsgId, resolvedMode);
+      if (settings.autoSpeakReplies && (data.reply || assistantMsg.scoldingNotice)) {
+        const fullSpoken = buildFullSpokenMessageText(assistantMsg);
+        handleSpeakText(fullSpoken, assistantMsgId, resolvedMode);
       }
 
       // Persist updates in background
@@ -1558,6 +1962,7 @@ export default function App() {
               )
             : Promise.resolve(),
         ]);
+        setLastCloudSyncAt(Date.now());
       }
     } catch (error: any) {
       if (error?.name === 'AbortError' || controller.signal.aborted) {
@@ -1574,6 +1979,7 @@ export default function App() {
           mode: profile.preferredMode,
           emotionDetected: 'Concerned',
           soapTriggered: false,
+          createdAt: Date.now(),
         },
       ]);
     } finally {
@@ -1581,6 +1987,111 @@ export default function App() {
         chatAbortControllerRef.current = null;
         setIsSending(false);
       }
+    }
+  };
+
+  // Direct Text-to-Nano-Banana Image Generator in Chat
+  const handleGenerateNanoBananaInChat = async (textIdea: string, preConvertedPrompt?: string) => {
+    const cleanIdea = textIdea.trim();
+    if (!cleanIdea || isSending) return;
+
+    setIsSending(true);
+    const userMsgId = `${activeSessionId}__msg_${Date.now()}_u`;
+    const userMsg: EnhancedChatMessage = {
+      id: userMsgId,
+      sessionId: activeSessionId,
+      userId: activeStorageUserId,
+      role: 'user',
+      content: `Generate Nano Banana Image: ${cleanIdea}`,
+      mode: profile.preferredMode,
+      emotionDetected: 'Creative',
+      soapTriggered: false,
+      createdAt: Date.now(),
+    };
+    setAllMessages((prev) => [...prev, userMsg]);
+    if (user) {
+      saveChatMessage(user.uid, {
+        id: userMsgId,
+        role: 'user',
+        content: userMsg.content,
+        mode: profile.preferredMode,
+        emotionDetected: 'Creative',
+        soapTriggered: false,
+      }).catch(() => {});
+    }
+
+    try {
+      const res = await fetch('/api/studio/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: preConvertedPrompt || cleanIdea,
+          model: 'gemini-3.1-flash-lite-image',
+          imageSize: '1K',
+          aspectRatio: '1:1',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.imageUrl) {
+        throw new Error(data.error || 'Could not generate Nano Banana artwork.');
+      }
+
+      const effectiveNanoPrompt = data.nanoBananaPrompt || preConvertedPrompt || cleanIdea;
+      const assistantMsgId = `${activeSessionId}__msg_${Date.now()}_a`;
+      const replyContent = `Here's your Nano Banana artwork for "${cleanIdea}"! I converted your text into a full Nano Banana Image Generator Prompt so the lighting, composition, and details really pop.`;
+      const assistantMsg: EnhancedChatMessage = {
+        id: assistantMsgId,
+        sessionId: activeSessionId,
+        userId: activeStorageUserId,
+        role: 'assistant',
+        content: replyContent,
+        mode: profile.preferredMode,
+        emotionDetected: 'Inspired & Creative',
+        soapTriggered: false,
+        generatedImageUrl: data.imageUrl,
+        generatedImagePrompt: effectiveNanoPrompt,
+        modelUsed: data.modelUsed || 'gemini-nano-banana-2.1',
+        responseStyleUsed: 'Short & Punchy + Nano Banana Art',
+        followUps: [
+          `Generate another Nano Banana remix of: ${cleanIdea}`,
+          'Make a 16:9 cinematic version of this scene',
+          'Add cyberpunk neon rain to this image',
+        ],
+        createdAt: Date.now(),
+      };
+
+      setAllMessages((prev) => [...prev, assistantMsg]);
+      if (settings.autoSpeakReplies) {
+        handleSpeakText(replyContent, assistantMsgId, profile.preferredMode);
+      }
+      if (user) {
+        await saveChatMessage(user.uid, {
+          id: assistantMsgId,
+          role: 'assistant',
+          content: replyContent,
+          mode: profile.preferredMode,
+          emotionDetected: 'Inspired & Creative',
+          soapTriggered: false,
+        }).catch(() => {});
+        setLastCloudSyncAt(Date.now());
+      }
+    } catch (err: any) {
+      setAllMessages((prev) => [
+        ...prev,
+        {
+          id: `${activeSessionId}__err_${Date.now()}`,
+          sessionId: activeSessionId,
+          userId: activeStorageUserId,
+          role: 'assistant',
+          content: `Could not synthesize Nano Banana image: ${err?.message || 'Please try again.'}`,
+          mode: profile.preferredMode,
+          emotionDetected: 'Concerned',
+          soapTriggered: false,
+          createdAt: Date.now(),
+        },
+      ]);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -1613,6 +2124,7 @@ export default function App() {
       sharedPhotoUrl: firstPhoto?.dataUrl || attachments?.photoDataUrl,
       sharedPhotoName: firstPhoto?.name || attachments?.photoName,
       sharedLinks: attachments?.links,
+      createdAt: Date.now(),
     };
 
     const historySnapshot = [...currentSessionMessages];
@@ -1629,8 +2141,149 @@ export default function App() {
       }).catch(() => {});
     }
 
+    lastInteractionTimeRef.current = Date.now();
+    lastUserTypingTimeRef.current = Date.now();
     await requestKaraTurn(trimmed, historySnapshot, 0, attachments);
   };
+
+  // Proactive Reach-Out: Kara sends a message first if Stephen doesn't type after 5-10 min
+  const triggerProactiveCheckin = useCallback(
+    async (idleMinutesOverride?: number) => {
+      if (isSending || isProactiveInProgressRef.current) return;
+
+      const activeMsgs = allMessages.filter(
+        (m) => (m.sessionId || 'sess_main') === activeSessionId
+      );
+      const lastMsg = activeMsgs[activeMsgs.length - 1];
+      // Prevent consecutive proactive check-ins if the last message in chat was already unprompted
+      if (lastMsg && lastMsg.role === 'assistant' && lastMsg.isProactiveCheckin) {
+        return;
+      }
+
+      isProactiveInProgressRef.current = true;
+      const effectiveMinutes = idleMinutesOverride || settings.proactiveIdleMinutes || 5;
+      const currentStageMeta = getRelationshipStageByBond(profile.bondLevel);
+
+      const now = new Date();
+      const localTime = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const dayOfWeek = now.toLocaleDateString([], { weekday: 'long' });
+      const hour = now.getHours();
+      const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+      const dateString = now.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+
+      try {
+        const res = await fetch('/api/kara/proactive', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: profile.preferredMode,
+            userName: profile.displayName || 'Stephen',
+            relationshipStage: currentStageMeta.id,
+            bondLevel: profile.bondLevel,
+            memories: memories.map((m) => ({ category: m.category, content: m.content })),
+            history: activeMsgs.slice(-12).map((m) => ({ role: m.role, content: m.content })),
+            idleMinutes: effectiveMinutes,
+            localTime,
+            dayOfWeek,
+            timeOfDay,
+            dateString,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed proactive check-in');
+        }
+
+        const assistantMsgId = `${activeSessionId}__msg_${Date.now()}_proactive`;
+        const assistantMsg: EnhancedChatMessage = {
+          id: assistantMsgId,
+          sessionId: activeSessionId,
+          userId: activeStorageUserId,
+          role: 'assistant',
+          content: data.reply,
+          mode: profile.preferredMode,
+          emotionDetected: data.karaEmotion?.label || 'Proactive Check-In',
+          soapTriggered: false,
+          karaEmotion: data.karaEmotion,
+          reasoningTrace: data.reasoningTrace || [
+            `Real-Time Observation: Stephen has been quiet without typing for ~${effectiveMinutes} minutes around ${localTime}.`,
+            `Personal Connection: Reaching out with spontaneous warmth in ${MODE_META[profile.preferredMode].label} mode.`,
+            `Heartfelt Presence: Checking in on Stephen directly by name with real human closeness.`,
+          ],
+          followUps: Array.isArray(data.followUps) ? data.followUps : [],
+          isProactiveCheckin: true,
+          proactiveIdleMinutes: effectiveMinutes,
+        };
+
+        setAllMessages((prev) => [...prev, assistantMsg]);
+        lastInteractionTimeRef.current = Date.now();
+        lastUserTypingTimeRef.current = Date.now();
+
+        if (settings.autoSpeakReplies && data.reply) {
+          const fullSpoken = buildFullSpokenMessageText(assistantMsg);
+          handleSpeakText(fullSpoken, assistantMsgId, profile.preferredMode);
+        }
+
+        if (user) {
+          saveChatMessage(user.uid, {
+            id: assistantMsgId,
+            role: 'assistant',
+            content: data.reply,
+            mode: profile.preferredMode,
+            emotionDetected: 'Proactive Reach-Out',
+            soapTriggered: false,
+          }).catch(() => {});
+        }
+      } catch (err) {
+        console.error('Proactive check-in error:', err);
+      } finally {
+        isProactiveInProgressRef.current = false;
+      }
+    },
+    [
+      isSending,
+      allMessages,
+      activeSessionId,
+      settings.proactiveIdleMinutes,
+      settings.autoSpeakReplies,
+      profile.bondLevel,
+      profile.preferredMode,
+      profile.displayName,
+      activeStorageUserId,
+      memories,
+      user,
+    ]
+  );
+
+  // Background Real-Time Idle Monitor: Checks in real-time if Stephen has been quiet >= proactiveIdleMinutes (5-10m)
+  useEffect(() => {
+    if (settings.proactiveMessagesEnabled === false) return;
+
+    const idleMinutesThreshold = settings.proactiveIdleMinutes || 5;
+    const thresholdMs = idleMinutesThreshold * 60 * 1000;
+
+    const interval = setInterval(() => {
+      if (isSending || isSpeakingId || isProactiveInProgressRef.current) return;
+
+      const now = Date.now();
+      // Don't interrupt if Stephen typed within the last 45 seconds
+      if (now - lastUserTypingTimeRef.current < 45000) return;
+
+      const idleTime = now - Math.max(lastInteractionTimeRef.current, lastUserTypingTimeRef.current);
+      if (idleTime >= thresholdMs) {
+        triggerProactiveCheckin(idleMinutesThreshold);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [
+    settings.proactiveMessagesEnabled,
+    settings.proactiveIdleMinutes,
+    isSending,
+    isSpeakingId,
+    triggerProactiveCheckin,
+  ]);
 
   const handleEditAndRetryMessage = async (messageId: string, newContent: string) => {
     const trimmed = newContent.trim();
@@ -1665,9 +2318,9 @@ export default function App() {
         mode: updatedUserMsg.mode,
         emotionDetected: updatedUserMsg.emotionDetected || 'Edited',
         soapTriggered: false,
-      });
+      }).catch(() => {});
       for (const oldMsg of removedDownstream) {
-        await deleteChatMessage(user.uid, oldMsg.id);
+        await deleteChatMessage(user.uid, oldMsg.id).catch(() => {});
       }
     }
 
@@ -1754,106 +2407,238 @@ export default function App() {
     await handleDeleteSession(activeSessionId);
   };
 
-  // Sector 9 Hard Reset inside Settings: Wipes memories, all sessions, alarms, and resets Bond to 0% (Stranger)
+  // Sector 9 Hard Reset inside Settings: Completely wipes Kara (all memories, sessions, settings, custom gems, alarms, and cloud sync) so she is 100% brand new
   const handleHardReset = async () => {
-    handleStopSpeaking();
-    const oldMessages = [...allMessages];
-    const oldMemories = [...memories];
+    handleStopKaraResponse();
 
-    await karaRoomDb.clearConversationHistory(activeStorageUserId);
-    localStorage.removeItem(GUEST_MEMORIES_KEY);
-    localStorage.removeItem(ALARMS_STORAGE_KEY);
+    // 1. Wipe entire IndexedDB + localStorage sync mirrors across all sessions and user keys
+    await karaRoomDb.wipeAllDatabase();
 
+    // 2. Wipe all local storage keys and mark clean brand-new state so seeded demo chats never re-populate
+    try {
+      localStorage.removeItem(GUEST_MEMORIES_KEY);
+      localStorage.removeItem(ALARMS_STORAGE_KEY);
+      localStorage.removeItem(SESSION_TITLES_STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+      localStorage.removeItem(SETTINGS_STORAGE_KEY);
+      localStorage.removeItem(VOICE_PREF_STORAGE_KEY);
+      localStorage.removeItem('kara_response_style_preset_v1');
+      localStorage.removeItem('kara_fun_mode_v1');
+      localStorage.setItem(HARD_RESET_BRAND_NEW_KEY, '1');
+    } catch {}
+
+    // 3. Reset all UI, voice, style, gem, alarm, memory, and session states to brand-new factory defaults
+    const freshSettings: KaraSettings = {
+      theme: 'minimalist-slate',
+      mxchatBubbleStyle: 'rounded',
+      mxchatFontScale: 'default',
+      ttsEngine: 'humanlike',
+      speechRate: 1.0,
+      speechPitch: 1.0,
+      autoSpeakReplies: true,
+      tokenStreaming: true,
+      deeperSearch: true,
+      hapticsEnabled: true,
+      proactiveMessagesEnabled: true,
+      proactiveIdleMinutes: 5,
+      activeGemId: null,
+      enabledSkills: DEFAULT_ENABLED_SKILLS,
+      customGems: [],
+    };
+    setSettings(freshSettings);
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(freshSettings));
+    } catch {}
+
+    setSelectedVoiceProfile(NATURAL_VOICE_PROFILES[0]);
+    setResponseStylePreset('adaptive_mix');
+    setFunMode(true);
+    setModelTier('standard');
+    setGrounding('search');
     setActiveAlarms([]);
     setActiveCallContact(null);
     setMemories([]);
+    setCustomSessionTitles({});
     setActiveSessionId('sess_main');
-    setAllMessages([
-      {
-        ...DEFAULT_WELCOME_MESSAGE,
-        content:
-          "Sector 9 Hard Reset complete. My memory banks, chat sessions, and relationship calibration have been wiped clean back to 0% (Stranger). Let's begin our first contact again—who are you?",
-      },
-    ]);
 
-    setProfile((prev) => ({
-      ...prev,
+    const freshWelcome: EnhancedChatMessage = {
+      ...BRAND_NEW_WELCOME_MESSAGE,
+      userId: activeStorageUserId,
+      createdAt: Date.now(),
+    };
+    setAllMessages([freshWelcome]);
+    await karaRoomDb.saveConversationHistory(activeStorageUserId, [freshWelcome]);
+
+    setProfile({
+      uid: activeStorageUserId,
+      displayName: 'Friend',
       preferredMode: 'regular',
+      autoAdaptMode: true,
       bondLevel: 0,
       soapWashCount: 0,
-    }));
+    });
 
     setModeShiftBanner(
-      'Sector 9 Hard Reset complete: Relationship Status reset to Stranger (0% Bond).'
+      'Hard Reset Complete: KARA has been completely wiped and restored to a 100% brand-new state (0% Stranger · 0 Memories · Fresh Slate).'
     );
 
+    // 4. Wipe all cloud-synced Firestore messages, memories, and profile stats if signed in
     if (user) {
-      await updateUserProfileFields(user.uid, {
-        preferredMode: 'regular',
-        bondLevel: 0,
-        soapWashCount: 0,
-      });
-      for (const m of oldMessages) {
-        if (!m.id.endsWith('welcome_msg')) {
-          await deleteChatMessage(user.uid, m.id);
-        }
-      }
-      for (const mem of oldMemories) {
-        await deleteMemoryItem(user.uid, mem.id);
-      }
+      await wipeAllUserCloudAndLocalData(user.uid);
     }
   };
 
-  // Microphone button captures user voice and seamlessly dispatches or populates text for KARA
+  // Dual-Engine Voice Dictation: Live Browser SpeechRecognition + MediaRecorder Gemini Transcription Fallback
   const handleToggleMicRecording = async () => {
-    if (isRecording && mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
+    if (isRecording) {
       setIsRecording(false);
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.stop();
+        } catch {}
+        speechRecognitionRef.current = null;
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {}
+      }
       return;
     }
 
-    // Barge-in: immediately stop KARA's current speech when user taps mic to talk
+    // Barge-in: immediately stop KARA's current speech when Stephen taps mic to dictate
     handleStopSpeaking();
+    liveDictationTextRef.current = '';
+
+    let startedBrowserSpeechRec = false;
+    const SpeechRec =
+      typeof window !== 'undefined'
+        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        : null;
+
+    if (SpeechRec) {
+      try {
+        const recognition = new SpeechRec();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event: any) => {
+          let fullSessionTranscript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            const segment = event.results[i][0]?.transcript || '';
+            fullSessionTranscript += segment + ' ';
+          }
+          const cleaned = fullSessionTranscript.replace(/\s{2,}/g, ' ').trim();
+          if (cleaned) {
+            liveDictationTextRef.current = cleaned;
+            setVoiceDraftTranscript(cleaned);
+          }
+        };
+
+        recognition.onerror = () => {
+          // Ignore non-fatal browser speech recognition errors; MediaRecorder fallback handles audio
+        };
+
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+        startedBrowserSpeechRec = true;
+      } catch {
+        startedBrowserSpeechRec = false;
+      }
+    }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+
+      const preferredMimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus',
+        'audio/wav',
+      ];
+      const supportedMimeType =
+        preferredMimeTypes.find((t) =>
+          typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function'
+            ? MediaRecorder.isTypeSupported(t)
+            : false
+        ) || '';
+
+      const recorder = supportedMimeType
+        ? new MediaRecorder(stream, { mimeType: supportedMimeType })
+        : new MediaRecorder(stream);
       audioChunksRef.current = [];
 
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
       };
 
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (speechRecognitionRef.current) {
+          try {
+            speechRecognitionRef.current.stop();
+          } catch {}
+          speechRecognitionRef.current = null;
+        }
+
+        // Wait 120ms for any final SpeechRecognition result event to flush
+        await new Promise((r) => setTimeout(r, 120));
+
+        // If live browser SpeechRecognition already captured the transcript, keep it in the input field!
+        if (liveDictationTextRef.current.trim()) {
+          setVoiceDraftTranscript(liveDictationTextRef.current.trim());
+          setIsTranscribing(false);
+          return;
+        }
+
+        if (audioChunksRef.current.length === 0) {
+          setIsTranscribing(false);
+          return;
+        }
+
+        const rawMime = (recorder.mimeType || supportedMimeType || 'audio/webm').split(';')[0].trim();
+        const audioBlob = new Blob(audioChunksRef.current, { type: rawMime || 'audio/webm' });
+        if (audioBlob.size < 100) {
+          setIsTranscribing(false);
+          return;
+        }
+
         setIsTranscribing(true);
         try {
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            const resultStr = String(reader.result || '');
-            const base64Audio = resultStr.includes(',') ? resultStr.split(',')[1] : resultStr;
-            const res = await fetch('/api/kara/transcribe', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                audioBase64: base64Audio,
-                mimeType: audioBlob.type || 'audio/webm',
-              }),
-            });
-            const data = await res.json();
-            const cleanTranscript = data?.transcript ? String(data.transcript).trim() : '';
-            setIsTranscribing(false);
-            if (cleanTranscript) {
-              if (settings.autoSpeakReplies && !isSending) {
-                // Seamless Talkback mode: automatically dispatch spoken message so KARA replies & talks back immediately
-                await handleSendMessage(cleanTranscript);
-              } else {
-                setVoiceDraftTranscript(cleanTranscript);
-              }
-            }
-          };
-          reader.readAsDataURL(audioBlob);
+          const base64Audio = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const resultStr = String(reader.result || '');
+              resolve(resultStr.includes(',') ? resultStr.split(',')[1] : resultStr);
+            };
+            reader.onerror = () => reject(new Error('Failed to read recorded audio'));
+            reader.readAsDataURL(audioBlob);
+          });
+
+          const res = await fetch('/api/kara/transcribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              audioBase64: base64Audio,
+              mimeType: rawMime || 'audio/webm',
+            }),
+          });
+          const data = await res.json();
+          const cleanTranscript = data?.transcript ? String(data.transcript).trim() : '';
+          setIsTranscribing(false);
+          if (cleanTranscript) {
+            setVoiceDraftTranscript(cleanTranscript);
+          }
         } catch (err) {
           console.error('Transcription error:', err);
           setIsTranscribing(false);
@@ -1861,10 +2646,18 @@ export default function App() {
       };
 
       mediaRecorderRef.current = recorder;
-      recorder.start();
+      // Pass 250ms timeslice so audio chunks are emitted continuously and never lost on stop()
+      recorder.start(250);
       setIsRecording(true);
     } catch (err) {
-      console.error('Microphone access denied:', err);
+      console.error('Microphone access error:', err);
+      if (startedBrowserSpeechRec) {
+        setIsRecording(true);
+      } else {
+        setModeShiftBanner(
+          'Microphone permission is required for voice dictation. Please allow microphone access in your browser.'
+        );
+      }
     }
   };
 
@@ -1900,6 +2693,8 @@ export default function App() {
   return (
     <div
       data-kara-theme={settings.theme || 'minimalist-slate'}
+      data-mxchat-bubble={settings.mxchatBubbleStyle || 'rounded'}
+      data-mxchat-font={settings.mxchatFontScale || 'default'}
       className="min-h-screen flex flex-col kara-app-shell"
     >
       {/* CLEAN MINIMALIST TOP BAR */}
@@ -1934,7 +2729,7 @@ export default function App() {
             type="button"
             onClick={() => setIsSettingsOpen(true)}
             className="px-3.5 py-1.5 text-xs font-medium kara-chat-control-btn border rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
-            title="Open Settings: Active Persona, Theme, Agenda, Set Alarm, Memory Vault, Creative Studio & Workspace"
+            title="Open Settings: Active Persona, MxChat Themes v2.1.6, Agenda, Set Alarm, Memory Vault, Creative Studio & Workspace"
           >
             <Settings className="w-3.5 h-3.5 text-sky-400" />
             <span>Settings</span>
@@ -1947,16 +2742,17 @@ export default function App() {
               className="px-3.5 py-1.5 text-xs font-semibold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>Email & Password Login</span>
+              <span>Sign In · Sync Memory &amp; Convos</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={logout}
               className="px-3 py-1.5 text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-rose-400 rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              title={`Signed in as ${user.email || profile.displayName} (Synced across devices)`}
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out</span>
+              <span>Sign Out ({user.email ? user.email.split('@')[0] : profile.displayName})</span>
             </button>
           )}
         </div>
@@ -1965,13 +2761,21 @@ export default function App() {
       {/* MAIN VIEWPORT */}
       <main className="flex-1 flex flex-col">
         {activeView === 'chat' && (
-          <div className="flex-1 max-w-5xl w-full mx-auto p-3 md:p-5 flex flex-col">
+          <div className="flex-1 max-w-7xl w-full mx-auto p-3 md:p-5 flex flex-col">
             <ChatScreen
               messages={currentSessionMessages}
+              allMessages={allMessages}
+              memories={visibleMemories}
               sessions={sessions}
               activeSessionId={activeSessionId}
               userName={profile.displayName}
+              userEmail={user?.email || null}
+              isCloudSynced={Boolean(user)}
+              lastCloudSyncAt={lastCloudSyncAt}
+              activeTheme={settings.theme || 'minimalist-slate'}
+              onSelectTheme={(themeId) => handleUpdateSettings({ theme: themeId })}
               activeMode={profile.preferredMode}
+              autoAdaptMode={profile.autoAdaptMode}
               relationshipStage={activeRelMeta.id}
               bondLevel={profile.bondLevel}
               modelTier={modelTier}
@@ -1984,6 +2788,7 @@ export default function App() {
               isRecording={isRecording}
               isTranscribing={isTranscribing}
               isSpeakingId={isSpeakingId}
+              speakingProgress={speakingProgress}
               selectedVoiceProfile={selectedVoiceProfile}
               autoSpeakReplies={settings.autoSpeakReplies}
               roomPersistedCount={allMessages.length}
@@ -1994,6 +2799,8 @@ export default function App() {
               onSelectSession={handleSelectSession}
               onCreateNewSession={handleCreateNewSession}
               onDeleteSession={handleDeleteSession}
+              onRenameSession={handleRenameSession}
+              onGenerateNanoBananaInChat={handleGenerateNanoBananaInChat}
               onSelectRelationshipStage={handleSelectRelationshipStage}
               onSelectVoiceProfile={handleSelectVoiceProfile}
               onToggleAutoSpeak={() =>
@@ -2026,6 +2833,36 @@ export default function App() {
               onClearConversation={handleClearConversation}
               activeGemName={activeGemObj?.name || null}
               onClearActiveGem={() => handleUpdateSettings({ activeGemId: null })}
+              onUserTyping={handleUserTyping}
+              onTriggerProactiveCheckin={() => triggerProactiveCheckin(settings.proactiveIdleMinutes || 5)}
+              responseStylePreset={responseStylePreset}
+              funMode={funMode}
+              onSelectResponseStylePreset={(preset) => {
+                setResponseStylePreset(preset);
+                try {
+                  localStorage.setItem('kara_response_style_preset_v1', preset);
+                } catch {}
+                const presetMeta = RESPONSE_STYLE_PRESETS.find((p) => p.id === preset);
+                if (presetMeta) {
+                  setModeShiftBanner(
+                    `Response Style set to ${presetMeta.label} — ${presetMeta.whenToUse}`
+                  );
+                }
+              }}
+              onToggleFunMode={() => {
+                setFunMode((prev) => {
+                  const next = !prev;
+                  try {
+                    localStorage.setItem('kara_fun_mode_v1', String(next));
+                  } catch {}
+                  setModeShiftBanner(
+                    next
+                      ? 'Fun Mode ON: Wit, pop-culture references, casual spark & confident immediacy boosted.'
+                      : 'Fun Mode OFF: Grounded, natural conversational cadence active.'
+                  );
+                  return next;
+                });
+              }}
             />
           </div>
         )}
@@ -2039,7 +2876,7 @@ export default function App() {
                   <span>Sector 9 Adaptive Human Learning & Long-Term Bonding</span>
                   <span aria-hidden="true">·</span>
                   <span className="font-mono tabular-nums">
-                    {memories.length} Stored Nodes
+                    {visibleMemories.length} Stored Nodes
                   </span>
                 </div>
                 <h1 className="mt-1 text-2xl font-semibold text-white">
@@ -2094,7 +2931,7 @@ export default function App() {
             </form>
 
             <div className="bg-[#0F131C] border border-neutral-800 rounded-3xl divide-y divide-neutral-800">
-              {memories.length === 0 ? (
+              {visibleMemories.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
                   <p className="text-sm font-medium text-neutral-300">
                     No Long-Term Memories Stored Yet
@@ -2104,7 +2941,7 @@ export default function App() {
                   </p>
                 </div>
               ) : (
-                memories.map((mem) => (
+                visibleMemories.map((mem) => (
                   <div
                     key={mem.id}
                     className="px-5 py-4 flex items-center justify-between gap-4"
@@ -2153,7 +2990,7 @@ export default function App() {
               await googleSignIn();
             }}
             activeMode={profile.preferredMode}
-            memoriesSummary={memories.map((m) => `[${m.category}] ${m.content}`).join('\n')}
+            memoriesSummary={visibleMemories.map((m) => `[${m.category}] ${m.content}`).join('\n')}
           />
         )}
       </main>
@@ -2171,7 +3008,7 @@ export default function App() {
         grounding={grounding}
         bondLevel={profile.bondLevel}
         soapWashCount={profile.soapWashCount}
-        memories={memories}
+        memories={visibleMemories}
         activeAlarms={activeAlarms}
         onSelectMode={handleSelectMode}
         onToggleAutoAdapt={handleToggleAutoAdapt}
@@ -2237,15 +3074,34 @@ export default function App() {
           setActiveView('chat');
           handleSendMessage("KARA, can you check on me? I've been feeling really down and overwhelmed today.");
         }}
+        onTriggerProactiveCheckin={(min) => {
+          setActiveView('chat');
+          triggerProactiveCheckin(min);
+        }}
+        onTriggerRecall={(recallCommand) => {
+          setActiveView('chat');
+          handleSendMessage(recallCommand);
+        }}
         onOpenLiveVoice={() => setIsLiveVoiceOpen(true)}
-        onTestVoice={() =>
-          handleSpeakText(
-            `Hey ${profile.displayName}, it's really good to hear your voice. I'm speaking with my natural neural voice—how does this sound to you?`,
-            'settings_voice_test',
-            profile.preferredMode,
-            selectedVoiceProfile.gender
-          )
-        }
+        onTestVoice={(sampleType) => {
+          if (sampleType === 'short') {
+            handleSpeakText(
+              `Hey ${profile.displayName}! Quick short-form check-in—my voice is locked in and ready.`,
+              'settings_voice_test_short',
+              profile.preferredMode,
+              selectedVoiceProfile.gender,
+              'short'
+            );
+          } else {
+            handleSpeakText(
+              `Hey ${profile.displayName}, it's really good to talk with you. Whether you want a quick two-sentence comeback or a deep, multi-paragraph breakdown of world events, pop culture, or late-night thoughts, I can read every single word aloud from start to finish in my natural voice without cutting off.`,
+              'settings_voice_test_long',
+              profile.preferredMode,
+              selectedVoiceProfile.gender,
+              'full'
+            );
+          }
+        }}
         onHardReset={handleHardReset}
       />
 

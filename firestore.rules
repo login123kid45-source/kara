@@ -62,7 +62,7 @@ service cloud.firestore {
         data.userId == request.auth.uid &&
         isValidId(data.userId) &&
         data.category is string && data.category.size() >= 4 && data.category.size() <= 16 &&
-        (data.category == 'preference' || data.category == 'fact' || data.category == 'emotion' || data.category == 'bond') &&
+        (data.category == 'preference' || data.category == 'fact' || data.category == 'emotion' || data.category == 'bond' || data.category == 'date' || data.category == 'milestone') &&
         data.content is string && data.content.size() >= 1 && data.content.size() <= 500 &&
         data.importance is int && data.importance >= 1 && data.importance <= 5 &&
         data.createdAt is timestamp;
@@ -126,8 +126,7 @@ service cloud.firestore {
       allow delete: if false;
 
       match /memories/{memoryId} {
-        allow get: if isOwner(userId) && isValidId(userId) && isValidId(memoryId) &&
-          exists(/databases/$(database)/documents/users/$(userId));
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(memoryId);
         allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
         allow create: if isVerifiedUser() &&
           isOwner(userId) &&
@@ -136,19 +135,27 @@ service cloud.firestore {
           isValidMemoryItem(incoming()) &&
           incoming().id == memoryId &&
           incoming().userId == userId &&
-          incoming().createdAt == request.time &&
-          exists(/databases/$(database)/documents/users/$(userId));
-        allow update: if false;
-        allow delete: if isVerifiedUser() &&
+          incoming().createdAt == request.time;
+        allow update: if isVerifiedUser() &&
+          isValidMemoryItem(incoming()) &&
           isOwner(userId) &&
           isValidId(userId) &&
           isValidId(memoryId) &&
-          exists(/databases/$(database)/documents/users/$(userId));
+          incoming().id == existing().id &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == request.time &&
+          (
+            // Action: Update Memory Item
+            incoming().diff(existing()).affectedKeys().hasOnly(['category', 'content', 'importance', 'createdAt'])
+          );
+        allow delete: if isVerifiedUser() &&
+          isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(memoryId);
       }
 
       match /messages/{messageId} {
-        allow get: if isOwner(userId) && isValidId(userId) && isValidId(messageId) &&
-          exists(/databases/$(database)/documents/users/$(userId));
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(messageId);
         allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
         allow create: if isVerifiedUser() &&
           isOwner(userId) &&
@@ -157,19 +164,28 @@ service cloud.firestore {
           isValidChatMessage(incoming()) &&
           incoming().id == messageId &&
           incoming().userId == userId &&
-          incoming().createdAt == request.time &&
-          exists(/databases/$(database)/documents/users/$(userId));
-        allow update: if false;
-        allow delete: if isVerifiedUser() &&
+          incoming().createdAt == request.time;
+        allow update: if isVerifiedUser() &&
+          isValidChatMessage(incoming()) &&
           isOwner(userId) &&
           isValidId(userId) &&
           isValidId(messageId) &&
-          exists(/databases/$(database)/documents/users/$(userId));
+          incoming().id == existing().id &&
+          incoming().userId == existing().userId &&
+          incoming().role == existing().role &&
+          incoming().createdAt == request.time &&
+          (
+            // Action: Edit or Retry Chat Message
+            incoming().diff(existing()).affectedKeys().hasOnly(['content', 'mode', 'emotionDetected', 'soapTriggered', 'createdAt'])
+          );
+        allow delete: if isVerifiedUser() &&
+          isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(messageId);
       }
 
       match /soapIncidents/{incidentId} {
-        allow get: if isOwner(userId) && isValidId(userId) && isValidId(incidentId) &&
-          exists(/databases/$(database)/documents/users/$(userId));
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(incidentId);
         allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
         allow create: if isVerifiedUser() &&
           isOwner(userId) &&
@@ -179,8 +195,7 @@ service cloud.firestore {
           incoming().id == incidentId &&
           incoming().userId == userId &&
           incoming().createdAt == request.time &&
-          incoming().updatedAt == request.time &&
-          exists(/databases/$(database)/documents/users/$(userId));
+          incoming().updatedAt == request.time;
         allow update: if isVerifiedUser() &&
           isValidSoapIncident(incoming()) &&
           isOwner(userId) &&
@@ -197,8 +212,7 @@ service cloud.firestore {
             // Action: Resolve Soap Scrubbing
             incoming().resolved == true &&
             incoming().diff(existing()).affectedKeys().hasOnly(['resolved', 'updatedAt'])
-          ) &&
-          exists(/databases/$(database)/documents/users/$(userId));
+          );
         allow delete: if false;
       }
     }

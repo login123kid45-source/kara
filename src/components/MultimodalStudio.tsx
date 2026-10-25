@@ -25,8 +25,10 @@ export const MultimodalStudio: React.FC = () => {
   const [refImageMime, setRefImageMime] = useState<string>('image/png');
   const [refImageName, setRefImageName] = useState<string>('');
   const [generatedImgUrl, setGeneratedImgUrl] = useState<string | null>(null);
+  const [generatedNanoPrompt, setGeneratedNanoPrompt] = useState<string>('');
+  const [isConvertingNanoPrompt, setIsConvertingNanoPrompt] = useState<boolean>(false);
   const [nanoBananaGallery, setNanoBananaGallery] = useState<
-    { id: string; url: string; prompt: string; model: string }[]
+    { id: string; url: string; prompt: string; nanoBananaPrompt?: string; model: string }[]
   >([]);
   const [imgLoading, setImgLoading] = useState(false);
   const [imgError, setImgError] = useState('');
@@ -76,6 +78,33 @@ export const MultimodalStudio: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleConvertTextToNanoBananaPrompt = async () => {
+    const raw = imgPrompt.trim();
+    if (!raw || isConvertingNanoPrompt) return;
+    setIsConvertingNanoPrompt(true);
+    setImgError('');
+    try {
+      const res = await fetch('/api/studio/nano-banana-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: raw,
+          aspectRatio: imgAspect,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not convert text to Nano Banana prompt.');
+      if (data.nanoBananaPrompt) {
+        setImgPrompt(data.nanoBananaPrompt);
+        setGeneratedNanoPrompt(data.nanoBananaPrompt);
+      }
+    } catch (err: any) {
+      setImgError(err?.message || 'Failed to build Nano Banana prompt.');
+    } finally {
+      setIsConvertingNanoPrompt(false);
+    }
+  };
+
   const handleGenerateImage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!imgPrompt.trim()) return;
@@ -97,11 +126,14 @@ export const MultimodalStudio: React.FC = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Image generation failed');
       setGeneratedImgUrl(data.imageUrl);
+      const effectiveNanoPrompt = data.nanoBananaPrompt || imgPrompt;
+      setGeneratedNanoPrompt(effectiveNanoPrompt);
       setNanoBananaGallery((prev) => [
         {
           id: `nb_${Date.now()}`,
           url: data.imageUrl,
           prompt: imgPrompt,
+          nanoBananaPrompt: effectiveNanoPrompt,
           model: data.modelUsed || imgModel,
         },
         ...prev,
@@ -407,13 +439,31 @@ export const MultimodalStudio: React.FC = () => {
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs text-neutral-300 mb-1.5">Prompt</label>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="block text-xs text-neutral-300">
+                    Text → Nano Banana Image Generator Prompt
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleConvertTextToNanoBananaPrompt}
+                    disabled={!imgPrompt.trim() || isConvertingNanoPrompt}
+                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 disabled:opacity-40 border border-amber-500/40 text-[11px] font-medium text-amber-300 flex items-center gap-1 transition-colors"
+                    title="Convert your plain text idea into a detailed Nano Banana Image Generator Prompt"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>
+                      {isConvertingNanoPrompt
+                        ? 'Converting Text...'
+                        : 'Text → Nano Banana Prompt'}
+                    </span>
+                  </button>
+                </div>
                 <textarea
                   rows={3}
                   value={imgPrompt}
                   onChange={(e) => setImgPrompt(e.target.value)}
-                  placeholder="Describe any scene or character to synthesize with Gemini Nano Banana (No Limit)..."
+                  placeholder="Type any plain text idea (e.g. 'cyberpunk rooftop cafe in rain') and click 'Text → Nano Banana Prompt' or generate directly..."
                   className="w-full px-3.5 py-2.5 text-sm bg-neutral-900 border border-neutral-800 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-sky-500"
                 />
               </div>
@@ -447,6 +497,23 @@ export const MultimodalStudio: React.FC = () => {
                     referrerPolicy="no-referrer"
                     className="max-h-96 rounded-xl border border-neutral-800 object-contain"
                   />
+                  {generatedNanoPrompt && (
+                    <div className="w-full p-3 rounded-xl bg-neutral-900/90 border border-amber-500/30 text-left space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-amber-300">
+                        <span>Active Nano Banana Image Generator Prompt</span>
+                        <button
+                          type="button"
+                          onClick={() => navigator.clipboard?.writeText(generatedNanoPrompt)}
+                          className="text-sky-400 hover:underline"
+                        >
+                          Copy Prompt
+                        </button>
+                      </div>
+                      <p className="text-xs text-neutral-300 leading-relaxed line-clamp-3">
+                        {generatedNanoPrompt}
+                      </p>
+                    </div>
+                  )}
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-mono text-amber-300">
                       Gemini Nano Banana · Unlimited Generation
@@ -468,7 +535,7 @@ export const MultimodalStudio: React.FC = () => {
                     Gemini Nano Banana Ready (No Limit)
                   </p>
                   <p className="text-xs text-neutral-500">
-                    Generate as many 1K, 2K, or 4K images as you want with zero quotas or paywalls.
+                    Enter any text to auto-convert it into a Nano Banana Image Generator Prompt and synthesize 1K, 2K, or 4K artwork.
                   </p>
                 </div>
               )}

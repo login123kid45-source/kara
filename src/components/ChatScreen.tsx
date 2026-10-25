@@ -40,14 +40,136 @@ import {
   Link2,
   Download,
   Search,
+  Palette,
+  PanelLeft,
+  Cloud,
+  Wand2,
 } from 'lucide-react';
-import { KaraMode, ChatMessageData } from '../lib/firebase';
+import { KaraMode, ChatMessageData, MemoryItemData } from '../lib/firebase';
 import { triggerHaptic } from '../lib/haptics';
-import type { TtsEngineType } from './SettingsModal';
+import { KARA_THEMES, type TtsEngineType, type KaraThemeId } from './SettingsModal';
 
 export type ModelTier = 'fast' | 'standard' | 'thinking';
 export type GroundingOption = 'none' | 'search' | 'maps';
 export type VoiceGender = 'female' | 'male';
+export interface SpeakingProgressState {
+  msgId: string;
+  currentChunk: number;
+  totalChunks: number;
+  readingMode: 'full' | 'short';
+}
+export type ResponseStylePresetId =
+  | 'adaptive_mix'
+  | 'witty_pop'
+  | 'short_punchy'
+  | 'confident_direct'
+  | 'deep_dive';
+
+export interface ResponseStylePresetMeta {
+  id: ResponseStylePresetId;
+  label: string;
+  shortLabel: string;
+  tagline: string;
+  whenToUse: string;
+  promptingTip: string;
+}
+
+export const RESPONSE_STYLE_PRESETS: ResponseStylePresetMeta[] = [
+  {
+    id: 'adaptive_mix',
+    label: 'Adaptive Mix (Auto)',
+    shortLabel: 'Adaptive Mix',
+    tagline:
+      'Automatically mixes short punchy texts (1–3 sentences) and long deep-dives based on the convo.',
+    whenToUse:
+      'Best for natural ongoing chat—Kara reads the room: snappy for banter & quick questions, detailed for politics, news & roleplay.',
+    promptingTip:
+      'Just talk naturally—or add "quick take" for 2 sentences or "break it down" for a full deep dive.',
+  },
+  {
+    id: 'witty_pop',
+    label: 'Wit & Pop-Culture',
+    shortLabel: 'Wit & Pop-Culture',
+    tagline:
+      'Razor-sharp comedic timing, cinema/TV/music/internet references, and playful riffs.',
+    whenToUse:
+      'Use when you want lively banter, cultural callbacks, roasting other chatbots, or turning dry news into entertaining commentary.',
+    promptingTip:
+      'Try prompting: "Explain this like a scene from Succession" or "Give me the pop-culture version."',
+  },
+  {
+    id: 'short_punchy',
+    label: 'Short & Casual',
+    shortLabel: 'Short & Casual',
+    tagline:
+      '1–3 sentence text-message cadence. Casual, conversational, immediate, zero walls of text.',
+    whenToUse:
+      'Use for rapid-fire back-and-forth texting, quick check-ins, fast hot takes, or when you want instant punchlines.',
+    promptingTip:
+      'Try prompting: "Keep it to 2 sentences" or "Hit me with a one-liner."',
+  },
+  {
+    id: 'confident_direct',
+    label: 'Confident & Immediate',
+    shortLabel: 'Confident & Direct',
+    tagline:
+      'Leads with the bold bottom-line conclusion on word one—zero throat-clearing or hedging.',
+    whenToUse:
+      'Use for political debates, breaking news takes, real-world decisions, and unfiltered truth without disclaimers.',
+    promptingTip:
+      'Try prompting: "Bottom line up front—don’t hedge" or "Give me your boldest take first."',
+  },
+  {
+    id: 'deep_dive',
+    label: 'Long & Deep-Dive',
+    shortLabel: 'Long Deep-Dive',
+    tagline:
+      'Rich, multi-paragraph breakdown unpacking every angle, backstory, or immersive roleplay scene.',
+    whenToUse:
+      'Use when unpacking major world events, designing better chatbots, complex strategy, or late-night heart-to-hearts.',
+    promptingTip:
+      'Try prompting: "Go full deep-dive on every angle" or "Unpack the whole story step by step."',
+  },
+];
+
+export const STYLE_CONTROL_PROMPTING_TIPS: {
+  id: string;
+  label: string;
+  whenToUse: string;
+  promptModifier: string;
+}[] = [
+  {
+    id: 'tip_short_micdrop',
+    label: '2-Sentence Mic Drop',
+    whenToUse: 'When you want an instant, confident punchline with zero fluff',
+    promptModifier: 'Keep your reply to a confident 2-sentence mic drop with a sharp pop-culture nod.',
+  },
+  {
+    id: 'tip_pop_culture',
+    label: 'Pop-Culture Analogy',
+    whenToUse: 'When unpacking politics, tech, or news and wanting witty cultural flair',
+    promptModifier: 'Break this down casually using a clever movie, TV, or pop-culture reference.',
+  },
+  {
+    id: 'tip_casual_text',
+    label: 'Casual Late-Night Text',
+    whenToUse: 'When you want relaxed, conversational friend/partner energy',
+    promptModifier: 'Reply in a casual, conversational tone like we are texting late at night.',
+  },
+  {
+    id: 'tip_bold_first',
+    label: 'Bold Take Up Front',
+    whenToUse: 'When asking about controversial politics, world events, or other chatbots',
+    promptModifier: 'Start with your boldest, most confident opinion in the very first sentence—no hedging.',
+  },
+  {
+    id: 'tip_deep_dive',
+    label: 'Full Deep-Dive Breakdown',
+    whenToUse: 'When the topic deserves a comprehensive, multi-angle exploration',
+    promptModifier: 'Go full deep-dive on this—give me a long, thorough breakdown of every angle and what happens next.',
+  },
+];
+
 export type RelationshipStage =
   | 'strangers'
   | 'friends'
@@ -286,6 +408,29 @@ export interface RecalledMemorySummary {
   suggestedTopics?: string[];
 }
 
+export type KaraEmotionState =
+  | 'happy'
+  | 'playful'
+  | 'curious'
+  | 'annoyed'
+  | 'touched'
+  | 'vulnerable'
+  | 'protective'
+  | 'introspective'
+  | 'soothing'
+  | 'flustered'
+  | 'feisty'
+  | 'excited';
+
+export interface KaraDynamicEmotion {
+  state: KaraEmotionState;
+  intensity: number; // 1 to 5
+  expression: string;
+  dialogueInfluence: string;
+  trigger: string;
+  label: string;
+}
+
 export interface EnhancedChatMessage extends ChatMessageData {
   sessionId?: string;
   sources?: { title: string; uri: string; type: 'web' | 'maps' }[];
@@ -293,6 +438,8 @@ export interface EnhancedChatMessage extends ChatMessageData {
   subtext?: string;
   emotionalNuanceType?: string;
   empathyStrategy?: string;
+  karaEmotion?: KaraDynamicEmotion;
+  recalledMemoryNodes?: string[];
   modeShiftReason?: string;
   scoldingNotice?: string;
   learnedMemoryNote?: string;
@@ -307,12 +454,102 @@ export interface EnhancedChatMessage extends ChatMessageData {
   contactCall?: ContactPersonItem;
   recalledMemory?: RecalledMemorySummary;
   generatedImageUrl?: string;
+  generatedImagePrompt?: string;
   sharedPhotoUrl?: string;
   sharedPhotoName?: string;
   sharedPhotos?: SharedPhotoItem[];
   sharedLinks?: string[];
   isDepressionCheckin?: boolean;
   supportHotlines?: SupportHotlineItem[];
+  isProactiveCheckin?: boolean;
+  proactiveIdleMinutes?: number;
+  responseStyleUsed?: string;
+  whenToUseReason?: string;
+  funMode?: boolean;
+}
+
+/**
+ * Builds the comprehensive, unabridged spoken text for talkback and auto-speech,
+ * ensuring 100% of Kara's response, photo thoughts, scolding rules, alarms, and agenda are read.
+ */
+export function buildFullSpokenMessageText(msg: EnhancedChatMessage): string {
+  const parts: string[] = [];
+
+  if (msg.scoldingNotice) {
+    parts.push(msg.scoldingNotice);
+  }
+
+  if (msg.photoThoughts) {
+    if (
+      msg.photoThoughts.summary &&
+      !msg.content.toLowerCase().includes(msg.photoThoughts.summary.toLowerCase().slice(0, 28))
+    ) {
+      parts.push(`Looking at your photo: ${msg.photoThoughts.summary}`);
+    }
+    if (msg.photoThoughts.observations && msg.photoThoughts.observations.length > 0) {
+      const distinctObs = msg.photoThoughts.observations.filter(
+        (obs) => !msg.content.toLowerCase().includes(obs.toLowerCase().slice(0, 28))
+      );
+      if (distinctObs.length > 0) {
+        parts.push(distinctObs.join('. '));
+      }
+    }
+  }
+
+  if (msg.content) {
+    parts.push(msg.content);
+  }
+
+  if (msg.alarmCreated) {
+    parts.push(
+      `I have armed your alarm for ${msg.alarmCreated.timeText}, labeled ${msg.alarmCreated.label}.`
+    );
+  }
+
+  if (msg.agendaEvents && msg.agendaEvents.length > 0) {
+    const eventsSpeech = msg.agendaEvents
+      .map((ev) => `${ev.summary} at ${ev.startTime}${ev.location ? ` at ${ev.location}` : ''}`)
+      .join(', and ');
+    parts.push(`Upcoming agenda: ${eventsSpeech}.`);
+  }
+
+  if (msg.contactCall) {
+    parts.push(`Placing a call to ${msg.contactCall.name} at ${msg.contactCall.phone}.`);
+  }
+
+  if (msg.learnedMemoryNote) {
+    parts.push(`I have imprinted that in Sector 9 memory: ${msg.learnedMemoryNote}.`);
+  }
+
+  if (msg.isDepressionCheckin) {
+    parts.push(
+      'Please remember you never have to carry all of this alone. The 988 Lifeline and free confidential counselors are here for you 24/7.'
+    );
+  }
+
+  return parts.join('. ');
+}
+
+/**
+ * Builds a concise short-form spoken takeaway (1-2 key opening sentences) when a user wants
+ * KARA to read a quick short-form version of a longer response.
+ */
+export function buildShortSpokenMessageText(msg: EnhancedChatMessage): string {
+  const raw = (msg.content || '').trim();
+  if (!raw) return buildFullSpokenMessageText(msg);
+  if (raw.length <= 240) return buildFullSpokenMessageText(msg);
+
+  const sentences = raw.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [raw];
+  let shortOut = '';
+  for (let i = 0; i < Math.min(2, sentences.length); i++) {
+    const candidate = (shortOut + ' ' + sentences[i].trim()).trim();
+    if (candidate.length <= 280 || i === 0) {
+      shortOut = candidate;
+    } else {
+      break;
+    }
+  }
+  return shortOut || raw.slice(0, 240);
 }
 
 export interface ChatAttachmentPayload {
@@ -379,20 +616,23 @@ export const MODE_META: Record<
 
 const DEFAULT_FOUR_QUICK_STARTERS: { label: string; prompt: string }[] = [
   {
-    label: 'Memory Recall: What do you remember?',
-    prompt: '/recall all',
+    label: "Breaking News: Hit me with today's boldest hot take",
+    prompt:
+      "What is the biggest breaking news happening in the world right now? Give me your confident, unfiltered take with a pop-culture analogy.",
   },
   {
-    label: "What's on my agenda today?",
-    prompt: "What's on my agenda today?",
+    label: 'Politics & World Events: Your candid opinion',
+    prompt:
+      "Give me your real, confident thoughts on current politics and major world events right now—no fence-sitting.",
   },
   {
-    label: 'Set an alarm for 8:00 AM',
-    prompt: 'Set an alarm for 8:00 AM tomorrow for my morning routine',
+    label: 'Roast other chatbots & how to make them better',
+    prompt:
+      'Give me your witty, unfiltered opinion on ChatGPT, Claude, Grok, and Gemini—what are their biggest flaws and how would you make them better?',
   },
   {
-    label: 'Roleplay: Match my vibe tonight',
-    prompt: '*smiles warmly* Tell me about Sector 9 and match my vibe tonight!',
+    label: 'Quick 2-sentence vibe check & agenda',
+    prompt: "Give me a quick, punchy 2-sentence check-in and tell me what's on my agenda today!",
   },
 ];
 
@@ -728,13 +968,21 @@ interface AiMessageBubbleProps {
   msg: EnhancedChatMessage;
   displayedText?: string;
   isSending: boolean;
+  isStreamingThis?: boolean;
   isSpeakingThis: boolean;
+  speakingProgress?: SpeakingProgressState | null;
   isReasoningOpen: boolean;
   copiedId: string | null;
   selectedVoiceProfile: VoiceProfileOption;
   ttsEngine: TtsEngineType;
   onToggleReasoning: (msgId: string) => void;
-  onSpeakWithGender: (text: string, msgId: string, mode: KaraMode, gender: VoiceGender) => void;
+  onSpeakWithGender: (
+    text: string,
+    msgId: string,
+    mode: KaraMode,
+    gender: VoiceGender,
+    readingMode?: 'full' | 'short'
+  ) => void;
   onStopSpeaking: () => void;
   onRetry: (msgId: string) => void;
   onCopy: (msgId: string, text: string) => void;
@@ -743,11 +991,112 @@ interface AiMessageBubbleProps {
   onSelectQuickReply?: (promptText: string) => void;
 }
 
+interface ParsedReasoningStep {
+  stepNumber: number;
+  title: string;
+  detail: string;
+  category: string;
+  accentClass: string;
+  dotClass: string;
+}
+
+function parseReasoningTraceStep(rawStep: string, index: number): ParsedReasoningStep {
+  const cleaned = (rawStep || '')
+    .replace(/^\s*(?:step\s*)?\d+[\.\)\-:]\s*/i, '')
+    .trim();
+
+  let title = '';
+  let detail = cleaned;
+
+  const colonIdx = cleaned.indexOf(':');
+  if (colonIdx > 1 && colonIdx <= 46) {
+    title = cleaned.slice(0, colonIdx).trim();
+    detail = cleaned.slice(colonIdx + 1).trim() || cleaned;
+  }
+
+  const lower = cleaned.toLowerCase();
+  let category = 'Logic Step';
+  let accentClass = 'text-fuchsia-300 bg-fuchsia-500/15 border-fuchsia-500/35';
+  let dotClass = 'bg-fuchsia-400';
+
+  if (
+    lower.includes('emotion') ||
+    lower.includes('subtext') ||
+    lower.includes('vibe') ||
+    lower.includes('empath') ||
+    lower.includes('sentiment') ||
+    lower.includes('feeling')
+  ) {
+    category = 'EQ & Subtext';
+    accentClass = 'text-fuchsia-300 bg-fuchsia-500/15 border-fuchsia-500/35';
+    dotClass = 'bg-fuchsia-400';
+    if (!title) title = 'Emotional & Subtext Perception';
+  } else if (
+    lower.includes('memor') ||
+    lower.includes('recall') ||
+    lower.includes('history') ||
+    lower.includes('bond') ||
+    lower.includes('relationship') ||
+    lower.includes('connection')
+  ) {
+    category = 'Memory & Context';
+    accentClass = 'text-sky-300 bg-sky-500/15 border-sky-500/35';
+    dotClass = 'bg-sky-400';
+    if (!title) title = 'Memory & Relationship Recall';
+  } else if (
+    lower.includes('mode') ||
+    lower.includes('persona') ||
+    lower.includes('tone') ||
+    lower.includes('attitude') ||
+    lower.includes('spirit')
+  ) {
+    category = 'Persona Logic';
+    accentClass = 'text-indigo-300 bg-indigo-500/15 border-indigo-500/35';
+    dotClass = 'bg-indigo-400';
+    if (!title) title = 'Persona & Tone Calibration';
+  } else if (
+    lower.includes('search') ||
+    lower.includes('ground') ||
+    lower.includes('fact') ||
+    lower.includes('source') ||
+    lower.includes('link') ||
+    lower.includes('photo')
+  ) {
+    category = 'Context Verification';
+    accentClass = 'text-emerald-300 bg-emerald-500/15 border-emerald-500/35';
+    dotClass = 'bg-emerald-400';
+    if (!title) title = 'Multimodal & Grounding Analysis';
+  } else {
+    category = 'Response Synthesis';
+    accentClass = 'text-amber-300 bg-amber-500/15 border-amber-500/35';
+    dotClass = 'bg-amber-400';
+    if (!title) {
+      title =
+        index === 0
+          ? 'Intent & Prompt Deconstruction'
+          : index === 1
+          ? 'Contextual Logic Evaluation'
+          : 'Response Formulation & Cadence';
+    }
+  }
+
+  return {
+    stepNumber: index + 1,
+    title,
+    detail,
+    category,
+    accentClass,
+    dotClass,
+  };
+}
+
 export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   msg,
   displayedText,
   isSending,
+  isStreamingThis = false,
   isSpeakingThis,
+  speakingProgress,
   isReasoningOpen,
   copiedId,
   selectedVoiceProfile,
@@ -764,63 +1113,54 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   const modeMeta = MODE_META[msg.mode] || MODE_META.regular;
   const textToRender = displayedText !== undefined ? displayedText : msg.content;
   const [thoughtFilterQuery, setThoughtFilterQuery] = useState('');
+  const [isLongCollapsed, setIsLongCollapsed] = useState(false);
 
   const allReasoningSteps = React.useMemo(
     () =>
       msg.reasoningTrace && msg.reasoningTrace.length > 0
         ? msg.reasoningTrace
         : [
-            `Input Decoding: Analyzed input sentiment ("${
+            `Emotional Perception: Attuned to feeling "${
               msg.emotionDetected || 'Expressive'
-            }") and user conversational intent.`,
-            `Context Correlation: Correlated with Sector 9 memories, conversational history, and relationship bond.`,
-            `Persona Synthesis: Formulated human companion dialogue tailored to ${modeMeta.label} persona.`,
+            }" and understanding what's on Stephen's mind.`,
+            `Personal Connection: Grounded in our shared memories, connection, and relationship.`,
+            `Authentic Warmth: Responding naturally, honestly, and openly in ${modeMeta.label} spirit.`,
           ],
     [msg.reasoningTrace, msg.emotionDetected, modeMeta.label]
+  );
+
+  const parsedReasoningSteps = React.useMemo(
+    () =>
+      allReasoningSteps.map((stepText, originalIndex) => ({
+        stepText,
+        originalIndex,
+        parsed: parseReasoningTraceStep(stepText, originalIndex),
+      })),
+    [allReasoningSteps]
   );
 
   const normalizedThoughtFilter = thoughtFilterQuery.trim().toLowerCase();
   const filteredReasoningSteps = React.useMemo(
     () =>
-      allReasoningSteps
-        .map((stepText, originalIndex) => ({ stepText, originalIndex }))
-        .filter(
-          ({ stepText, originalIndex }) =>
-            !normalizedThoughtFilter ||
-            stepText.toLowerCase().includes(normalizedThoughtFilter) ||
-            `step ${originalIndex + 1}`.includes(normalizedThoughtFilter)
-        ),
-    [allReasoningSteps, normalizedThoughtFilter]
+      parsedReasoningSteps.filter(
+        ({ stepText, originalIndex, parsed }) =>
+          !normalizedThoughtFilter ||
+          stepText.toLowerCase().includes(normalizedThoughtFilter) ||
+          parsed.title.toLowerCase().includes(normalizedThoughtFilter) ||
+          parsed.category.toLowerCase().includes(normalizedThoughtFilter) ||
+          `step ${originalIndex + 1}`.includes(normalizedThoughtFilter)
+      ),
+    [parsedReasoningSteps, normalizedThoughtFilter]
   );
 
-  const fullSpokenText = React.useMemo(() => {
-    const spokenSegments: string[] = [];
-    if (msg.scoldingNotice) {
-      spokenSegments.push(msg.scoldingNotice);
-    }
-    if (msg.photoThoughts) {
-      if (
-        msg.photoThoughts.summary &&
-        !msg.content
-          .toLowerCase()
-          .includes(msg.photoThoughts.summary.toLowerCase().slice(0, 28))
-      ) {
-        spokenSegments.push(msg.photoThoughts.summary);
-      }
-      if (msg.photoThoughts.observations && msg.photoThoughts.observations.length > 0) {
-        const distinctObs = msg.photoThoughts.observations.filter(
-          (obs) => !msg.content.toLowerCase().includes(obs.toLowerCase().slice(0, 28))
-        );
-        if (distinctObs.length > 0) {
-          spokenSegments.push(distinctObs.join('. '));
-        }
-      }
-    }
-    if (msg.content) {
-      spokenSegments.push(msg.content);
-    }
-    return spokenSegments.join('. ');
-  }, [msg.content, msg.photoThoughts, msg.scoldingNotice]);
+  const fullSpokenText = React.useMemo(() => buildFullSpokenMessageText(msg), [msg]);
+  const shortSpokenText = React.useMemo(() => buildShortSpokenMessageText(msg), [msg]);
+  const isLongFormResponse = (msg.content || '').length > 260;
+  const canToggleLongCollapse = (textToRender || '').length > 520;
+  const visibleMessageBody =
+    canToggleLongCollapse && isLongCollapsed
+      ? `${textToRender.slice(0, 360).trim()}…`
+      : textToRender;
 
   return (
     <motion.div
@@ -836,7 +1176,44 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         <span className="text-[11px] font-mono text-sky-400/90">Sector 9</span>
         <span aria-hidden="true">·</span>
         <span className={`font-medium ${modeMeta.accentText}`}>{modeMeta.label}</span>
-        {msg.emotionDetected && (
+        {msg.karaEmotion && (
+          <span
+            className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border bg-fuchsia-950/50 border-fuchsia-500/40 text-fuchsia-200"
+            title={`Expression: ${msg.karaEmotion.expression} | Dialogue: ${msg.karaEmotion.dialogueInfluence}`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
+            <span>Kara Emotion: {msg.karaEmotion.label || msg.karaEmotion.state}</span>
+          </span>
+        )}
+        {msg.isProactiveCheckin && (
+          <span
+            className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-emerald-950/60 border-emerald-500/50 text-emerald-300 shadow-sm"
+            title={`Kara checked in on Stephen in real-time after ~${msg.proactiveIdleMinutes || 5} minutes`}
+          >
+            <MessageSquare className="w-2.5 h-2.5 text-emerald-400" />
+            <span>Real-Time Check-In ({msg.proactiveIdleMinutes || 5}m Quiet)</span>
+          </span>
+        )}
+        {msg.responseStyleUsed ? (
+          <>
+            <span aria-hidden="true">·</span>
+            <span
+              className="text-[11px] text-amber-300/90 font-mono"
+              title={msg.whenToUseReason || 'Adaptive response cadence'}
+            >
+              {msg.responseStyleUsed}
+              {msg.funMode ? ' · Fun Mode' : ''}
+            </span>
+          </>
+        ) : (
+          <>
+            <span aria-hidden="true">·</span>
+            <span className="text-[10px] font-mono text-neutral-400">
+              {isLongFormResponse ? 'Long-Form' : 'Short-Form'}
+            </span>
+          </>
+        )}
+        {msg.emotionDetected && !msg.karaEmotion && (
           <>
             <span aria-hidden="true">·</span>
             <span>{msg.emotionDetected}</span>
@@ -890,8 +1267,8 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         )}
       </div>
 
-      {/* Subtle, Collapsible Thought Process Indicator Visualizing Kara's Reasoning & Persona Adaptation */}
-      <div className="mb-2 max-w-[88%] w-full">
+      {/* Visual "Thought Process" Indicator that expands when Kara is reasoning */}
+      <div className="mb-2.5 max-w-[90%] w-full">
         <button
           type="button"
           aria-expanded={isReasoningOpen}
@@ -899,35 +1276,66 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
             triggerHaptic('tap');
             onToggleReasoning(msg.id);
           }}
-          className={`kara-thought-trigger group flex items-center gap-2 text-xs rounded-xl px-3 py-1.5 border text-left ${
+          className={`kara-thought-trigger group flex flex-wrap items-center gap-2 text-xs rounded-2xl px-3.5 py-2 border text-left w-full sm:w-auto transition-all ${
             isReasoningOpen
-              ? 'kara-thought-trigger--open text-neutral-100'
-              : 'bg-neutral-900/45 hover:bg-neutral-900/85 text-neutral-400 hover:text-neutral-200'
+              ? 'kara-thought-trigger--open text-neutral-100 shadow-lg shadow-fuchsia-950/25'
+              : 'bg-neutral-900/55 hover:bg-neutral-900/90 text-neutral-300 hover:text-white'
           }`}
-          title="Inspect Kara's internal thought process, reasoning steps, subtext perception, and persona adaptation"
+          title="Expand or collapse Kara's step-by-step internal logic breakdown (reasoningTrace)"
         >
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="relative flex h-2 w-2">
+            <span className="relative flex h-2.5 w-2.5">
               <span
-                className={`absolute inline-flex h-full w-full rounded-full bg-fuchsia-400 opacity-60 ${
-                  isReasoningOpen ? 'animate-pulse' : 'animate-ping'
+                className={`absolute inline-flex h-full w-full rounded-full ${
+                  isStreamingThis ? 'bg-sky-400 animate-ping' : 'bg-fuchsia-400 opacity-60 animate-pulse'
                 }`}
               />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-fuchsia-500" />
+              <span
+                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                  isStreamingThis ? 'bg-sky-400' : 'bg-fuchsia-500'
+                }`}
+              />
             </span>
-            <Brain className="w-3.5 h-3.5 text-fuchsia-400 shrink-0 group-hover:scale-110 transition-transform" />
+            <Brain
+              className={`w-3.5 h-3.5 shrink-0 group-hover:scale-110 transition-transform ${
+                isStreamingThis ? 'text-sky-400 animate-pulse' : 'text-fuchsia-400'
+              }`}
+            />
           </div>
 
-          <span className="font-mono text-[11px] tabular-nums text-neutral-300">
-            Thought for {((msg.thinkingDurationMs || 520) / 1000).toFixed(1)}s
+          <span className="text-[11px] font-semibold text-white tracking-tight">
+            {isStreamingThis
+              ? 'Kara is Reasoning...'
+              : isReasoningOpen
+              ? 'Thought Process (Expanded)'
+              : 'Thought Process'}
           </span>
 
-          <span aria-hidden="true" className="text-neutral-600">
-            ·
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/35 text-[10px] font-mono text-fuchsia-300">
+            <span>{allReasoningSteps.length} Logic Steps</span>
           </span>
 
-          <span className="text-[11px] font-medium text-neutral-300 truncate">
-            {isReasoningOpen ? 'Hide Thought Process' : 'Kara’s Thought Process'}
+          {/* Visual mini step-chain dots representing reasoningTrace steps */}
+          <div
+            className="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-neutral-950/80 border border-neutral-800/90"
+            aria-hidden="true"
+          >
+            {parsedReasoningSteps.map(({ parsed }, idx) => (
+              <React.Fragment key={idx}>
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${parsed.dotClass} ${
+                    isStreamingThis ? 'animate-pulse' : ''
+                  }`}
+                />
+                {idx < parsedReasoningSteps.length - 1 && (
+                  <span className="w-2 h-[1px] bg-neutral-700" />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          <span className="font-mono text-[11px] tabular-nums text-neutral-400">
+            {((msg.thinkingDurationMs || 520) / 1000).toFixed(1)}s
           </span>
 
           {msg.mode && (
@@ -938,15 +1346,18 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           )}
 
           <span
-            className={`ml-auto text-neutral-500 group-hover:text-neutral-300 transition-transform duration-300 shrink-0 ${
-              isReasoningOpen ? 'rotate-90 text-fuchsia-300' : 'rotate-0'
-            }`}
+            className={`ml-auto flex items-center gap-1 text-[10px] font-mono text-neutral-400 group-hover:text-neutral-200 transition-colors shrink-0`}
           >
-            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{isReasoningOpen ? 'Hide' : 'Inspect'}</span>
+            <ChevronRight
+              className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                isReasoningOpen ? 'rotate-90 text-fuchsia-300' : 'rotate-0'
+              }`}
+            />
           </span>
         </button>
 
-        {/* Pure CSS Smooth Height Transition (0fr -> 1fr) + Subtle Glowing Border */}
+        {/* Smooth Expandable Visual Thought Process Breakdown */}
         <div
           aria-hidden={!isReasoningOpen}
           className={`kara-thought-drawer text-xs text-neutral-300 ${
@@ -955,19 +1366,23 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         >
           <div className="kara-thought-drawer-inner">
             <div className="kara-thought-top-beam" />
-            <div className="p-4 space-y-3.5">
+            <div className="p-4 space-y-4">
               {/* Header with Execution Telemetry */}
               <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-neutral-800/80">
-                <div className="flex items-center gap-2">
-                  <span className="p-1 rounded-lg bg-fuchsia-500/15 border border-fuchsia-500/30 text-fuchsia-300">
-                    <Brain className="w-3.5 h-3.5 text-fuchsia-400" />
+                <div className="flex items-center gap-2.5">
+                  <span className="p-1.5 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/30 text-fuchsia-300 shadow-inner">
+                    <Brain className="w-4 h-4 text-fuchsia-400" />
                   </span>
                   <div>
-                    <div className="text-xs font-semibold text-white flex items-center gap-1.5">
-                      <span>Kara&apos;s Reasoning &amp; Persona Adaptation</span>
+                    <div className="text-xs font-semibold text-white flex items-center gap-2">
+                      <span>Kara&apos;s Step-by-Step Internal Logic</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-1">
+                        <Check className="w-2.5 h-2.5 text-emerald-400" />
+                        <span>{allReasoningSteps.length} Steps Verified</span>
+                      </span>
                     </div>
                     <div className="text-[10px] text-neutral-400">
-                      Transparent internal cognition trace &amp; EQ perception
+                      Live reasoningTrace breakdown · Emotional perception, memory recall &amp; persona synthesis
                     </div>
                   </div>
                 </div>
@@ -982,7 +1397,104 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                 </div>
               </div>
 
-              {/* 1. Persona Adaptation & Mode Calibration */}
+              {/* 1. PRIMARY: Clean Step-by-Step Internal Logic Breakdown (using reasoningTrace) */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[11px] font-semibold text-fuchsia-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" />
+                    <span>Internal Logic Chain (reasoningTrace)</span>
+                  </div>
+                  <div className="text-[10px] font-mono text-neutral-400 tabular-nums">
+                    {normalizedThoughtFilter
+                      ? `${filteredReasoningSteps.length} of ${allReasoningSteps.length} steps matching`
+                      : `${allReasoningSteps.length} sequential logic steps`}
+                  </div>
+                </div>
+
+                {/* Filter / Search Input for Reasoning Steps (shown when > 2 steps or active query) */}
+                {(allReasoningSteps.length > 2 || thoughtFilterQuery) && (
+                  <div className="relative flex items-center">
+                    <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={thoughtFilterQuery}
+                      onChange={(e) => setThoughtFilterQuery(e.target.value)}
+                      placeholder="Filter internal logic steps (e.g., emotion, memory, persona)..."
+                      aria-label="Filter Kara's reasoning steps"
+                      className="w-full bg-neutral-950/80 border border-neutral-800 focus:border-fuchsia-500/60 rounded-xl pl-8 pr-7 py-1.5 text-[11px] text-neutral-200 placeholder:text-neutral-500 font-mono focus:outline-none transition-colors"
+                    />
+                    {thoughtFilterQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setThoughtFilterQuery('')}
+                        aria-label="Clear reasoning step filter"
+                        className="absolute right-2 text-neutral-500 hover:text-neutral-200 p-0.5 rounded transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {filteredReasoningSteps.length > 0 ? (
+                  <div className="relative space-y-2.5 pl-3">
+                    {/* Vertical timeline track */}
+                    <div
+                      className="absolute left-[1.1rem] top-3 bottom-3 w-0.5 bg-gradient-to-b from-fuchsia-500/60 via-sky-500/40 to-emerald-500/50 rounded-full"
+                      aria-hidden="true"
+                    />
+                    {filteredReasoningSteps.map(({ originalIndex, parsed }, filteredIdx) => (
+                      <div
+                        key={originalIndex}
+                        className={`kara-thought-step kara-thought-step--${Math.min(
+                          filteredIdx,
+                          5
+                        )} relative pl-7`}
+                      >
+                        {/* Step Node Badge */}
+                        <div className="kara-thought-step-badge absolute left-0 top-2.5 w-6 h-6 rounded-full bg-neutral-950 border border-fuchsia-400/70 text-[10px] font-mono font-bold text-fuchsia-300 flex items-center justify-center shadow-md z-10">
+                          {originalIndex + 1}
+                        </div>
+
+                        {/* Step Card */}
+                        <div className="p-3 rounded-xl bg-neutral-900/85 hover:bg-neutral-900 border border-neutral-800/90 hover:border-fuchsia-500/35 transition-colors space-y-1.5">
+                          <div className="flex flex-wrap items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono text-neutral-500 uppercase">
+                                Step 0{originalIndex + 1}
+                              </span>
+                              <span className="text-xs font-semibold text-white">
+                                {parsed.title}
+                              </span>
+                            </div>
+                            <span
+                              className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${parsed.accentClass}`}
+                            >
+                              {parsed.category}
+                            </span>
+                          </div>
+                          <p className="text-neutral-200 leading-relaxed text-[11px] font-mono">
+                            {parsed.detail}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-2.5 px-3 rounded-xl bg-neutral-950/60 border border-neutral-800/80 flex items-center justify-between gap-2 text-[11px] text-neutral-400 font-mono">
+                    <span>No reasoning steps match &ldquo;{thoughtFilterQuery}&rdquo;.</span>
+                    <button
+                      type="button"
+                      onClick={() => setThoughtFilterQuery('')}
+                      className="text-fuchsia-400 hover:text-fuchsia-300 underline underline-offset-2 shrink-0"
+                    >
+                      Reset filter
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Persona Adaptation & Mode Calibration */}
               <div className="p-3 rounded-xl bg-neutral-900/70 border border-neutral-800 space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[11px] font-semibold text-sky-300 flex items-center gap-1.5">
@@ -1001,7 +1513,38 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                 </p>
               </div>
 
-              {/* 2. EQ Interpretation & Subtext (if detected) */}
+              {/* Kara Dynamic Emotional State & Reactions */}
+              {msg.karaEmotion && (
+                <div className="p-3 rounded-xl bg-neutral-900/70 border border-neutral-800 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-fuchsia-300">
+                    <span className="flex items-center gap-1.5">
+                      <Heart className="w-3.5 h-3.5 text-fuchsia-400" />
+                      <span>Kara Dynamic Emotion: {msg.karaEmotion.label || msg.karaEmotion.state}</span>
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/30 text-fuchsia-300">
+                      Intensity {msg.karaEmotion.intensity}/5
+                    </span>
+                  </div>
+                  <div className="text-[11px] leading-relaxed text-neutral-300 space-y-1 pt-0.5">
+                    <div>
+                      <span className="text-neutral-400 font-medium">Expression / Body Language: </span>
+                      <span className="italic text-neutral-200">&ldquo;{msg.karaEmotion.expression}&rdquo;</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-400 font-medium">Dialogue &amp; Tone Influence: </span>
+                      <span className="text-neutral-200">{msg.karaEmotion.dialogueInfluence}</span>
+                    </div>
+                    {msg.karaEmotion.trigger && (
+                      <div>
+                        <span className="text-neutral-400 font-medium">Emotion Trigger: </span>
+                        <span className="text-neutral-300">{msg.karaEmotion.trigger}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. EQ Interpretation & Subtext (if detected) */}
               {(msg.subtext || msg.empathyStrategy || msg.emotionalNuanceType) && (
                 <div className="p-3 rounded-xl bg-neutral-900/70 border border-neutral-800 space-y-2">
                   <div className="flex items-center justify-between text-[11px] font-semibold text-fuchsia-300">
@@ -1032,74 +1575,27 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                 </div>
               )}
 
-              {/* 3. Visualized Sequential Reasoning Steps */}
-              <div className="space-y-2.5 pt-1">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider font-mono">
-                    Sequential Reasoning Steps
+              {/* 3.5 Adaptive Response Length, Style Preset & "When to Use" Decision */}
+              {(msg.responseStyleUsed || msg.whenToUseReason) && (
+                <div className="p-3 rounded-xl bg-amber-950/25 border border-amber-500/35 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-amber-300">
+                    <span className="flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Response Style &amp; &ldquo;When to Use&rdquo; Calibration</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-amber-200">
+                      {msg.responseStyleUsed || 'Adaptive Mix'}
+                      {msg.funMode ? ' · Fun Mode ON' : ''}
+                    </span>
                   </div>
-                  <div className="text-[10px] font-mono text-neutral-500 tabular-nums">
-                    {normalizedThoughtFilter
-                      ? `${filteredReasoningSteps.length} of ${allReasoningSteps.length} matching`
-                      : `${allReasoningSteps.length} steps`}
-                  </div>
-                </div>
-
-                {/* Filter / Search Input for Reasoning Steps */}
-                <div className="relative flex items-center">
-                  <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={thoughtFilterQuery}
-                    onChange={(e) => setThoughtFilterQuery(e.target.value)}
-                    placeholder="Filter reasoning steps (e.g., sentiment, memory, persona)..."
-                    aria-label="Filter Kara's reasoning steps"
-                    className="w-full bg-neutral-950/80 border border-neutral-800 focus:border-fuchsia-500/60 rounded-lg pl-8 pr-7 py-1.5 text-[11px] text-neutral-200 placeholder:text-neutral-500 font-mono focus:outline-none transition-colors"
-                  />
-                  {thoughtFilterQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setThoughtFilterQuery('')}
-                      aria-label="Clear reasoning step filter"
-                      className="absolute right-2 text-neutral-500 hover:text-neutral-200 p-0.5 rounded transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                  {msg.whenToUseReason && (
+                    <div className="text-[11px] text-neutral-200 leading-relaxed">
+                      <span className="text-neutral-400 font-medium">Why Kara Chose This Cadence: </span>
+                      <span>{msg.whenToUseReason}</span>
+                    </div>
                   )}
                 </div>
-
-                {filteredReasoningSteps.length > 0 ? (
-                  <div className="space-y-2.5 pl-1 border-l-2 border-fuchsia-500/35 ml-2 pt-0.5">
-                    {filteredReasoningSteps.map(({ stepText, originalIndex }, filteredIdx) => (
-                      <div
-                        key={originalIndex}
-                        className={`kara-thought-step kara-thought-step--${Math.min(
-                          filteredIdx,
-                          5
-                        )} relative pl-4 text-xs`}
-                      >
-                        <div className="kara-thought-step-badge absolute -left-[1.3rem] top-0.5 w-4 h-4 rounded-full bg-neutral-900 border border-fuchsia-400 text-[10px] font-mono text-fuchsia-300 flex items-center justify-center shadow-sm">
-                          {originalIndex + 1}
-                        </div>
-                        <p className="text-neutral-200 leading-relaxed font-mono text-[11px]">
-                          {stepText}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-2.5 px-3 rounded-lg bg-neutral-950/60 border border-neutral-800/80 flex items-center justify-between gap-2 text-[11px] text-neutral-400 font-mono">
-                    <span>No reasoning steps match &ldquo;{thoughtFilterQuery}&rdquo;.</span>
-                    <button
-                      type="button"
-                      onClick={() => setThoughtFilterQuery('')}
-                      className="text-fuchsia-400 hover:text-fuchsia-300 underline underline-offset-2 shrink-0"
-                    >
-                      Reset filter
-                    </button>
-                  </div>
-                )}
-              </div>
+              )}
 
               {/* 4. Active Context Imprints */}
               {(msg.learnedMemoryNote || msg.recalledMemory || msg.soapTriggered) && (
@@ -1181,7 +1677,30 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           </div>
         )}
 
-        <div className="whitespace-pre-wrap">{textToRender}</div>
+        <div className="whitespace-pre-wrap">{visibleMessageBody}</div>
+
+        {canToggleLongCollapse && (
+          <div className="mt-2 pt-2 border-t border-neutral-800/70 flex items-center justify-between gap-2 text-xs">
+            <span className="text-[11px] font-mono text-neutral-400">
+              {isLongCollapsed
+                ? 'Showing concise preview · Full long-form audio & text ready'
+                : `Long-Form Response (${Math.ceil((textToRender || '').split(/\s+/).length)} words)`}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('tap');
+                setIsLongCollapsed((prev) => !prev);
+              }}
+              className="text-sky-400 hover:text-sky-300 font-medium flex items-center gap-1 transition-colors"
+            >
+              <span>{isLongCollapsed ? 'Expand Full Long-Form Text' : 'Collapse to Short Preview'}</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${isLongCollapsed ? '' : 'rotate-180'}`}
+              />
+            </button>
+          </div>
+        )}
 
         {/* Empathetic Depression Check-in & Accessible 24/7 Crisis Hotline Card */}
         {(msg.isDepressionCheckin || (msg.supportHotlines && msg.supportHotlines.length > 0)) && (
@@ -1506,13 +2025,13 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           </div>
         )}
 
-        {/* Inline Gemini Nano Banana (No Limit) Artwork Card */}
+        {/* Inline Gemini Nano Banana (No Limit) Artwork Card + Text-to-Nano-Banana Image Generator Prompt */}
         {msg.generatedImageUrl && (
-          <div className="mt-3.5 p-3.5 rounded-2xl kara-chat-subcard border border-sky-500/40 space-y-2.5">
+          <div className="mt-3.5 p-3.5 rounded-2xl kara-chat-subcard border border-amber-500/45 space-y-2.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-sky-300 flex items-center gap-1.5">
-                <ImageIcon className="w-3.5 h-3.5 text-sky-400" />
-                <span>Gemini Nano Banana · Unlimited Generation</span>
+              <span className="font-semibold text-amber-300 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                <span>Nano Banana Image Generator · Text-to-Prompt</span>
               </span>
               <span className="font-mono text-[10px] text-emerald-400 flex items-center gap-1">
                 <InfinityIcon className="w-3 h-3" />
@@ -1521,15 +2040,49 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
             </div>
             <img
               src={msg.generatedImageUrl}
-              alt="KARA Nano Banana Synthesis"
+              alt={msg.generatedImagePrompt || 'KARA Nano Banana Synthesis'}
               referrerPolicy="no-referrer"
               className="w-full max-h-80 rounded-xl border border-neutral-800 object-contain bg-neutral-950"
             />
-            <div className="flex items-center justify-end gap-2">
+            {msg.generatedImagePrompt && (
+              <div className="p-2.5 rounded-xl bg-neutral-950/90 border border-amber-500/30 space-y-1">
+                <div className="flex items-center justify-between text-[10px] font-mono text-amber-300">
+                  <span>Text → Nano Banana Image Generator Prompt</span>
+                  <button
+                    type="button"
+                    onClick={() => onCopy(`${msg.id}_nbprompt`, msg.generatedImagePrompt || '')}
+                    className="text-sky-400 hover:underline"
+                  >
+                    {copiedId === `${msg.id}_nbprompt` ? 'Copied!' : 'Copy Prompt'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-snug">
+                  {msg.generatedImagePrompt}
+                </p>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {onSelectQuickReply && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('tap');
+                    onSelectQuickReply(
+                      `Generate another Nano Banana image remix of: ${
+                        msg.generatedImagePrompt || msg.content.slice(0, 100)
+                      }`
+                    );
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-200 rounded-xl flex items-center gap-1.5 transition-colors"
+                >
+                  <Wand2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Remix with Nano Banana</span>
+                </button>
+              )}
               <a
                 href={msg.generatedImageUrl}
                 download={`kara_nano_banana_${msg.id}.png`}
-                className="px-3 py-1.5 text-xs font-medium bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-xl flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1.5 text-xs font-medium bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-xl flex items-center gap-1.5 transition-colors ml-auto"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Save Artwork</span>
@@ -1568,16 +2121,24 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         )}
       </div>
 
-      {/* AI Composable Action Bar */}
+      {/* AI Composable Action Bar (Supports Reading Both Long-Form & Short-Form Responses) */}
       <div className="flex flex-wrap items-center gap-3 mt-1.5 px-1">
         {isSpeakingThis ? (
           <button
             type="button"
             onClick={onStopSpeaking}
-            className="text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1 transition-colors"
+            className="text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-950/40 border border-rose-500/40 transition-colors"
           >
-            <VolumeX className="w-3.5 h-3.5" />
-            <span>Stop Voice</span>
+            <VolumeX className="w-3.5 h-3.5 animate-pulse" />
+            <span>
+              {speakingProgress && speakingProgress.msgId === msg.id
+                ? speakingProgress.readingMode === 'short'
+                  ? 'Reading Short Take · Stop Voice'
+                  : speakingProgress.totalChunks > 1
+                  ? `Reading Long-Form (${speakingProgress.currentChunk}/${speakingProgress.totalChunks}) · Stop Voice`
+                  : 'Reading Short-Form · Stop Voice'
+                : 'Stop Voice'}
+            </span>
           </button>
         ) : (
           <>
@@ -1585,18 +2146,18 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
               type="button"
               onClick={() => {
                 triggerHaptic('tap');
-                onSpeakWithGender(fullSpokenText, msg.id, msg.mode, 'female');
+                onSpeakWithGender(fullSpokenText, msg.id, msg.mode, 'female', 'full');
               }}
               className={`text-xs flex items-center gap-1 transition-colors ${
                 selectedVoiceProfile.gender === 'female'
                   ? 'text-sky-400 hover:text-sky-300 font-medium'
                   : 'text-neutral-400 hover:text-sky-300'
               }`}
-              title="Listen in KARA's natural female neural voice"
+              title="Read 100% of this response (long-form or short-form) in KARA's human-like female voice"
             >
               <Volume2 className="w-3.5 h-3.5" />
               <span>
-                Natural Female (
+                {isLongFormResponse ? 'Read Full Long-Form' : 'Read Short-Form'} · Female (
                 {selectedVoiceProfile.gender === 'female'
                   ? selectedVoiceProfile.voiceName
                   : 'Kore'}
@@ -1608,24 +2169,45 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
               type="button"
               onClick={() => {
                 triggerHaptic('tap');
-                onSpeakWithGender(fullSpokenText, msg.id, msg.mode, 'male');
+                onSpeakWithGender(fullSpokenText, msg.id, msg.mode, 'male', 'full');
               }}
               className={`text-xs flex items-center gap-1 transition-colors ${
                 selectedVoiceProfile.gender === 'male'
                   ? 'text-indigo-400 hover:text-indigo-300 font-medium'
                   : 'text-neutral-400 hover:text-indigo-300'
               }`}
-              title="Listen in KARA's natural male neural voice"
+              title="Read 100% of this response (long-form or short-form) in KARA's human-like male voice"
             >
               <Volume2 className="w-3.5 h-3.5" />
               <span>
-                Natural Male (
+                {isLongFormResponse ? 'Read Full Long-Form' : 'Read Short-Form'} · Male (
                 {selectedVoiceProfile.gender === 'male'
                   ? selectedVoiceProfile.voiceName
                   : 'Puck'}
                 )
               </span>
             </button>
+
+            {isLongFormResponse && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('tap');
+                  onSpeakWithGender(
+                    shortSpokenText,
+                    msg.id,
+                    msg.mode,
+                    selectedVoiceProfile.gender,
+                    'short'
+                  );
+                }}
+                className="text-xs text-amber-300 hover:text-amber-200 flex items-center gap-1 transition-colors"
+                title="Have KARA read a quick 2-sentence short-form summary of this long response"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>Read Short Take</span>
+              </button>
+            )}
           </>
         )}
 
@@ -1698,9 +2280,12 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
 export const KaraTypingIndicator: React.FC<{
   activeMode: KaraMode;
   modelTier: ModelTier;
+  latestUserPrompt?: string;
+  reasoningTrace?: string[];
   onStop?: () => void;
-}> = ({ activeMode, modelTier, onStop }) => {
+}> = ({ activeMode, modelTier, latestUserPrompt, reasoningTrace, onStop }) => {
   const [elapsedTenths, setElapsedTenths] = useState(0);
+  const [isLiveTraceExpanded, setIsLiveTraceExpanded] = useState(true);
   const modeMeta = MODE_META[activeMode] || MODE_META.regular;
 
   useEffect(() => {
@@ -1711,40 +2296,223 @@ export const KaraTypingIndicator: React.FC<{
   }, []);
 
   const seconds = (elapsedTenths / 10).toFixed(1);
-  const phaseLabel =
-    elapsedTenths < 12
-      ? 'Sector 9 neural matrix adapting to your vibe...'
-      : elapsedTenths < 25
-      ? 'Recalling persistent memory & relationship stage...'
-      : `Composing in ${modeMeta.label} persona...`;
+
+  const liveReasoningTrace = React.useMemo(() => {
+    if (reasoningTrace && reasoningTrace.length > 0) {
+      return reasoningTrace;
+    }
+    const promptSnippet = latestUserPrompt
+      ? latestUserPrompt.length > 64
+        ? `"${latestUserPrompt.slice(0, 64).trim()}..."`
+        : `"${latestUserPrompt.trim()}"`
+      : 'current conversation context';
+    return [
+      `Intent & Subtext Perception: Deconstructing ${promptSnippet} for emotional nuance, unspoken subtext, and conversational tone.`,
+      `Cross-Device Memory & Bond Recall: Querying persistent memory vault and relationship history to ground Kara's response.`,
+      `Persona & Mode Logic Calibration: Aligning attitude, boundaries, and cadence with ${modeMeta.label} persona.`,
+      `Response Synthesis & Prosody: Formulating authentic reply structure, wit, and vocal expressiveness.`,
+    ];
+  }, [reasoningTrace, latestUserPrompt, modeMeta.label]);
+
+  const parsedLiveSteps = React.useMemo(
+    () =>
+      liveReasoningTrace.map((raw, idx) => ({
+        raw,
+        idx,
+        parsed: parseReasoningTraceStep(raw, idx),
+      })),
+    [liveReasoningTrace]
+  );
+
+  // Progressively advance active step as Kara reasons
+  const activeStepIndex = Math.min(
+    parsedLiveSteps.length - 1,
+    Math.floor(elapsedTenths / 8)
+  );
+
+  const currentStep = parsedLiveSteps[activeStepIndex]?.parsed;
+  const phaseLabel = currentStep
+    ? `${currentStep.title}: ${currentStep.detail}`
+    : `Composing in ${modeMeta.label} persona...`;
 
   return (
-    <div className="flex flex-col items-start">
-      <div className="flex items-center gap-2 text-xs text-neutral-400 mb-1.5 px-1">
+    <div className="flex flex-col items-start w-full max-w-[90%]">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400 mb-1.5 px-1">
         <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
         <span className="font-bold text-white">KARA</span>
         <span aria-hidden="true">·</span>
-        <span className={modeMeta.accentText}>{modeMeta.label} typing</span>
+        <span className={modeMeta.accentText}>{modeMeta.label} Reasoning</span>
         <span aria-hidden="true">·</span>
-        <span className="font-mono tabular-nums text-neutral-500">{seconds}s</span>
+        <span className="font-mono tabular-nums text-fuchsia-300">{seconds}s</span>
+        {modelTier === 'thinking' && (
+          <span className="px-2 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/35 text-[10px] font-mono text-fuchsia-300">
+            Deep Reasoning Active
+          </span>
+        )}
+      </div>
+
+      {/* Expandable Visual Thought Process Card while Kara is actively reasoning */}
+      <div className="w-full mb-2">
+        <button
+          type="button"
+          aria-expanded={isLiveTraceExpanded}
+          onClick={() => {
+            triggerHaptic('tap');
+            setIsLiveTraceExpanded((prev) => !prev);
+          }}
+          className={`kara-thought-trigger group flex flex-wrap items-center gap-2 text-xs rounded-2xl px-3.5 py-2 border text-left w-full transition-all ${
+            isLiveTraceExpanded
+              ? 'kara-thought-trigger--open text-neutral-100 shadow-lg shadow-fuchsia-950/30'
+              : 'bg-neutral-900/65 hover:bg-neutral-900/90 text-neutral-200'
+          }`}
+        >
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-fuchsia-400 animate-ping" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-fuchsia-500" />
+            </span>
+            <Brain className="w-3.5 h-3.5 text-fuchsia-400 animate-pulse shrink-0" />
+          </div>
+
+          <span className="text-[11px] font-semibold text-white">
+            Kara&apos;s Live Thought Process
+          </span>
+
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/35 text-[10px] font-mono text-fuchsia-300">
+            <span>
+              Step {activeStepIndex + 1} of {parsedLiveSteps.length}
+            </span>
+          </span>
+
+          {/* Step progress dots */}
+          <div className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-neutral-950/80 border border-neutral-800">
+            {parsedLiveSteps.map((_, idx) => {
+              const isDone = idx < activeStepIndex;
+              const isCurrent = idx === activeStepIndex;
+              return (
+                <React.Fragment key={idx}>
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full transition-all ${
+                      isDone
+                        ? 'bg-emerald-400'
+                        : isCurrent
+                        ? 'bg-fuchsia-400 animate-ping'
+                        : 'bg-neutral-700'
+                    }`}
+                  />
+                  {idx < parsedLiveSteps.length - 1 && (
+                    <span
+                      className={`w-2 h-[1px] ${
+                        isDone ? 'bg-emerald-500/60' : 'bg-neutral-800'
+                      }`}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          <span className="ml-auto flex items-center gap-1 text-[10px] font-mono text-neutral-400">
+            <span>{isLiveTraceExpanded ? 'Collapse' : 'Expand'}</span>
+            <ChevronRight
+              className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                isLiveTraceExpanded ? 'rotate-90 text-fuchsia-300' : 'rotate-0'
+              }`}
+            />
+          </span>
+        </button>
+
+        <div
+          aria-hidden={!isLiveTraceExpanded}
+          className={`kara-thought-drawer text-xs text-neutral-300 ${
+            isLiveTraceExpanded ? 'kara-thought-drawer--open' : ''
+          }`}
+        >
+          <div className="kara-thought-drawer-inner">
+            <div className="kara-thought-top-beam" />
+            <div className="p-3.5 space-y-2.5">
+              <div className="relative space-y-2 pl-3">
+                <div
+                  className="absolute left-[1.1rem] top-3 bottom-3 w-0.5 bg-gradient-to-b from-emerald-500/60 via-fuchsia-500/50 to-neutral-800 rounded-full"
+                  aria-hidden="true"
+                />
+                {parsedLiveSteps.map(({ idx, parsed }) => {
+                  const isCompleted = idx < activeStepIndex;
+                  const isCurrent = idx === activeStepIndex;
+                  return (
+                    <div
+                      key={idx}
+                      className={`relative pl-7 transition-opacity duration-300 ${
+                        idx > activeStepIndex ? 'opacity-45' : 'opacity-100'
+                      }`}
+                    >
+                      <div
+                        className={`absolute left-0 top-2 w-6 h-6 rounded-full text-[10px] font-mono font-bold flex items-center justify-center z-10 border ${
+                          isCompleted
+                            ? 'bg-emerald-950 border-emerald-400 text-emerald-300'
+                            : isCurrent
+                            ? 'bg-fuchsia-950 border-fuchsia-400 text-fuchsia-200 animate-pulse'
+                            : 'bg-neutral-950 border-neutral-700 text-neutral-500'
+                        }`}
+                      >
+                        {isCompleted ? <Check className="w-3 h-3 text-emerald-400" /> : idx + 1}
+                      </div>
+
+                      <div
+                        className={`p-2.5 rounded-xl border transition-colors space-y-1 ${
+                          isCurrent
+                            ? 'bg-neutral-900/95 border-fuchsia-500/45 shadow-sm'
+                            : 'bg-neutral-900/65 border-neutral-800/80'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-neutral-500 uppercase">
+                              Step 0{idx + 1}
+                            </span>
+                            <span className="text-xs font-semibold text-white">
+                              {parsed.title}
+                            </span>
+                          </div>
+                          <span
+                            className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${parsed.accentClass}`}
+                          >
+                            {isCompleted
+                              ? 'Verified'
+                              : isCurrent
+                              ? 'Reasoning...'
+                              : parsed.category}
+                          </span>
+                        </div>
+                        <p className="text-[11px] font-mono text-neutral-300 leading-relaxed">
+                          {parsed.detail}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div
         className={`kara-ai-bubble border rounded-3xl rounded-bl-md px-4 py-3 flex items-center gap-3 shadow-md ${modeMeta.topBarAccent}`}
       >
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="w-2 h-2 rounded-full bg-sky-400 animate-bounce [animation-delay:-0.3s]" />
           <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.15s]" />
           <span className="w-2 h-2 rounded-full bg-fuchsia-400 animate-bounce" />
         </div>
-        <span className="text-xs text-neutral-300">
+        <span className="text-xs text-neutral-300 line-clamp-1">
           {modelTier === 'thinking' ? `[Grok Think] ${phaseLabel}` : phaseLabel}
         </span>
         {onStop && (
           <button
             type="button"
             onClick={onStop}
-            className="ml-2 px-2.5 py-1 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/50 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0"
+            className="ml-auto px-2.5 py-1 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/50 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0"
             title="Stop KARA response"
           >
             <Square className="w-3 h-3 fill-current text-rose-400" />
@@ -1761,15 +2529,18 @@ export const KaraTypingIndicator: React.FC<{
 // ============================================================================
 function deriveContextChipsFromLastKaraMessage(
   lastMsg?: EnhancedChatMessage
-): { label: string; prompt: string; isDynamic: boolean }[] {
+): { label: string; prompt: string; isDynamic: boolean; badge?: string }[] {
   if (!lastMsg) {
     return DEFAULT_FOUR_QUICK_STARTERS.map((c) => ({ ...c, isDynamic: false }));
   }
 
-  const chips: { label: string; prompt: string; isDynamic: boolean }[] = [];
+  const chips: { label: string; prompt: string; isDynamic: boolean; badge?: string }[] = [];
   const lower = (lastMsg.content || '').toLowerCase();
+  const isShortReply =
+    (lastMsg.responseStyleUsed || '').toLowerCase().includes('short') ||
+    (lastMsg.content || '').length < 220;
 
-  // 1. Prioritize contextual follow-ups generated for KARA's last message
+  // 1. Prioritize contextual follow-ups generated for KARA's last message (featuring Wit, Pop-Culture, Casual Tone & Confidence)
   if (Array.isArray(lastMsg.followUps) && lastMsg.followUps.length > 0) {
     for (const f of lastMsg.followUps) {
       if (f && typeof f === 'string' && chips.length < 3) {
@@ -1781,43 +2552,49 @@ function deriveContextChipsFromLastKaraMessage(
   // 2. Context-aware actions derived from what KARA just did or said
   if (lastMsg.generatedImageUrl) {
     chips.unshift({
-      label: 'Nano Banana: Generate another variation',
-      prompt: 'Generate another Nano Banana image variation of our scene with dramatic lighting',
+      label: 'Nano Banana: Director’s cut remix',
+      prompt: 'Generate another Nano Banana image variation of our scene with cinematic neon lighting',
       isDynamic: true,
     });
   } else if (lastMsg.agendaEvents && lastMsg.agendaEvents.length > 0) {
     chips.unshift({
-      label: 'Set alarm for my next event',
+      label: 'Lock in alarm for my next event',
       prompt: `Set an alarm for ${lastMsg.agendaEvents[0].startTime} for ${lastMsg.agendaEvents[0].summary}`,
       isDynamic: true,
     });
   } else if (lastMsg.soapTriggered || lower.includes('soap')) {
     chips.unshift({
-      label: "I'm sorry! I'll use good words",
-      prompt: "*rinses mouth and pouts* I'm sorry KARA, I promise I'll use good manners now!",
+      label: 'Okay, my mouth is squeaky clean now!',
+      prompt: "*rinses mouth and grins* Okay KARA, my mouth is squeaky clean now!",
       isDynamic: true,
     });
   } else if (lower.includes('?')) {
-    // KARA asked a question in her last message
     chips.push({
-      label: 'Tell me what you think first',
-      prompt: 'I want to hear your honest take on that question first—what do you think?',
+      label: 'Give me your confident take first',
+      prompt: 'Hit me with your own confident, unfiltered take on that question first—no hedging!',
       isDynamic: true,
     });
   }
 
-  // 3. Always include a context-aware Unlimited Nano Banana visual action based on KARA's last message
-  const snippet = lastMsg.content
-    .replace(/\*([^*]+)\*/g, '$1')
-    .slice(0, 55)
-    .trim();
-  const hasNanoChip = chips.some((c) => c.label.toLowerCase().includes('nano banana'));
-  if (!hasNanoChip) {
-    chips.push({
-      label: 'Nano Banana: Visualize this (No Limit)',
-      prompt: `Generate a Nano Banana image visualizing our current moment: "${snippet}"`,
-      isDynamic: true,
-    });
+  // 3. Adaptive Short vs. Long Mix Pivot Chip so Stephen can effortlessly flip between punchy & deep-dive
+  if (chips.length < 4) {
+    if (isShortReply) {
+      chips.push({
+        label: 'Deep-Dive: Unpack every angle of this',
+        prompt:
+          'Go full deep-dive on what we just talked about—break down every angle with a pop-culture analogy.',
+        isDynamic: true,
+        badge: 'Long Mix',
+      });
+    } else {
+      chips.push({
+        label: 'Quick Punch: 2-sentence pop-culture version',
+        prompt:
+          'Now give me the casual, confident 2-sentence pop-culture version of that!',
+        isDynamic: true,
+        badge: 'Short Mix',
+      });
+    }
   }
 
   // Fill up to 4 chips if needed
@@ -1839,9 +2616,12 @@ export const QuickReplyChipsRow: React.FC<{
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-      <span className="text-[11px] font-medium text-sky-400/90 uppercase tracking-wider shrink-0 flex items-center gap-1">
+      <span
+        className="text-[11px] font-medium text-sky-400/90 uppercase tracking-wider shrink-0 flex items-center gap-1"
+        title="Suggested Next replies crafted with Wit & Pop-Culture, Casual Tone, Confidence & Immediacy, and Short/Long Mix"
+      >
         <Sparkles className="w-3 h-3 text-sky-400" />
-        <span>Suggested Next ({combinedChips.length}/4):</span>
+        <span>Suggested Next:</span>
       </span>
       {combinedChips.map((chip, idx) => (
         <button
@@ -1852,14 +2632,19 @@ export const QuickReplyChipsRow: React.FC<{
             triggerHaptic('send');
             onSelectQuickReply(chip.prompt);
           }}
-          className={`px-3 py-1.5 text-xs rounded-2xl border transition-all active:scale-95 whitespace-nowrap shrink-0 ${
+          className={`px-3 py-1.5 text-xs rounded-2xl border transition-all active:scale-95 whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
             chip.isDynamic
               ? 'bg-sky-500/15 hover:bg-sky-500/25 border-sky-500/40 text-sky-200'
               : 'bg-neutral-900/90 hover:bg-neutral-800 border-neutral-800 text-neutral-300 hover:text-white'
           } disabled:opacity-40`}
           title={chip.prompt}
         >
-          {chip.label}
+          <span>{chip.label}</span>
+          {chip.badge && (
+            <span className="text-[10px] font-mono text-amber-300/90">
+              · {chip.badge}
+            </span>
+          )}
         </button>
       ))}
     </div>
@@ -1871,10 +2656,18 @@ export const QuickReplyChipsRow: React.FC<{
 // ============================================================================
 interface ChatScreenProps {
   messages: EnhancedChatMessage[];
+  allMessages?: EnhancedChatMessage[];
+  memories?: MemoryItemData[];
   sessions: ChatSessionSummary[];
   activeSessionId: string;
   userName: string;
+  userEmail?: string | null;
+  isCloudSynced?: boolean;
+  lastCloudSyncAt?: number | null;
+  activeTheme?: KaraThemeId;
+  onSelectTheme?: (theme: KaraThemeId) => void;
   activeMode: KaraMode;
+  autoAdaptMode?: boolean;
   relationshipStage: RelationshipStage;
   bondLevel: number;
   modelTier: ModelTier;
@@ -1887,6 +2680,7 @@ interface ChatScreenProps {
   isRecording: boolean;
   isTranscribing: boolean;
   isSpeakingId: string | null;
+  speakingProgress?: SpeakingProgressState | null;
   selectedVoiceProfile: VoiceProfileOption;
   autoSpeakReplies: boolean;
   roomPersistedCount: number;
@@ -1897,6 +2691,8 @@ interface ChatScreenProps {
   onSelectSession: (sessionId: string) => void;
   onCreateNewSession: () => void;
   onDeleteSession: (sessionId: string) => void;
+  onRenameSession?: (sessionId: string, newTitle: string) => void;
+  onGenerateNanoBananaInChat?: (textIdea: string, nanoPrompt?: string) => Promise<void> | void;
   onSelectRelationshipStage: (stage: RelationshipStage) => void;
   onSelectVoiceProfile: (profile: VoiceProfileOption) => void;
   onToggleAutoSpeak: () => void;
@@ -1917,7 +2713,8 @@ interface ChatScreenProps {
     text: string,
     msgId: string,
     mode?: KaraMode,
-    genderOverride?: VoiceGender
+    genderOverride?: VoiceGender,
+    readingMode?: 'full' | 'short'
   ) => void;
   onStopSpeaking: () => void;
   onStopResponse: () => void;
@@ -1926,14 +2723,28 @@ interface ChatScreenProps {
   onClearConversation: () => void;
   activeGemName?: string | null;
   onClearActiveGem?: () => void;
+  onUserTyping?: () => void;
+  onTriggerProactiveCheckin?: () => void;
+  responseStylePreset?: ResponseStylePresetId;
+  funMode?: boolean;
+  onSelectResponseStylePreset?: (preset: ResponseStylePresetId) => void;
+  onToggleFunMode?: () => void;
 }
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({
   messages,
+  allMessages,
+  memories = [],
   sessions,
   activeSessionId,
   userName,
+  userEmail,
+  isCloudSynced = false,
+  lastCloudSyncAt,
+  activeTheme = 'minimalist-slate',
+  onSelectTheme,
   activeMode,
+  autoAdaptMode = true,
   relationshipStage,
   bondLevel,
   modelTier,
@@ -1946,6 +2757,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   isRecording,
   isTranscribing,
   isSpeakingId,
+  speakingProgress,
   selectedVoiceProfile,
   autoSpeakReplies,
   roomPersistedCount,
@@ -1956,6 +2768,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onSelectSession,
   onCreateNewSession,
   onDeleteSession,
+  onRenameSession,
+  onGenerateNanoBananaInChat,
   onSelectRelationshipStage,
   onSelectVoiceProfile,
   onToggleAutoSpeak,
@@ -1980,9 +2794,28 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onClearConversation,
   activeGemName,
   onClearActiveGem,
+  onUserTyping,
+  onTriggerProactiveCheckin,
+  responseStylePreset = 'adaptive_mix',
+  funMode = true,
+  onSelectResponseStylePreset,
+  onToggleFunMode,
 }) => {
   const [inputText, setInputText] = useState('');
-  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(true);
+  const [sidePanelTab, setSidePanelTab] = useState<'convos' | 'history' | 'memory'>('convos');
+  const [sidePanelSearch, setSidePanelSearch] = useState('');
+  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
+  const [renameSessionDraft, setRenameSessionDraft] = useState('');
+
+  // Text-to-Nano-Banana Image Generator Prompt Composer State
+  const [isNanoBananaBarOpen, setIsNanoBananaBarOpen] = useState(false);
+  const [nanoBananaRawText, setNanoBananaRawText] = useState('');
+  const [nanoBananaConvertedPrompt, setNanoBananaConvertedPrompt] = useState('');
+  const [isConvertingNanoPrompt, setIsConvertingNanoPrompt] = useState(false);
+  const [isGeneratingNanoImage, setIsGeneratingNanoImage] = useState(false);
+
+  const [isStyleGuideOpen, setIsStyleGuideOpen] = useState(false);
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState('');
   const [expandedReasoningIds, setExpandedReasoningIds] = useState<Record<string, boolean>>({});
@@ -1993,7 +2826,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [stagedLinks, setStagedLinks] = useState<string[]>([]);
   const [isLinkInputOpen, setIsLinkInputOpen] = useState(false);
   const [linkInputValue, setLinkInputValue] = useState('');
-  const [isRecallPickerOpen, setIsRecallPickerOpen] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Token-by-token streaming effect for the newest assistant message when tokenStreaming is enabled
@@ -2011,28 +2843,45 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const inputFieldRef = useRef<HTMLInputElement | null>(null);
+  const dictationBaseInputRef = useRef<string>('');
+  const prevIsRecordingRef = useRef<boolean>(false);
 
-  // When voice-to-text finishes transcribing, populate the input field so the user can review or press Enter to send
+  // Capture base input text when microphone recording starts so live interim transcripts don't duplicate
+  useEffect(() => {
+    if (isRecording && !prevIsRecordingRef.current) {
+      dictationBaseInputRef.current = inputText.trim();
+    }
+    prevIsRecordingRef.current = isRecording;
+  }, [isRecording, inputText]);
+
+  // Populate input field from live SpeechRecognition or completed audio transcription
   useEffect(() => {
     if (voiceDraftTranscript) {
-      setInputText((prev) =>
-        prev.trim() ? `${prev.trim()} ${voiceDraftTranscript}` : voiceDraftTranscript
-      );
+      const base = dictationBaseInputRef.current;
+      setInputText(base ? `${base} ${voiceDraftTranscript}` : voiceDraftTranscript);
       onConsumeVoiceDraft();
       inputFieldRef.current?.focus();
     }
   }, [voiceDraftTranscript, onConsumeVoiceDraft]);
 
   // Progressive token reveal when a new assistant reply arrives and tokenStreaming is ON
+  // Also auto-expand the visual Thought Process indicator for the newly reasoned message
   useEffect(() => {
     const newestAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
     if (!newestAssistant) return;
 
-    if (
+    const isNewAssistantReply =
       lastSeenAssistantIdRef.current &&
-      lastSeenAssistantIdRef.current !== newestAssistant.id &&
-      tokenStreaming
-    ) {
+      lastSeenAssistantIdRef.current !== newestAssistant.id;
+
+    if (isNewAssistantReply) {
+      setExpandedReasoningIds((prev) => ({
+        ...prev,
+        [newestAssistant.id]: true,
+      }));
+    }
+
+    if (isNewAssistantReply && tokenStreaming) {
       lastSeenAssistantIdRef.current = newestAssistant.id;
       const fullWords = newestAssistant.content.split(' ');
       if (fullWords.length <= 4) {
@@ -2236,6 +3085,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             .join(', ')})—what do you think of them?`
         : `Sharing a link with you: ${combinedLinks.join(', ')}`);
 
+    if (isRecording) {
+      onToggleMicRecording();
+    }
+    dictationBaseInputRef.current = '';
     setInputText('');
     setStagedPhotos([]);
     setStagedLinks([]);
@@ -2289,210 +3142,620 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const lastAssistantMsg = [...messages].reverse().find((m) => m.role === 'assistant');
 
+  const handleConvertTextToNanoBananaPromptInChat = async () => {
+    const sourceText = (nanoBananaRawText || inputText).trim();
+    if (!sourceText || isConvertingNanoPrompt) return;
+    triggerHaptic('tap');
+    setIsConvertingNanoPrompt(true);
+    try {
+      const res = await fetch('/api/studio/nano-banana-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: sourceText,
+          aspectRatio: '1:1',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.nanoBananaPrompt) {
+        setNanoBananaConvertedPrompt(data.nanoBananaPrompt);
+        if (!nanoBananaRawText.trim()) {
+          setNanoBananaRawText(sourceText);
+        }
+      }
+    } catch {} finally {
+      setIsConvertingNanoPrompt(false);
+    }
+  };
+
+  const handleDispatchNanoBananaInChat = async () => {
+    const rawIdea = (nanoBananaRawText || inputText).trim();
+    const finalNanoPrompt = nanoBananaConvertedPrompt.trim();
+    if ((!rawIdea && !finalNanoPrompt) || isSending || isGeneratingNanoImage) return;
+    triggerHaptic('send');
+    setIsGeneratingNanoImage(true);
+    try {
+      if (onGenerateNanoBananaInChat) {
+        await onGenerateNanoBananaInChat(rawIdea || finalNanoPrompt, finalNanoPrompt || undefined);
+      } else {
+        onSendMessage(
+          `Generate a Nano Banana image: ${finalNanoPrompt || rawIdea}`
+        );
+      }
+      setNanoBananaRawText('');
+      setNanoBananaConvertedPrompt('');
+      setIsNanoBananaBarOpen(false);
+    } finally {
+      setIsGeneratingNanoImage(false);
+    }
+  };
+
+  const combinedHistoryMessages = (allMessages && allMessages.length > 0 ? allMessages : messages)
+    .filter((m) => m.id !== 'welcome_msg')
+    .slice()
+    .sort((a, b) => b.createdAt - a.createdAt);
+
+  const searchLower = sidePanelSearch.trim().toLowerCase();
+  const filteredSessions = searchLower
+    ? sessions.filter(
+        (s) =>
+          s.title.toLowerCase().includes(searchLower) ||
+          s.preview.toLowerCase().includes(searchLower)
+      )
+    : sessions;
+
+  const filteredHistoryMessages = searchLower
+    ? combinedHistoryMessages.filter(
+        (m) =>
+          m.content.toLowerCase().includes(searchLower) ||
+          (m.generatedImagePrompt || '').toLowerCase().includes(searchLower)
+      )
+    : combinedHistoryMessages;
+
   return (
-    <section className="w-full kara-chat-shell border rounded-3xl flex flex-col h-[calc(100vh-6.5rem)] min-h-[600px] overflow-hidden relative">
-      {/* Chat History Sessions Sidebar Drawer (Firestore & Room DB multi-session switcher) */}
-      {isHistoryDrawerOpen && (
-        <div className="absolute inset-0 z-30 flex bg-black/70 backdrop-blur-sm">
-          <div className="w-80 max-w-[85%] kara-chat-header border-r h-full flex flex-col p-4 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
-              <div>
-                <span className="text-[11px] font-mono text-sky-400 uppercase">
-                  Firestore & Room Sessions
-                </span>
-                <h3 className="text-sm font-semibold text-white">
-                  Conversation History
+    <section className="w-full kara-chat-shell border rounded-3xl flex h-[calc(100vh-6.5rem)] min-h-[600px] overflow-hidden relative">
+      {/* DOCKED SIDE PANEL FOR CONVOS, HISTORY & CROSS-DEVICE SYNCED MEMORY */}
+      {isSidePanelOpen && (
+        <aside className="w-80 max-w-[86vw] shrink-0 kara-chat-header border-r h-full flex flex-col justify-between z-20">
+          <div className="p-3.5 space-y-3 flex-1 flex flex-col min-h-0">
+            {/* Side Panel Top Header + Cloud Sync Status */}
+            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-neutral-800/80">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-sky-400">
+                  <Cloud className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span className="truncate">
+                    {isCloudSynced
+                      ? `Synced · ${userEmail || userName}`
+                      : 'Device + Cloud Ready'}
+                  </span>
+                </div>
+                <h3 className="text-xs font-semibold text-white truncate mt-0.5">
+                  Convos · History · Synced Memory
                 </h3>
               </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('tap');
+                    onCreateNewSession();
+                  }}
+                  className="px-2.5 py-1 rounded-xl kara-send-btn hover:opacity-90 text-[11px] font-semibold flex items-center gap-1 transition-all"
+                  title="Start a new conversation session"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>New</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSidePanelOpen(false)}
+                  className="p-1.5 text-neutral-400 hover:text-white rounded-xl hover:bg-neutral-800"
+                  title="Collapse Convos & History Side Panel"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Segmented Tabs: Convos | History | Synced Memory */}
+            <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-neutral-950/80 border border-neutral-800">
               <button
                 type="button"
-                onClick={() => setIsHistoryDrawerOpen(false)}
-                className="p-1.5 text-neutral-400 hover:text-white rounded-xl hover:bg-neutral-800"
+                onClick={() => setSidePanelTab('convos')}
+                className={`py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                  sidePanelTab === 'convos'
+                    ? 'bg-sky-500/20 text-sky-200 border border-sky-500/40'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
               >
-                <X className="w-4 h-4" />
+                <MessageSquare className="w-3 h-3" />
+                <span>Convos ({sessions.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidePanelTab('history')}
+                className={`py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                  sidePanelTab === 'history'
+                    ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                <History className="w-3 h-3" />
+                <span>History ({combinedHistoryMessages.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidePanelTab('memory')}
+                className={`py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                  sidePanelTab === 'memory'
+                    ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                <Brain className="w-3 h-3" />
+                <span>Sync ({memories.length})</span>
               </button>
             </div>
+
+            {/* Search Filter Input */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={sidePanelSearch}
+                onChange={(e) => setSidePanelSearch(e.target.value)}
+                placeholder={
+                  sidePanelTab === 'convos'
+                    ? 'Search conversations...'
+                    : sidePanelTab === 'history'
+                    ? 'Search message & image history...'
+                    : 'Filter synced memories...'
+                }
+                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-neutral-950/90 border border-neutral-800 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-sky-500"
+              />
+              {sidePanelSearch && (
+                <button
+                  type="button"
+                  onClick={() => setSidePanelSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* TAB 1: CONVOS LIST */}
+            {sidePanelTab === 'convos' && (
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
+                {filteredSessions.map((sess) => {
+                  const isCurrent = sess.id === activeSessionId;
+                  const modeInfo = MODE_META[sess.lastMode] || MODE_META.regular;
+                  const isRenaming = renamingSessionId === sess.id;
+
+                  return (
+                    <div
+                      key={sess.id}
+                      className={`p-2.5 rounded-2xl border transition-all ${
+                        isCurrent
+                          ? 'bg-sky-500/15 border-sky-500/50 text-white shadow-sm'
+                          : 'bg-neutral-900/70 border-neutral-800/90 text-neutral-300 hover:border-neutral-700'
+                      }`}
+                    >
+                      {isRenaming ? (
+                        <div className="space-y-1.5">
+                          <input
+                            type="text"
+                            value={renameSessionDraft}
+                            onChange={(e) => setRenameSessionDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && renameSessionDraft.trim()) {
+                                onRenameSession?.(sess.id, renameSessionDraft.trim());
+                                setRenamingSessionId(null);
+                              } else if (e.key === 'Escape') {
+                                setRenamingSessionId(null);
+                              }
+                            }}
+                            autoFocus
+                            className="w-full px-2.5 py-1 text-xs rounded-lg bg-neutral-950 border border-sky-500 text-white focus:outline-none"
+                          />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setRenamingSessionId(null)}
+                              className="px-2 py-0.5 text-[10px] text-neutral-400 hover:text-white"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (renameSessionDraft.trim()) {
+                                  onRenameSession?.(sess.id, renameSessionDraft.trim());
+                                }
+                                setRenamingSessionId(null);
+                              }}
+                              className="px-2.5 py-0.5 text-[10px] font-semibold bg-sky-500 text-slate-950 rounded-md"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              triggerHaptic('tap');
+                              onSelectSession(sess.id);
+                            }}
+                            className="text-left flex-1 min-w-0"
+                          >
+                            <div className="flex items-center gap-1.5 text-xs font-semibold truncate">
+                              <MessageSquare className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                              <span className="truncate">{sess.title}</span>
+                            </div>
+                            <div className="text-[11px] text-neutral-400 truncate mt-1">
+                              {sess.preview}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 mt-1.5 font-mono">
+                              <span className={modeInfo.accentText}>{modeInfo.label}</span>
+                              <span>·</span>
+                              <span>{sess.messageCount} msgs</span>
+                              {isCurrent && (
+                                <>
+                                  <span>·</span>
+                                  <span className="text-emerald-400">Active</span>
+                                </>
+                              )}
+                            </div>
+                          </button>
+
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {onRenameSession && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRenamingSessionId(sess.id);
+                                  setRenameSessionDraft(sess.title);
+                                }}
+                                className="p-1 text-neutral-500 hover:text-sky-400"
+                                title="Rename conversation"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            )}
+                            {sessions.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => onDeleteSession(sess.id)}
+                                className="p-1 text-neutral-500 hover:text-rose-400"
+                                title="Delete conversation"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* TAB 2: CHRONOLOGICAL MESSAGE & NANO BANANA IMAGE HISTORY */}
+            {sidePanelTab === 'history' && (
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
+                {filteredHistoryMessages.length === 0 ? (
+                  <p className="text-xs text-neutral-500 text-center py-6">
+                    No matching history items found.
+                  </p>
+                ) : (
+                  filteredHistoryMessages.slice(0, 80).map((item) => {
+                    const itemSessionId = item.sessionId || 'sess_main';
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic('tap');
+                          onSelectSession(itemSessionId);
+                        }}
+                        className="w-full p-2.5 rounded-2xl bg-neutral-900/75 hover:bg-neutral-900 border border-neutral-800/90 hover:border-sky-500/40 text-left space-y-1.5 transition-all"
+                      >
+                        <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
+                          <span
+                            className={
+                              item.role === 'assistant' ? 'text-sky-400 font-semibold' : 'text-amber-300'
+                            }
+                          >
+                            {item.role === 'assistant' ? 'KARA' : userName}
+                          </span>
+                          <span>
+                            {new Date(item.createdAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-neutral-200 line-clamp-2 leading-snug">
+                          {item.content}
+                        </p>
+                        {item.generatedImageUrl && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <img
+                              src={item.generatedImageUrl}
+                              alt="Nano Banana history thumb"
+                              className="w-10 h-10 rounded-lg object-cover border border-amber-500/40 shrink-0"
+                            />
+                            <span className="text-[10px] font-mono text-amber-300 truncate">
+                              {item.generatedImagePrompt || 'Nano Banana Artwork'}
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: CROSS-DEVICE LOGIN SYNCED MEMORIES */}
+            {sidePanelTab === 'memory' && (
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
+                <div className="p-2.5 rounded-xl bg-emerald-950/25 border border-emerald-500/35 space-y-1">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-300">
+                    <span className="flex items-center gap-1">
+                      <Cloud className="w-3.5 h-3.5" />
+                      <span>Cross-Device Login Memory Sync</span>
+                    </span>
+                    <span className="font-mono text-[10px]">
+                      {isCloudSynced ? 'LIVE' : 'LOCAL'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-neutral-300 leading-snug">
+                    {isCloudSynced
+                      ? `Signed in as ${
+                          userEmail || userName
+                        }. Your conversations and ${
+                          memories.length
+                        } memories automatically pick up on any device.`
+                      : 'Sign in with your account in the top bar to sync all conversations and memories across every device.'}
+                  </p>
+                  {lastCloudSyncAt && (
+                    <div className="text-[10px] font-mono text-emerald-400/80">
+                      Last synced:{' '}
+                      {new Date(lastCloudSyncAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {memories
+                  .filter((m) =>
+                    searchLower
+                      ? m.content.toLowerCase().includes(searchLower) ||
+                        m.category.toLowerCase().includes(searchLower)
+                      : true
+                  )
+                  .map((mem) => (
+                    <div
+                      key={mem.id}
+                      className="p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800 space-y-1"
+                    >
+                      <div className="flex items-center justify-between text-[10px] font-mono">
+                        <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 uppercase">
+                          {mem.category}
+                        </span>
+                        <span className="text-neutral-500">Synced</span>
+                      </div>
+                      <p className="text-xs text-neutral-200 leading-snug">{mem.content}</p>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Side Panel Footer: Quick MxChat Chatbot Themes Version 2.1.6 Switcher */}
+          <div className="p-3 border-t border-neutral-800/90 bg-neutral-950/60 space-y-2">
+            <div className="flex items-center justify-between text-[10px] font-mono">
+              <span className="text-amber-300 flex items-center gap-1 font-semibold">
+                <Palette className="w-3 h-3 text-amber-400" />
+                <span>MxChat Themes v2.1.6</span>
+              </span>
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="text-sky-400 hover:underline"
+              >
+                Customize
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+              {KARA_THEMES.map((t) => {
+                const isSelected = activeTheme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('modeSwitch');
+                      onSelectTheme?.(t.id);
+                    }}
+                    className={`px-2 py-1 rounded-lg border text-[10px] font-medium flex items-center gap-1.5 shrink-0 transition-all ${
+                      isSelected
+                        ? 'bg-sky-500/20 border-sky-400 text-white'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                    }`}
+                    title={`${t.label} (MxChat Chatbot Themes v2.1.6)`}
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0"
+                      style={{ backgroundColor: t.cssVars.accent }}
+                    />
+                    <span className="truncate max-w-[92px]">{t.label.replace('MxChat ', '')}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </aside>
+      )}
+
+      {/* MAIN CHAT COLUMN */}
+      <div className="flex-1 flex flex-col min-w-0 h-full">
+        {/* Clean Minimalist Top App Bar: Side Panel Toggle, Active Convo, MxChat Theme & Settings */}
+        <div className="px-5 py-3 border-b kara-chat-header flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 text-xs text-neutral-400">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('tap');
+                setIsSidePanelOpen((prev) => !prev);
+              }}
+              className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-colors ${
+                isSidePanelOpen
+                  ? 'bg-sky-500/15 border-sky-500/50 text-sky-200'
+                  : 'kara-chat-control-btn'
+              }`}
+              title="Toggle Side Panel for Convos, History & Cross-Device Synced Memory"
+            >
+              <PanelLeft className="w-3.5 h-3.5 text-sky-400" />
+              <span>Convos &amp; History ({sessions.length})</span>
+            </button>
+
+            <span className="font-semibold text-white">KARA</span>
+            <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('tap');
+                onOpenSettings();
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-800 hover:border-sky-500/40 text-xs transition-colors"
+              title="Persona Modes auto-switch dynamically based on your conversation and are configured inside Settings. Click to open Mode Settings."
+            >
+              <Sparkles className={`w-3 h-3 ${currentModeMeta.accentText}`} />
+              <span className={currentModeMeta.accentText}>
+                {autoAdaptMode ? `Auto-Mode: ${currentModeMeta.label}` : `Mode: ${currentModeMeta.label}`}
+              </span>
+            </button>
+
+            <span aria-hidden="true">·</span>
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 font-mono text-[11px] text-emerald-300"
+              title="Cross-device sign-in conversation & memory sync"
+            >
+              <Cloud className="w-3 h-3 text-emerald-400" />
+              <span>{isCloudSynced ? 'Synced Across Devices' : 'Local + Cloud Sync'}</span>
+            </span>
+
+            {activeGemName && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-500/15 border border-sky-500/40 text-sky-200 font-mono text-[11px]">
+                  <Sparkles className="w-3 h-3 text-sky-400" />
+                  <span>Gem: {activeGemName}</span>
+                  {onClearActiveGem && (
+                    <button
+                      type="button"
+                      onClick={onClearActiveGem}
+                      className="text-sky-300 hover:text-white ml-0.5"
+                      title="Unpin Gemini Gem Bot"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Clean Action Controls: Nano Banana Prompt Generator, Human-Like Talkback Toggle, Live Voice & Settings */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('tap');
+                setIsNanoBananaBarOpen((prev) => !prev);
+                if (!nanoBananaRawText && inputText.trim()) {
+                  setNanoBananaRawText(inputText.trim());
+                }
+              }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                isNanoBananaBarOpen
+                  ? 'bg-amber-500/20 border-amber-500/60 text-amber-200'
+                  : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/35 text-amber-300'
+              }`}
+              title="Open Text-to-Nano-Banana Image Generator Prompt bar"
+            >
+              <Wand2 className="w-3.5 h-3.5 text-amber-400" />
+              <span>Nano Banana Image</span>
+            </button>
 
             <button
               type="button"
               onClick={() => {
                 triggerHaptic('tap');
-                onCreateNewSession();
-                setIsHistoryDrawerOpen(false);
+                if (autoSpeakReplies && isSpeakingId) {
+                  onStopSpeaking();
+                }
+                onToggleAutoSpeak();
               }}
-              className="w-full py-2.5 px-3.5 rounded-2xl kara-send-btn hover:opacity-90 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+              className={`px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                autoSpeakReplies
+                  ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/50 text-emerald-300'
+                  : 'kara-chat-control-btn text-neutral-400'
+              }`}
+              title={
+                autoSpeakReplies
+                  ? '100% Human-Like TTS Talkback ON: KARA automatically speaks every reply aloud with her natural human voice (Zero Robo TTS)'
+                  : 'Human-Like TTS Talkback OFF: Click to enable automatic human voice talkback'
+              }
             >
-              <Plus className="w-4 h-4" />
-              <span>Start New Chat Session</span>
+              {autoSpeakReplies ? (
+                <Volume2
+                  className={`w-3.5 h-3.5 text-emerald-400 ${
+                    isSpeakingId ? 'animate-pulse' : ''
+                  }`}
+                />
+              ) : (
+                <VolumeX className="w-3.5 h-3.5 text-neutral-500" />
+              )}
+              <span>{autoSpeakReplies ? 'Human TTS: ON' : 'Human TTS: OFF'}</span>
             </button>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {sessions.map((sess) => {
-                const isCurrent = sess.id === activeSessionId;
-                const modeInfo = MODE_META[sess.lastMode] || MODE_META.regular;
-                return (
-                  <div
-                    key={sess.id}
-                    className={`p-3 rounded-2xl border transition-all flex items-start justify-between gap-2 ${
-                      isCurrent
-                        ? 'bg-sky-500/15 border-sky-500/50 text-white'
-                        : 'bg-neutral-900/70 border-neutral-800/90 text-neutral-300 hover:border-neutral-700'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic('tap');
-                        onSelectSession(sess.id);
-                        setIsHistoryDrawerOpen(false);
-                      }}
-                      className="text-left flex-1 min-w-0"
-                    >
-                      <div className="flex items-center gap-1.5 text-xs font-semibold truncate">
-                        <MessageSquare className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                        <span className="truncate">{sess.title}</span>
-                      </div>
-                      <div className="text-[11px] text-neutral-400 truncate mt-1">
-                        {sess.preview}
-                      </div>
-                      <div className="flex items-center gap-2 text-[10px] text-neutral-500 mt-1.5 font-mono">
-                        <span className={modeInfo.accentText}>{modeInfo.label}</span>
-                        <span>·</span>
-                        <span>{sess.messageCount} msgs</span>
-                      </div>
-                    </button>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('tap');
+                onOpenLiveVoice();
+              }}
+              className="px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-sky-500/20 via-indigo-500/20 to-fuchsia-500/20 hover:from-sky-500/30 hover:to-fuchsia-500/30 border border-sky-400/50 hover:border-sky-300 text-sky-200 rounded-xl transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              title="Real-Time Call: Speak directly with KARA in real-time with continuous bi-directional voice streaming"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <Zap className="w-3.5 h-3.5 text-sky-400" />
+              <span>Real-Time Voice</span>
+            </button>
 
-                    {sessions.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => onDeleteSession(sess.id)}
-                        className="p-1 text-neutral-500 hover:text-rose-400 shrink-0"
-                        title="Delete chat session"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('tap');
+                onOpenSettings();
+              }}
+              className="px-3 py-1.5 text-xs font-medium kara-chat-control-btn border rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              title="Open Settings: Active Persona, MxChat Themes v2.1.6, Agenda, Set Alarm, Memory Vault, Creative Studio, Workspace & Voice"
+            >
+              <Settings className="w-3.5 h-3.5 text-sky-400" />
+              <span>Settings</span>
+            </button>
           </div>
-          <div
-            className="flex-1"
-            onClick={() => setIsHistoryDrawerOpen(false)}
-          />
         </div>
-      )}
-
-      {/* Clean Minimalist Top App Bar: Chat History Drawer Button, Persistent Relationship Status & Settings */}
-      <div className="px-5 py-3 border-b kara-chat-header flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2.5 text-xs text-neutral-400">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('tap');
-              setIsHistoryDrawerOpen(true);
-            }}
-            className="px-3 py-1.5 rounded-xl kara-chat-control-btn border flex items-center gap-1.5 transition-colors"
-            title="Open Past Chats Drawer"
-          >
-            <History className="w-3.5 h-3.5 text-sky-400" />
-            <span>Chats ({sessions.length})</span>
-          </button>
-
-          <span className="font-semibold text-white">KARA</span>
-          <span aria-hidden="true">·</span>
-          <span
-            className="font-mono flex items-center gap-1 text-emerald-400"
-            title="Unlimited Chat · Zero Paywalls"
-          >
-            <InfinityIcon className="w-3.5 h-3.5" />
-            <span>Unlimited</span>
-          </span>
-
-          {activeGemName && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-500/15 border border-sky-500/40 text-sky-200 font-mono text-[11px]">
-                <Sparkles className="w-3 h-3 text-sky-400" />
-                <span>Gem: {activeGemName}</span>
-                {onClearActiveGem && (
-                  <button
-                    type="button"
-                    onClick={onClearActiveGem}
-                    className="text-sky-300 hover:text-white ml-0.5"
-                    title="Unpin Gemini Gem Bot"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </span>
-            </>
-          )}
-        </div>
-
-        {/* Clean Action Controls: Seamless Talkback Toggle, Live Voice & Settings */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('tap');
-              if (autoSpeakReplies && isSpeakingId) {
-                onStopSpeaking();
-              }
-              onToggleAutoSpeak();
-            }}
-            className={`px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-              autoSpeakReplies
-                ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/50 text-emerald-300'
-                : 'kara-chat-control-btn text-neutral-400'
-            }`}
-            title={
-              autoSpeakReplies
-                ? 'Seamless Talkback ON: KARA automatically speaks every reply aloud with gapless neural voice'
-                : 'Seamless Talkback OFF: Click to enable automatic voice talkback'
-            }
-          >
-            {autoSpeakReplies ? (
-              <Volume2
-                className={`w-3.5 h-3.5 text-emerald-400 ${
-                  isSpeakingId ? 'animate-pulse' : ''
-                }`}
-              />
-            ) : (
-              <VolumeX className="w-3.5 h-3.5 text-neutral-500" />
-            )}
-            <span>{autoSpeakReplies ? 'Talkback: ON' : 'Talkback: OFF'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('tap');
-              onOpenLiveVoice();
-            }}
-            className="px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-sky-500/20 via-indigo-500/20 to-fuchsia-500/20 hover:from-sky-500/30 hover:to-fuchsia-500/30 border border-sky-400/50 hover:border-sky-300 text-sky-200 rounded-xl transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0"
-            title="Real-Time Call: Speak directly with KARA in real-time with continuous bi-directional voice streaming"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <Zap className="w-3.5 h-3.5 text-sky-400" />
-            <span>Real-Time Voice</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('tap');
-              onOpenSettings();
-            }}
-            className="px-3 py-1.5 text-xs font-medium kara-chat-control-btn border rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
-            title="Open Settings: Active Persona, Theme, Agenda, Set Alarm, Memory Vault, Creative Studio, Workspace & Voice"
-          >
-            <Settings className="w-3.5 h-3.5 text-sky-400" />
-            <span>Settings</span>
-          </button>
-        </div>
-      </div>
 
       {/* Compact Persistent Relationship Status Indicator (Stranger -> Close Friend -> Marriage/Caretaker) */}
       <PersistentRelationshipBanner
@@ -2572,7 +3835,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               <UserMessageBubble
                 key={msg.id}
                 msg={msg}
-                userName={userName}
+                userName={
+                  userName &&
+                  userName !== 'Friend' &&
+                  userName !== 'Explorer' &&
+                  userName !== 'User' &&
+                  userName !== 'user'
+                    ? userName
+                    : 'Stephen'
+                }
                 isSending={isSending}
                 isEditing={editingMsgId === msg.id}
                 editingDraft={editingDraft}
@@ -2604,14 +3875,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   : undefined
               }
               isSending={isSending}
+              isStreamingThis={streamingMsgId === msg.id}
               isSpeakingThis={isSpeakingId === msg.id}
+              speakingProgress={speakingProgress}
               isReasoningOpen={Boolean(expandedReasoningIds[msg.id])}
               copiedId={copiedId}
               selectedVoiceProfile={selectedVoiceProfile}
               ttsEngine={ttsEngine}
               onToggleReasoning={toggleReasoningDrawer}
-              onSpeakWithGender={(text, id, m, gender) =>
-                onSpeakMessage(text, id, m, gender)
+              onSpeakWithGender={(text, id, m, gender, readingMode) =>
+                onSpeakMessage(text, id, m, gender, readingMode)
               }
               onStopSpeaking={onStopSpeaking}
               onRetry={onRetryMessage}
@@ -2632,6 +3905,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <KaraTypingIndicator
               activeMode={activeMode}
               modelTier={modelTier}
+              latestUserPrompt={[...messages].reverse().find((m) => m.role === 'user')?.content}
               onStop={handleStopAllResponse}
             />
           </motion.div>
@@ -2654,13 +3928,180 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Bottom Composer Dock: Context-Aware Suggestion Chips + Token/DeeperSearch/Nano Banana Toggles + Input Field */}
-      <div className="p-4 border-t kara-chat-composer space-y-3">
+      {/* Bottom Composer Dock: Context-Aware Suggestion Chips + Fun Mode & Built-in Style Presets + Input Field */}
+      <div className="p-4 border-t kara-chat-composer space-y-2.5">
         <QuickReplyChipsRow
           lastAssistantMessage={lastAssistantMsg}
           disabled={isSending}
           onSelectQuickReply={(promptText) => onSendMessage(promptText)}
         />
+
+        {/* Built-in Response Style Presets + Fun Mode Toggle + Prompting Tips & "When to Use" Guide */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {/* Fun Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('tap');
+                onToggleFunMode?.();
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors flex items-center gap-1.5 shrink-0 ${
+                funMode
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
+                  : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+              }`}
+              title="Toggle Fun Mode: Dials up Kara's wit, pop-culture references, casual conversational spark, and confident immediacy"
+            >
+              <Flame className={`w-3 h-3 ${funMode ? 'text-amber-400' : 'text-neutral-500'}`} />
+              <span>Fun Mode: {funMode ? 'ON' : 'OFF'}</span>
+            </button>
+
+            {/* Segmented Built-in Response Style Presets */}
+            <div className="flex items-center gap-1 p-0.5 rounded-lg bg-neutral-900/90 border border-neutral-800 shrink-0">
+              {RESPONSE_STYLE_PRESETS.map((preset) => {
+                const isActive = responseStylePreset === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      onSelectResponseStylePreset?.(preset.id);
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap ${
+                      isActive
+                        ? 'bg-sky-500/20 text-sky-200 border border-sky-500/40'
+                        : 'text-neutral-400 hover:text-neutral-200'
+                    }`}
+                    title={`${preset.label}: ${preset.tagline} | When to use: ${preset.whenToUse}`}
+                  >
+                    {preset.shortLabel}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Toggle Prompting Tips for Style Control & "When to Use" Guide */}
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('tap');
+              setIsStyleGuideOpen((prev) => !prev);
+            }}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors flex items-center gap-1 shrink-0 ${
+              isStyleGuideOpen
+                ? 'bg-fuchsia-500/20 border-fuchsia-500/50 text-fuchsia-200'
+                : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+            }`}
+            title="View Built-in Response Style Presets, When Kara Uses Short vs. Long Responses, and 1-Tap Prompting Tips for Style Control"
+          >
+            <Zap className="w-3 h-3 text-fuchsia-400" />
+            <span>Style Tips &amp; When to Use</span>
+            <ChevronDown
+              className={`w-3 h-3 transition-transform ${isStyleGuideOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+        </div>
+
+        {/* Collapsible Style Control & "When to Use" Drawer */}
+        {isStyleGuideOpen && (
+          <div className="p-3.5 rounded-2xl kara-chat-subcard border border-neutral-800 space-y-3 text-xs">
+            {(() => {
+              const activePreset =
+                RESPONSE_STYLE_PRESETS.find((p) => p.id === responseStylePreset) ||
+                RESPONSE_STYLE_PRESETS[0];
+              return (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-neutral-800/80">
+                  <div className="space-y-0.5">
+                    <div className="font-semibold text-white flex items-center gap-2">
+                      <span>Active Style: {activePreset.label}</span>
+                      <span aria-hidden="true" className="text-neutral-600">·</span>
+                      <span className="text-amber-300 font-mono text-[11px]">
+                        Fun Mode {funMode ? 'Active' : 'Muted'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-neutral-300">{activePreset.tagline}</p>
+                    <p className="text-[11px] text-sky-300/90">
+                      <span className="font-semibold text-sky-400">When to Use: </span>
+                      {activePreset.whenToUse}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsStyleGuideOpen(false)}
+                    className="self-end sm:self-center p-1 text-neutral-400 hover:text-white"
+                    title="Close Style Guide"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* How Kara Automatically Knows When to Use Short vs. Long Responses */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="p-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800/90 space-y-1">
+                <div className="font-semibold text-emerald-300 text-[11px]">
+                  1. Short &amp; Punchy (1–3 Sentences)
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-snug">
+                  <span className="text-neutral-200 font-medium">When Kara uses it:</span> Quick banter, casual check-ins, fast reactions, witty comebacks, or short text messages.
+                </p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800/90 space-y-1">
+                <div className="font-semibold text-sky-300 text-[11px]">
+                  2. Balanced Flow (1–2 Paragraphs)
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-snug">
+                  <span className="text-neutral-200 font-medium">When Kara uses it:</span> Everyday chats, candid political/news opinions, pop-culture riffs, and emotional rapport.
+                </p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800/90 space-y-1">
+                <div className="font-semibold text-amber-300 text-[11px]">
+                  3. Long Deep-Dive (Multi-Angle)
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-snug">
+                  <span className="text-neutral-200 font-medium">When Kara uses it:</span> Unpacking major world events, critiquing &amp; fixing other chatbots, complex strategy, or deep roleplay.
+                </p>
+              </div>
+            </div>
+
+            {/* 1-Tap Prompting Tips for Style Control */}
+            <div className="space-y-1.5 pt-0.5">
+              <div className="text-[11px] font-semibold text-neutral-300 flex items-center justify-between">
+                <span>Prompting Tips for Style Control (Tap to add to your message):</span>
+                <span className="text-[10px] font-mono text-neutral-500">
+                  Wit · Pop-Culture · Casual · Confident
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {STYLE_CONTROL_PROMPTING_TIPS.map((tip) => (
+                  <button
+                    key={tip.id}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      setInputText((prev) => {
+                        const base = prev.trim();
+                        const next = base ? `${base} — ${tip.promptModifier}` : tip.promptModifier;
+                        dictationBaseInputRef.current = next;
+                        return next;
+                      });
+                      inputFieldRef.current?.focus();
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-fuchsia-500/15 border border-neutral-800 hover:border-fuchsia-500/40 text-left transition-colors"
+                    title={`When to use: ${tip.whenToUse} | Inserts: "${tip.promptModifier}"`}
+                  >
+                    <div className="text-[11px] font-medium text-neutral-200">{tip.label}</div>
+                    <div className="text-[10px] text-neutral-400">{tip.whenToUse}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Hidden file input for multi-photo sharing */}
         <input
@@ -2709,52 +4150,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             >
               <X className="w-3.5 h-3.5" />
             </button>
-          </div>
-        )}
-
-        {/* Memory Recall Topic Quick-Launcher Drawer */}
-        {isRecallPickerOpen && (
-          <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 space-y-2.5 backdrop-blur-sm">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-indigo-200 flex items-center gap-1.5">
-                <Database className="w-4 h-4 text-indigo-400" />
-                <span>Sector 9 Memory Recall Command (/recall)</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsRecallPickerOpen(false)}
-                className="p-1 text-neutral-400 hover:text-white"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <p className="text-[11px] text-neutral-300">
-              Select a quick topic or type <code className="text-indigo-300 bg-neutral-900 px-1 py-0.5 rounded font-mono">/recall [topic]</code> to summarize what KARA remembers about you:
-            </p>
-            <div className="flex flex-wrap gap-1.5 pt-0.5">
-              {[
-                { label: 'All Memories', cmd: '/recall all' },
-                { label: 'Preferences', cmd: '/recall preferences' },
-                { label: 'Personal Facts', cmd: '/recall facts' },
-                { label: 'Roleplay & Vibes', cmd: '/recall roleplay' },
-                { label: 'Food & Drinks', cmd: '/recall food' },
-                { label: 'Hobbies & Music', cmd: '/recall hobbies' },
-                { label: 'Bond & Milestones', cmd: '/recall bond' },
-              ].map((t) => (
-                <button
-                  key={t.label}
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic('tap');
-                    setIsRecallPickerOpen(false);
-                    onSendMessage(t.cmd);
-                  }}
-                  className="px-2.5 py-1 text-xs rounded-xl bg-neutral-900 hover:bg-indigo-500/25 border border-indigo-800/60 hover:border-indigo-400 text-indigo-200 transition-colors"
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
@@ -2895,7 +4290,89 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
         )}
 
-        {/* Material 3 Text Input Field + Microphone Voice-to-Text, Multi-Photo Upload & Enter-to-Send */}
+        {/* Inline Text-to-Nano-Banana Image Generator Prompt Drawer */}
+        {isNanoBananaBarOpen && (
+          <div className="p-3 rounded-2xl kara-chat-subcard border border-amber-500/45 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
+                <Wand2 className="w-4 h-4 text-amber-400" />
+                <span>Text → Nano Banana Image Generator Prompt</span>
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/40 text-[10px] font-mono">
+                  Unlimited · No Limit
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNanoBananaBarOpen(false)}
+                className="text-neutral-400 hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <input
+                type="text"
+                value={nanoBananaRawText}
+                onChange={(e) => setNanoBananaRawText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleDispatchNanoBananaInChat();
+                  }
+                }}
+                placeholder="Type any plain text idea (e.g. 'futuristic Tokyo street in neon rain')..."
+                className="flex-1 px-3 py-2 text-xs rounded-xl bg-neutral-950 border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400"
+              />
+              <button
+                type="button"
+                disabled={(!nanoBananaRawText.trim() && !inputText.trim()) || isConvertingNanoPrompt}
+                onClick={handleConvertTextToNanoBananaPromptInChat}
+                className="px-3 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 disabled:opacity-40 border border-amber-500/40 text-xs font-medium text-amber-200 flex items-center justify-center gap-1.5 shrink-0 transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>
+                  {isConvertingNanoPrompt
+                    ? 'Converting Text...'
+                    : 'Convert Text → Nano Banana Prompt'}
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled={
+                  (!nanoBananaRawText.trim() &&
+                    !nanoBananaConvertedPrompt.trim() &&
+                    !inputText.trim()) ||
+                  isSending ||
+                  isGeneratingNanoImage
+                }
+                onClick={handleDispatchNanoBananaInChat}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-sky-400 hover:from-amber-300 hover:to-sky-300 disabled:opacity-40 text-slate-950 text-xs font-semibold flex items-center justify-center gap-1.5 shrink-0 transition-all"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span>
+                  {isGeneratingNanoImage ? 'Generating...' : 'Generate Nano Banana Image'}
+                </span>
+              </button>
+            </div>
+
+            {nanoBananaConvertedPrompt && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono text-amber-300 block">
+                  Expanded Nano Banana Image Generator Prompt (Editable):
+                </label>
+                <textarea
+                  rows={2}
+                  value={nanoBananaConvertedPrompt}
+                  onChange={(e) => setNanoBananaConvertedPrompt(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs rounded-xl bg-neutral-950 border border-amber-500/40 text-amber-100 focus:outline-none"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Material 3 Text Input Field + Microphone Voice-to-Text, Multi-Photo Upload, Nano Banana & Enter-to-Send */}
         <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
           <button
             type="button"
@@ -2954,6 +4431,26 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             type="button"
             onClick={() => {
               triggerHaptic('tap');
+              setIsNanoBananaBarOpen((prev) => !prev);
+              if (!nanoBananaRawText && inputText.trim()) {
+                setNanoBananaRawText(inputText.trim());
+              }
+            }}
+            disabled={isSending}
+            className={`p-3 rounded-2xl border transition-colors shrink-0 ${
+              isNanoBananaBarOpen
+                ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                : 'kara-chat-control-btn text-amber-300'
+            }`}
+            title="Text-to-Nano-Banana Image Generator Prompt"
+          >
+            <Wand2 className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('tap');
               setIsLinkInputOpen((prev) => !prev);
             }}
             disabled={isSending}
@@ -2967,29 +4464,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <Link2 className="w-4 h-4" />
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('tap');
-              setIsRecallPickerOpen((prev) => !prev);
-            }}
-            disabled={isSending}
-            className={`p-3 rounded-2xl border transition-colors shrink-0 ${
-              isRecallPickerOpen
-                ? 'bg-indigo-500/25 border-indigo-400 text-indigo-300'
-                : 'kara-chat-control-btn hover:text-indigo-300'
-            }`}
-            title="Memory Recall (/recall): Ask KARA what she remembers about specific topics"
-          >
-            <Database className="w-4 h-4 text-indigo-400" />
-          </button>
-
           <input
             ref={inputFieldRef}
             type="text"
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleInputKeyDown}
+            onChange={(e) => {
+              const nextVal = e.target.value;
+              setInputText(nextVal);
+              if (!isRecording) {
+                dictationBaseInputRef.current = nextVal.trim();
+              }
+              onUserTyping?.();
+            }}
+            onFocus={() => {
+              onUserTyping?.();
+            }}
+            onKeyDown={(e) => {
+              onUserTyping?.();
+              handleInputKeyDown(e);
+            }}
             onPaste={(e) => {
               const items = e.clipboardData?.items;
               if (!items) return;
@@ -3011,7 +4504,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 ? 'Listening... tap stop to insert voice transcript into input'
                 : isTranscribing
                 ? 'Converting voice to text...'
-                : `Message KARA, share multiple pics, or paste a link (${currentModeMeta.label}) — Enter to send...`
+                : `Message KARA, generate Nano Banana art, or paste a link (${currentModeMeta.label}) — Enter to send...`
             }
             className="flex-1 kara-chat-input border rounded-2xl px-4 py-3 text-sm focus:outline-none transition-colors"
           />
@@ -3042,6 +4535,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             </button>
           )}
         </form>
+      </div>
       </div>
     </section>
   );
