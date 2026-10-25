@@ -48,6 +48,7 @@ import {
 import { KaraMode, ChatMessageData, MemoryItemData } from '../lib/firebase';
 import { triggerHaptic } from '../lib/haptics';
 import { KARA_THEMES, type TtsEngineType, type KaraThemeId } from './SettingsModal';
+import { KaraFutureLogo } from './KaraFutureLogo';
 
 export type ModelTier = 'fast' | 'standard' | 'thinking';
 export type GroundingOption = 'none' | 'search' | 'maps';
@@ -707,6 +708,7 @@ interface UserMessageBubbleProps {
   onCopy: (msgId: string, text: string) => void;
   onQuote: (text: string) => void;
   onDelete: (msgId: string) => void;
+  onEditImageWithNanoBanana?: (imageUrl: string, imageName?: string) => void;
 }
 
 export const UserMessageBubble: React.FC<UserMessageBubbleProps> = ({
@@ -724,6 +726,7 @@ export const UserMessageBubble: React.FC<UserMessageBubbleProps> = ({
   onCopy,
   onQuote,
   onDelete,
+  onEditImageWithNanoBanana,
 }) => {
   const modeMeta = MODE_META[msg.mode] || MODE_META.regular;
 
@@ -811,11 +814,22 @@ export const UserMessageBubble: React.FC<UserMessageBubbleProps> = ({
                     alt={single.name || 'Shared photo'}
                     className="max-h-72 w-full object-contain bg-slate-950/80"
                   />
-                  {single.name && (
-                    <div className="px-3 py-1 text-[11px] font-mono text-slate-900/80 bg-white/30 truncate">
-                      Shared Photo: {single.name}
-                    </div>
-                  )}
+                  <div className="px-3 py-1.5 text-[11px] font-mono text-slate-900/90 bg-white/40 flex items-center justify-between gap-2">
+                    <span className="truncate">{single.name || 'Shared Photo'}</span>
+                    {onEditImageWithNanoBanana && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onEditImageWithNanoBanana(single.dataUrl, single.name || 'Shared_Photo.jpg')
+                        }
+                        className="px-2 py-0.5 rounded-lg bg-slate-950/85 hover:bg-slate-950 text-amber-300 text-[10px] font-semibold flex items-center gap-1 shrink-0 transition-colors"
+                        title="Edit this photo with a text prompt using gemini-nano-banana-2.1"
+                      >
+                        <Wand2 className="w-3 h-3 text-amber-400" />
+                        <span>Edit Photo (Nano Banana 2.1)</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             }
@@ -843,8 +857,24 @@ export const UserMessageBubble: React.FC<UserMessageBubbleProps> = ({
                         alt={photo.name || `Photo ${pIdx + 1}`}
                         className="h-36 w-full object-cover bg-slate-950"
                       />
-                      <div className="px-2 py-1 text-[10px] font-mono text-sky-200 bg-slate-950/90 truncate">
-                        {photo.name || `Photo ${pIdx + 1}`}
+                      <div className="px-2 py-1 text-[10px] font-mono text-sky-200 bg-slate-950/90 flex items-center justify-between gap-1">
+                        <span className="truncate">{photo.name || `Photo ${pIdx + 1}`}</span>
+                        {onEditImageWithNanoBanana && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onEditImageWithNanoBanana(
+                                photo.dataUrl,
+                                photo.name || `Photo_${pIdx + 1}.jpg`
+                              )
+                            }
+                            className="text-amber-300 hover:text-amber-200 flex items-center gap-0.5 shrink-0"
+                            title="Edit with gemini-nano-banana-2.1"
+                          >
+                            <Wand2 className="w-2.5 h-2.5" />
+                            <span>Edit</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -989,6 +1019,7 @@ interface AiMessageBubbleProps {
   onQuote: (text: string) => void;
   onDelete: (msgId: string) => void;
   onSelectQuickReply?: (promptText: string) => void;
+  onEditImageWithNanoBanana?: (imageUrl: string, imageName?: string) => void;
 }
 
 interface ParsedReasoningStep {
@@ -1109,6 +1140,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   onQuote,
   onDelete,
   onSelectQuickReply,
+  onEditImageWithNanoBanana,
 }) => {
   const modeMeta = MODE_META[msg.mode] || MODE_META.regular;
   const textToRender = displayedText !== undefined ? displayedText : msg.content;
@@ -1170,7 +1202,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
       className="flex flex-col items-start group w-full"
     >
       <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400 mb-1.5 px-1">
-        <span className="w-2 h-2 rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-400 shrink-0" />
+        <KaraFutureLogo size="xs" mode={msg.mode} isActive={Boolean(isSpeakingThis || isStreamingThis)} />
         <span className="font-bold tracking-wide text-white">KARA</span>
         <span aria-hidden="true">·</span>
         <span className="text-[11px] font-mono text-sky-400/90">Sector 9</span>
@@ -2042,13 +2074,13 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           </div>
         )}
 
-        {/* Inline Gemini Nano Banana (No Limit) Artwork Card + Text-to-Nano-Banana Image Generator Prompt */}
+        {/* Inline Gemini Nano Banana 2.1 (Create & Edit Images) Artwork Card */}
         {msg.generatedImageUrl && (
           <div className="mt-3.5 p-3.5 rounded-2xl kara-chat-subcard border border-amber-500/45 space-y-2.5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-amber-300 flex items-center gap-1.5">
                 <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
-                <span>Nano Banana Image Generator · Text-to-Prompt</span>
+                <span>Built-in Create &amp; Edit Images · gemini-nano-banana-2.1</span>
               </span>
               <span className="font-mono text-[10px] text-emerald-400 flex items-center gap-1">
                 <InfinityIcon className="w-3 h-3" />
@@ -2057,14 +2089,14 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
             </div>
             <img
               src={msg.generatedImageUrl}
-              alt={msg.generatedImagePrompt || 'KARA Nano Banana Synthesis'}
+              alt={msg.generatedImagePrompt || 'KARA Nano Banana 2.1 Synthesis'}
               referrerPolicy="no-referrer"
               className="w-full max-h-80 rounded-xl border border-neutral-800 object-contain bg-neutral-950"
             />
             {msg.generatedImagePrompt && (
               <div className="p-2.5 rounded-xl bg-neutral-950/90 border border-amber-500/30 space-y-1">
                 <div className="flex items-center justify-between text-[10px] font-mono text-amber-300">
-                  <span>Text → Nano Banana Image Generator Prompt</span>
+                  <span>Active Nano Banana 2.1 Prompt</span>
                   <button
                     type="button"
                     onClick={() => onCopy(`${msg.id}_nbprompt`, msg.generatedImagePrompt || '')}
@@ -2079,23 +2111,42 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
               </div>
             )}
             <div className="flex flex-wrap items-center justify-between gap-2">
-              {onSelectQuickReply && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic('tap');
-                    onSelectQuickReply(
-                      `Generate another Nano Banana image remix of: ${
-                        msg.generatedImagePrompt || msg.content.slice(0, 100)
-                      }`
-                    );
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-200 rounded-xl flex items-center gap-1.5 transition-colors"
-                >
-                  <Wand2 className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Remix with Nano Banana</span>
-                </button>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {onEditImageWithNanoBanana && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      onEditImageWithNanoBanana(
+                        msg.generatedImageUrl!,
+                        `kara_nano_banana_${msg.id}.png`
+                      );
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/50 text-sky-200 rounded-xl flex items-center gap-1.5 transition-colors"
+                    title="Load this image into the built-in gemini-nano-banana-2.1 Image Editor to modify it with a text prompt"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Edit Image (Nano Banana 2.1)</span>
+                  </button>
+                )}
+                {onSelectQuickReply && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      onSelectQuickReply(
+                        `Generate another Nano Banana image remix of: ${
+                          msg.generatedImagePrompt || msg.content.slice(0, 100)
+                        }`
+                      );
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-200 rounded-xl flex items-center gap-1.5 transition-colors"
+                  >
+                    <Wand2 className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Remix Variation</span>
+                  </button>
+                )}
+              </div>
               <a
                 href={msg.generatedImageUrl}
                 download={`kara_nano_banana_${msg.id}.png`}
@@ -2722,7 +2773,18 @@ interface ChatScreenProps {
   onCreateNewSession: () => void;
   onDeleteSession: (sessionId: string) => void;
   onRenameSession?: (sessionId: string, newTitle: string) => void;
-  onGenerateNanoBananaInChat?: (textIdea: string, nanoPrompt?: string) => Promise<void> | void;
+  onGenerateNanoBananaInChat?: (
+    textIdea: string,
+    nanoPrompt?: string,
+    options?: {
+      aspectRatio?: string;
+      imageSize?: string;
+      referenceImageBase64?: string | null;
+      referenceMimeType?: string;
+      referenceImageUrl?: string | null;
+      referenceImageName?: string;
+    }
+  ) => Promise<void> | void;
   onSelectRelationshipStage: (stage: RelationshipStage) => void;
   onSelectVoiceProfile: (profile: VoiceProfileOption) => void;
   onToggleAutoSpeak: () => void;
@@ -2840,8 +2902,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
   const [renameSessionDraft, setRenameSessionDraft] = useState('');
 
-  // Text-to-Nano-Banana Image Generator Prompt Composer State
+  // Built-in Create & Edit Images (gemini-nano-banana-2.1) Composer State
   const [isNanoBananaBarOpen, setIsNanoBananaBarOpen] = useState(false);
+  const [nanoBananaMode, setNanoBananaMode] = useState<'create' | 'edit'>('create');
+  const [nanoBananaAspect, setNanoBananaAspect] = useState<
+    '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '1:4' | '4:1'
+  >('1:1');
+  const [nanoBananaSize, setNanoBananaSize] = useState<'1K' | '2K' | '4K'>('1K');
+  const [nanoEditRefImage, setNanoEditRefImage] = useState<{
+    dataUrl: string;
+    base64?: string;
+    mimeType: string;
+    name: string;
+  } | null>(null);
+  const nanoEditFileInputRef = useRef<HTMLInputElement | null>(null);
+  const nanoPromptInputRef = useRef<HTMLInputElement | null>(null);
   const [nanoBananaRawText, setNanoBananaRawText] = useState('');
   const [nanoBananaConvertedPrompt, setNanoBananaConvertedPrompt] = useState('');
   const [isConvertingNanoPrompt, setIsConvertingNanoPrompt] = useState(false);
@@ -3224,6 +3299,49 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const lastAssistantMsg = [...messages].reverse().find((m) => m.role === 'assistant');
 
+  const handleLoadImageIntoNanoEditor = (imageUrl: string, imageName = 'Reference_Image.png') => {
+    if (!imageUrl) return;
+    triggerHaptic('tap');
+    let parsedMime = 'image/png';
+    let parsedBase64 = imageUrl;
+    const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/i);
+    if (match) {
+      parsedMime = match[1] || 'image/png';
+      parsedBase64 = match[2];
+    }
+    setNanoEditRefImage({
+      dataUrl: imageUrl,
+      base64: parsedBase64,
+      mimeType: parsedMime,
+      name: imageName,
+    });
+    setNanoBananaMode('edit');
+    setIsNanoBananaBarOpen(true);
+    setTimeout(() => {
+      nanoPromptInputRef.current?.focus();
+    }, 80);
+  };
+
+  const handleNanoEditFileSelect = (fileList: FileList | null) => {
+    const file = fileList?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    compressAndReadImageFile(file, 0).then((item) => {
+      if (item.dataUrl) {
+        setNanoEditRefImage({
+          dataUrl: item.dataUrl,
+          base64: item.base64,
+          mimeType: item.mimeType || 'image/jpeg',
+          name: item.name || file.name || 'Uploaded_Photo.jpg',
+        });
+        setNanoBananaMode('edit');
+        triggerHaptic('tap');
+        setTimeout(() => {
+          nanoPromptInputRef.current?.focus();
+        }, 60);
+      }
+    });
+  };
+
   const handleConvertTextToNanoBananaPromptInChat = async () => {
     const sourceText = (nanoBananaRawText || inputText).trim();
     if (!sourceText || isConvertingNanoPrompt) return;
@@ -3235,7 +3353,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: sourceText,
-          aspectRatio: '1:1',
+          aspectRatio: nanoBananaAspect,
         }),
       });
       const data = await res.json();
@@ -3256,12 +3374,39 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if ((!rawIdea && !finalNanoPrompt) || isSending || isGeneratingNanoImage) return;
     triggerHaptic('send');
     setIsGeneratingNanoImage(true);
+
+    const activeRefImg =
+      nanoBananaMode === 'edit'
+        ? nanoEditRefImage ||
+          (stagedPhotos[0]
+            ? {
+                dataUrl: stagedPhotos[0].dataUrl,
+                base64: stagedPhotos[0].base64,
+                mimeType: stagedPhotos[0].mimeType,
+                name: stagedPhotos[0].name,
+              }
+            : null)
+        : null;
+
     try {
       if (onGenerateNanoBananaInChat) {
-        await onGenerateNanoBananaInChat(rawIdea || finalNanoPrompt, finalNanoPrompt || undefined);
+        await onGenerateNanoBananaInChat(
+          rawIdea || finalNanoPrompt,
+          finalNanoPrompt || undefined,
+          {
+            aspectRatio: nanoBananaAspect,
+            imageSize: nanoBananaSize,
+            referenceImageBase64: activeRefImg?.base64 || activeRefImg?.dataUrl || null,
+            referenceMimeType: activeRefImg?.mimeType || 'image/png',
+            referenceImageUrl: activeRefImg?.dataUrl || null,
+            referenceImageName: activeRefImg?.name,
+          }
+        );
       } else {
         onSendMessage(
-          `Generate a Nano Banana image: ${finalNanoPrompt || rawIdea}`
+          activeRefImg
+            ? `Edit image with Nano Banana 2.1: ${finalNanoPrompt || rawIdea}`
+            : `Generate a Nano Banana 2.1 image: ${finalNanoPrompt || rawIdea}`
         );
       }
       setNanoBananaRawText('');
@@ -3315,18 +3460,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <div className="p-3.5 space-y-3 flex-1 flex flex-col min-h-0 w-80 max-w-[86vw]">
               {/* Side Panel Top Header + Cloud Sync Status + Auto-Collapse Toggle */}
               <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-neutral-800/80">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-sky-400">
-                    <Cloud className="w-3 h-3 text-emerald-400 shrink-0" />
-                    <span className="truncate">
-                      {isCloudSynced
-                        ? `Synced · ${userEmail || userName}`
-                        : 'Auto-Collapsible Drawer'}
-                    </span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <KaraFutureLogo size="sm" mode={activeMode} isActive={Boolean(isSpeakingId || isSending)} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-sky-400">
+                      <Cloud className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <span className="truncate">
+                        {isCloudSynced
+                          ? `Synced · ${userEmail || userName}`
+                          : 'Auto-Collapsible Drawer'}
+                      </span>
+                    </div>
+                    <h3 className="text-xs font-semibold text-white truncate mt-0.5">
+                      Convos · History · Synced Memory
+                    </h3>
                   </div>
-                  <h3 className="text-xs font-semibold text-white truncate mt-0.5">
-                    Convos · History · Synced Memory
-                  </h3>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
@@ -3837,7 +3985,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               />
             </button>
 
-            <span className="font-semibold text-white">KARA</span>
+            <span className="inline-flex items-center gap-1.5 font-semibold text-white">
+              <KaraFutureLogo
+                size="xs"
+                mode={activeMode}
+                isActive={Boolean(isSpeakingId || isSending)}
+              />
+              <span>KARA</span>
+            </span>
             <span aria-hidden="true">·</span>
             <button
               type="button"
@@ -3890,7 +4045,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               type="button"
               onClick={() => {
                 triggerHaptic('tap');
-                setIsNanoBananaBarOpen((prev) => !prev);
+                setIsNanoBananaBarOpen((prev) => {
+                  const next = !prev;
+                  if (next && stagedPhotos.length > 0 && !nanoEditRefImage) {
+                    setNanoEditRefImage({
+                      dataUrl: stagedPhotos[0].dataUrl,
+                      base64: stagedPhotos[0].base64,
+                      mimeType: stagedPhotos[0].mimeType,
+                      name: stagedPhotos[0].name,
+                    });
+                    setNanoBananaMode('edit');
+                  }
+                  return next;
+                });
                 if (!nanoBananaRawText && inputText.trim()) {
                   setNanoBananaRawText(inputText.trim());
                 }
@@ -3900,10 +4067,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   ? 'bg-amber-500/20 border-amber-500/60 text-amber-200'
                   : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/35 text-amber-300'
               }`}
-              title="Open Text-to-Nano-Banana Image Generator Prompt bar"
+              title="Built-in Create & Edit Images using gemini-nano-banana-2.1"
             >
               <Wand2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>Nano Banana Image</span>
+              <span>Create &amp; Edit Images (Nano Banana 2.1)</span>
             </button>
 
             <button
@@ -4069,6 +4236,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 onCopy={handleCopyText}
                 onQuote={handleQuoteMessage}
                 onDelete={onDeleteMessage}
+                onEditImageWithNanoBanana={handleLoadImageIntoNanoEditor}
               />
             );
           }
@@ -4102,6 +4270,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               onQuote={handleQuoteMessage}
               onDelete={onDeleteMessage}
               onSelectQuickReply={(promptText) => onSendMessage(promptText)}
+              onEditImageWithNanoBanana={handleLoadImageIntoNanoEditor}
             />
           );
         })}
@@ -4414,6 +4583,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       </div>
                       <button
                         type="button"
+                        onClick={() => handleLoadImageIntoNanoEditor(photo.dataUrl, photo.name)}
+                        className="px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-[10px] font-semibold text-amber-300 flex items-center gap-1 shrink-0 transition-colors"
+                        title="Edit this staged photo with a text prompt using gemini-nano-banana-2.1"
+                      >
+                        <Wand2 className="w-3 h-3 text-amber-400" />
+                        <span>Edit (Nano Banana 2.1)</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() =>
                           setStagedPhotos((prev) => prev.filter((_, i) => i !== idx))
                         }
@@ -4452,9 +4630,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         'Tell me every little detail, mood, and vibe you notice in my shared photo(s)!',
                     },
                     {
-                      label: 'Nano Banana: Remix this pic',
+                      label: 'Nano Banana 2.1: Edit this pic',
                       prompt:
-                        'Give me your thoughts on this photo and generate a creative Nano Banana remix of it!',
+                        'Edit this photo with Nano Banana 2.1 and give it dramatic cyberpunk neon lighting!',
                     },
                   ].map((q) => (
                     <button
@@ -4500,28 +4678,198 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
         )}
 
-        {/* Inline Text-to-Nano-Banana Image Generator Prompt Drawer */}
+        {/* Hidden file input for Built-In Nano Banana 2.1 Image Editing */}
+        <input
+          ref={nanoEditFileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            handleNanoEditFileSelect(e.target.files);
+            e.target.value = '';
+          }}
+        />
+
+        {/* Built-In Create & Edit Images Studio Bar (gemini-nano-banana-2.1) */}
         {isNanoBananaBarOpen && (
-          <div className="p-3 rounded-2xl kara-chat-subcard border border-amber-500/45 space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
-                <Wand2 className="w-4 h-4 text-amber-400" />
-                <span>Text → Nano Banana Image Generator Prompt</span>
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/40 text-[10px] font-mono">
-                  Unlimited · No Limit
+          <div className="p-3.5 rounded-2xl kara-chat-subcard border border-amber-500/45 space-y-3">
+            {/* Top Header: Title + Create / Edit Mode Switcher + Aspect Ratio & Size */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-neutral-800/80">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
+                  <Wand2 className="w-4 h-4 text-amber-400" />
+                  <span>Built-In Create &amp; Edit Images</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-lg bg-sky-500/15 border border-sky-500/40 text-[10px] font-mono text-sky-300">
+                  gemini-nano-banana-2.1
                 </span>
+
+                {/* Segmented Mode Switcher: Create Image vs Edit Image */}
+                <div className="flex items-center gap-1 p-0.5 rounded-xl bg-neutral-950 border border-neutral-800">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      setNanoBananaMode('create');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors ${
+                      nanoBananaMode === 'create'
+                        ? 'bg-amber-500/20 text-amber-200 border border-amber-500/50'
+                        : 'text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Create Image</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      setNanoBananaMode('edit');
+                      if (!nanoEditRefImage && stagedPhotos.length > 0) {
+                        setNanoEditRefImage({
+                          dataUrl: stagedPhotos[0].dataUrl,
+                          base64: stagedPhotos[0].base64,
+                          mimeType: stagedPhotos[0].mimeType,
+                          name: stagedPhotos[0].name,
+                        });
+                      } else if (!nanoEditRefImage && lastAssistantMsg?.generatedImageUrl) {
+                        handleLoadImageIntoNanoEditor(
+                          lastAssistantMsg.generatedImageUrl,
+                          'Last_Generated_Image.png'
+                        );
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors ${
+                      nanoBananaMode === 'edit'
+                        ? 'bg-sky-500/20 text-sky-200 border border-sky-500/50'
+                        : 'text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    <Pencil className="w-3 h-3" />
+                    <span>Edit Image</span>
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsNanoBananaBarOpen(false)}
-                className="text-neutral-400 hover:text-white"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+
+              {/* Aspect Ratio + Resolution + Close */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <select
+                  value={nanoBananaAspect}
+                  onChange={(e) => setNanoBananaAspect(e.target.value as any)}
+                  className="px-2 py-1 text-[11px] font-mono bg-neutral-950 border border-neutral-800 rounded-lg text-neutral-200 focus:outline-none focus:border-amber-400"
+                  title="Select Aspect Ratio for gemini-nano-banana-2.1"
+                >
+                  <option value="1:1">1:1 Square</option>
+                  <option value="16:9">16:9 Landscape</option>
+                  <option value="9:16">9:16 Portrait</option>
+                  <option value="4:3">4:3 Editorial</option>
+                  <option value="3:4">3:4 Poster</option>
+                  <option value="1:4">1:4 Tall</option>
+                  <option value="4:1">4:1 Wide</option>
+                </select>
+
+                <div className="flex items-center gap-0.5 p-0.5 bg-neutral-950 border border-neutral-800 rounded-lg">
+                  {(['1K', '2K', '4K'] as const).map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => setNanoBananaSize(sz)}
+                      className={`px-2 py-0.5 text-[10px] font-mono rounded transition-colors ${
+                        nanoBananaSize === sz
+                          ? 'bg-amber-500/25 text-amber-200 font-semibold'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                      title={`${sz} Resolution`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsNanoBananaBarOpen(false)}
+                  className="p-1 text-neutral-400 hover:text-white rounded-lg"
+                  title="Close Built-in Image Studio"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
+            {/* Reference Image Picker & Preview Bar when in Edit Image Mode */}
+            {nanoBananaMode === 'edit' && (
+              <div className="p-2.5 rounded-xl bg-neutral-950/90 border border-sky-500/40 flex flex-wrap items-center justify-between gap-2.5">
+                {nanoEditRefImage ? (
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img
+                      src={nanoEditRefImage.dataUrl}
+                      alt={nanoEditRefImage.name}
+                      className="w-12 h-12 rounded-lg object-cover border border-sky-400/50 shrink-0 bg-neutral-900"
+                    />
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-white truncate">
+                        Editing: {nanoEditRefImage.name}
+                      </div>
+                      <div className="text-[10px] font-mono text-sky-300">
+                        Reference image loaded · Describe your edits below
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs text-neutral-300">
+                    <ImagePlus className="w-4 h-4 text-sky-400 shrink-0" />
+                    <span>
+                      Upload a photo to edit, or click &ldquo;Edit Image&rdquo; on any picture in the conversation!
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => nanoEditFileInputRef.current?.click()}
+                    className="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/50 text-[11px] font-medium text-sky-200 flex items-center gap-1 transition-colors"
+                  >
+                    <ImagePlus className="w-3 h-3" />
+                    <span>{nanoEditRefImage ? 'Swap Photo' : 'Upload Photo to Edit'}</span>
+                  </button>
+                  {lastAssistantMsg?.generatedImageUrl &&
+                    nanoEditRefImage?.dataUrl !== lastAssistantMsg.generatedImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleLoadImageIntoNanoEditor(
+                            lastAssistantMsg.generatedImageUrl!,
+                            'Last_Generated_Artwork.png'
+                          )
+                        }
+                        className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-[11px] font-medium text-amber-200 transition-colors"
+                      >
+                        Use Last Chat Image
+                      </button>
+                    )}
+                  {nanoEditRefImage && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNanoEditRefImage(null);
+                        setNanoBananaMode('create');
+                      }}
+                      className="px-2 py-1 rounded-lg bg-neutral-900 hover:bg-rose-950/60 border border-neutral-800 text-[11px] text-neutral-400 hover:text-rose-300 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Prompt Input + Convert Text-to-Prompt + Create/Edit Action Button */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
+                ref={nanoPromptInputRef}
                 type="text"
                 value={nanoBananaRawText}
                 onChange={(e) => setNanoBananaRawText(e.target.value)}
@@ -4531,22 +4879,28 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     handleDispatchNanoBananaInChat();
                   }
                 }}
-                placeholder="Type any plain text idea (e.g. 'futuristic Tokyo street in neon rain')..."
+                placeholder={
+                  nanoBananaMode === 'edit'
+                    ? "Type how to edit the image (e.g. 'Add neon cyberpunk lighting', 'Change background to sunset beach')..."
+                    : "Type a text prompt to create an image with gemini-nano-banana-2.1 (e.g. 'futuristic Tokyo rooftop cafe in neon rain')..."
+                }
                 className="flex-1 px-3 py-2 text-xs rounded-xl bg-neutral-950 border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400"
               />
-              <button
-                type="button"
-                disabled={(!nanoBananaRawText.trim() && !inputText.trim()) || isConvertingNanoPrompt}
-                onClick={handleConvertTextToNanoBananaPromptInChat}
-                className="px-3 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 disabled:opacity-40 border border-amber-500/40 text-xs font-medium text-amber-200 flex items-center justify-center gap-1.5 shrink-0 transition-colors"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>
-                  {isConvertingNanoPrompt
-                    ? 'Converting Text...'
-                    : 'Convert Text → Nano Banana Prompt'}
-                </span>
-              </button>
+              {nanoBananaMode === 'create' && (
+                <button
+                  type="button"
+                  disabled={(!nanoBananaRawText.trim() && !inputText.trim()) || isConvertingNanoPrompt}
+                  onClick={handleConvertTextToNanoBananaPromptInChat}
+                  className="px-3 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 disabled:opacity-40 border border-amber-500/40 text-xs font-medium text-amber-200 flex items-center justify-center gap-1.5 shrink-0 transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>
+                    {isConvertingNanoPrompt
+                      ? 'Expanding...'
+                      : 'Expand Prompt'}
+                  </span>
+                </button>
+              )}
               <button
                 type="button"
                 disabled={
@@ -4559,17 +4913,60 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 onClick={handleDispatchNanoBananaInChat}
                 className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-sky-400 hover:from-amber-300 hover:to-sky-300 disabled:opacity-40 text-slate-950 text-xs font-semibold flex items-center justify-center gap-1.5 shrink-0 transition-all"
               >
-                <ImageIcon className="w-3.5 h-3.5" />
+                {nanoBananaMode === 'edit' ? (
+                  <Pencil className="w-3.5 h-3.5" />
+                ) : (
+                  <ImageIcon className="w-3.5 h-3.5" />
+                )}
                 <span>
-                  {isGeneratingNanoImage ? 'Generating...' : 'Generate Nano Banana Image'}
+                  {isGeneratingNanoImage
+                    ? 'Synthesizing...'
+                    : nanoBananaMode === 'edit'
+                    ? `Edit Image (${nanoBananaSize})`
+                    : `Create Image (${nanoBananaSize})`}
                 </span>
               </button>
+            </div>
+
+            {/* 1-Tap Quick Prompt Suggestions for Create or Edit Mode */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+              <span className="text-[10px] font-mono text-neutral-400 shrink-0">
+                {nanoBananaMode === 'edit' ? 'Quick Edits:' : 'Quick Ideas:'}
+              </span>
+              {(nanoBananaMode === 'edit'
+                ? [
+                    'Add cyberpunk neon rain & glowing reflections',
+                    'Transform into studio anime illustration style',
+                    'Change background to a golden-hour sunset beach',
+                    'Add dramatic cinematic rim lighting & 35mm film grain',
+                    'Turn into a futuristic sci-fi movie poster',
+                  ]
+                : [
+                    'Cyberpunk Tokyo rooftop cafe at dusk in neon rain',
+                    'Cozy sunlit art studio filled with plants & vinyl records',
+                    'Bioluminescent crystal cavern under a starry night sky',
+                    'Retro-futuristic synthwave sports car on coastal highway',
+                  ]
+              ).map((presetPrompt) => (
+                <button
+                  key={presetPrompt}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('tap');
+                    setNanoBananaRawText(presetPrompt);
+                    nanoPromptInputRef.current?.focus();
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-amber-500/15 border border-neutral-800 hover:border-amber-500/40 text-[11px] text-neutral-300 hover:text-amber-200 whitespace-nowrap shrink-0 transition-colors"
+                >
+                  {presetPrompt}
+                </button>
+              ))}
             </div>
 
             {nanoBananaConvertedPrompt && (
               <div className="space-y-1">
                 <label className="text-[10px] font-mono text-amber-300 block">
-                  Expanded Nano Banana Image Generator Prompt (Editable):
+                  Expanded Nano Banana 2.1 Prompt (Editable):
                 </label>
                 <textarea
                   rows={2}

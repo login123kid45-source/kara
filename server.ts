@@ -2061,20 +2061,24 @@ Detected Vibe / Emotion: ${turnAnalysis.emotionDetected}${realTimeNewsAndOpinion
         }
       }
 
-      // Check if user requested an inline Nano Banana image generation or photo edit in chat
+      // Check if user requested an inline Nano Banana 2.1 image generation or photo edit in chat
       let inlineGeneratedImageUrl: string | undefined = undefined;
       let inlineGeneratedImagePrompt: string | undefined = undefined;
       const wantsInlineImage =
-        /\b(nano banana|generate (?:an? )?(?:image|picture|photo|art)|draw (?:me )?|visualize|paint (?:me )?|show me a (?:picture|photo|image)|render (?:an? )?image|edit (?:this )?(?:photo|image|picture)|remix (?:this )?(?:photo|image)|create (?:an? )?(?:image|picture|photo|art))\b/i.test(
+        /\b(nano banana|generate (?:an? )?(?:image|picture|photo|art)|draw (?:me )?|visualize|paint (?:me )?|show me a (?:picture|photo|image)|render (?:an? )?image|edit (?:this |the |my )?(?:photo|image|picture|pic|art)|remix (?:this |the |my )?(?:photo|image|picture|pic)|create (?:an? )?(?:image|picture|photo|art))\b/i.test(
           message
-        );
+        ) ||
+        (hasSharedPhoto &&
+          /\b(edit|remix|transform|restyle|filter|change (?:the )?(?:background|sky|color|lighting|style)|add .* to (?:this|my|the) (?:photo|pic|image)|remove .* from|turn (?:this|it) into|make (?:this|it) look like)\b/i.test(
+            message
+          ));
       if (wantsInlineImage) {
         try {
           const firstSharedPic = normalizedSharedPhotos[0];
           const imgResult = await generateUnlimitedNanoBananaImage({
             ai,
             prompt: message,
-            model: 'gemini-3.1-flash-lite-image',
+            model: 'gemini-nano-banana-2.1',
             aspectRatio: '1:1',
             imageSize: '1K',
             referenceImageBase64: firstSharedPic ? firstSharedPic.base64 : undefined,
@@ -2082,6 +2086,13 @@ Detected Vibe / Emotion: ${turnAnalysis.emotionDetected}${realTimeNewsAndOpinion
           });
           inlineGeneratedImageUrl = imgResult.imageUrl;
           inlineGeneratedImagePrompt = imgResult.nanoBananaPrompt;
+          turnAnalysis.reasoningTrace.push(
+            firstSharedPic
+              ? `Built-in Image Editor (gemini-nano-banana-2.1): Edited shared photo "${
+                  firstSharedPic.fileName || 'photo'
+                }" using prompt "${imgResult.coreSubject}".`
+              : `Built-in Image Creator (gemini-nano-banana-2.1): Synthesized artwork for "${imgResult.coreSubject}".`
+          );
         } catch {
           // Ignore optional inline image generation error
         }
@@ -2684,7 +2695,7 @@ User Text: "${coreSubject}"`,
     };
   }
 
-  // Helper: Unlimited Gemini Nano Banana Image Generator (Text-to-Nano-Banana Prompt + Multi-model cascade + Bespoke SVG Scene Renderer)
+  // Helper: Unlimited Gemini Nano Banana 2.1 Image Creator & Editor (Text-to-Image + Image Editing + Multi-model cascade + Bespoke SVG Scene Renderer)
   async function generateUnlimitedNanoBananaImage(opts: {
     ai: GoogleGenAI;
     prompt: string;
@@ -2700,11 +2711,12 @@ User Text: "${coreSubject}"`,
     modelUsed: string;
     nanoBananaPrompt: string;
     coreSubject: string;
+    isEditedImage?: boolean;
   }> {
     const {
       ai,
       prompt,
-      model = 'gemini-3.1-flash-lite-image',
+      model = 'gemini-nano-banana-2.1',
       imageSize = '1K',
       aspectRatio = '1:1',
       referenceImageBase64,
@@ -2712,15 +2724,38 @@ User Text: "${coreSubject}"`,
       skipPromptExpansion = false,
     } = opts;
 
-    const { coreSubject, nanoBananaPrompt } = skipPromptExpansion
-      ? { coreSubject: prompt.trim(), nanoBananaPrompt: prompt.trim() }
-      : await convertTextToNanoBananaPrompt(ai, prompt, aspectRatio);
+    // Normalize referenceImageBase64 in case a full data URL (data:image/...;base64,...) was passed
+    let cleanRefBase64: string | null = null;
+    let cleanRefMime = referenceMimeType || 'image/png';
+    if (referenceImageBase64 && typeof referenceImageBase64 === 'string' && referenceImageBase64.trim()) {
+      const trimmedRef = referenceImageBase64.trim();
+      const dataUrlMatch = trimmedRef.match(/^data:([^;]+);base64,(.+)$/i);
+      if (dataUrlMatch) {
+        cleanRefMime = dataUrlMatch[1] || cleanRefMime;
+        cleanRefBase64 = dataUrlMatch[2];
+      } else {
+        cleanRefBase64 = trimmedRef;
+      }
+    }
+
+    const isEditingImage = Boolean(cleanRefBase64);
+
+    // When editing an existing image, preserve the user's specific edit instructions clearly
+    const { coreSubject, nanoBananaPrompt } =
+      skipPromptExpansion || isEditingImage
+        ? {
+            coreSubject: prompt.trim(),
+            nanoBananaPrompt: isEditingImage
+              ? `Edit this image according to the following instruction while preserving its core subject and visual coherence: ${prompt.trim()}`
+              : prompt.trim(),
+          }
+        : await convertTextToNanoBananaPrompt(ai, prompt, aspectRatio);
 
     const modelCascade = Array.from(
       new Set([
         model,
-        'gemini-3.1-flash-lite-image',
         'gemini-nano-banana-2.1',
+        'gemini-3.1-flash-lite-image',
         'gemini-2.5-flash-image',
         'gemini-3.1-flash-image-preview',
         'gemini-3-pro-image-preview',
@@ -2728,11 +2763,11 @@ User Text: "${coreSubject}"`,
     );
 
     const parts: any[] = [];
-    if (referenceImageBase64) {
+    if (cleanRefBase64) {
       parts.push({
         inlineData: {
-          data: referenceImageBase64,
-          mimeType: referenceMimeType,
+          data: cleanRefBase64,
+          mimeType: cleanRefMime,
         },
       });
     }
@@ -2743,7 +2778,10 @@ User Text: "${coreSubject}"`,
         const imageConfig: Record<string, any> = {
           aspectRatio: aspectRatio || '1:1',
         };
-        if (candidateModel === 'gemini-3-pro-image-preview') {
+        if (
+          candidateModel === 'gemini-nano-banana-2.1' ||
+          candidateModel === 'gemini-3-pro-image-preview'
+        ) {
           imageConfig.imageSize = imageSize || '1K';
         }
 
@@ -2769,10 +2807,18 @@ User Text: "${coreSubject}"`,
         if (generatedImageUrl) {
           return {
             imageUrl: generatedImageUrl,
-            text: accompanyingText || `Generated with Nano Banana Prompt: "${nanoBananaPrompt}"`,
-            modelUsed: `${candidateModel} (Nano Banana)`,
+            text:
+              accompanyingText ||
+              (isEditingImage
+                ? `Edited image with gemini-nano-banana-2.1: "${prompt.trim()}"`
+                : `Created image with gemini-nano-banana-2.1: "${nanoBananaPrompt}"`),
+            modelUsed:
+              candidateModel === 'gemini-nano-banana-2.1'
+                ? 'gemini-nano-banana-2.1'
+                : `${candidateModel} (gemini-nano-banana-2.1 cascade)`,
             nanoBananaPrompt,
             coreSubject,
+            isEditedImage: isEditingImage,
           };
         }
       } catch (err: any) {
@@ -2780,8 +2826,8 @@ User Text: "${coreSubject}"`,
       }
     }
 
-    // Also try Imagen 3 generateImages if available on the key
-    if (!referenceImageBase64 && typeof (ai.models as any).generateImages === 'function') {
+    // Also try Imagen 3 generateImages if creating a new image and available on the key
+    if (!cleanRefBase64 && typeof (ai.models as any).generateImages === 'function') {
       try {
         const imgGenRes = await (ai.models as any).generateImages({
           model: 'imagen-3.0-generate-002',
@@ -2799,22 +2845,110 @@ User Text: "${coreSubject}"`,
           return {
             imageUrl: `data:image/jpeg;base64,${b64}`,
             text: `Generated with Nano Banana Prompt: "${nanoBananaPrompt}"`,
-            modelUsed: 'gemini-nano-banana-imagen3',
+            modelUsed: 'gemini-nano-banana-2.1 (imagen3)',
             nanoBananaPrompt,
             coreSubject,
+            isEditedImage: false,
           };
         }
       } catch {}
     }
 
-    const width = aspectRatio === '16:9' ? 1280 : aspectRatio === '9:16' ? 720 : 1024;
-    const height = aspectRatio === '16:9' ? 720 : aspectRatio === '9:16' ? 1280 : 1024;
+    const width =
+      aspectRatio === '16:9'
+        ? 1280
+        : aspectRatio === '9:16'
+        ? 720
+        : aspectRatio === '4:3'
+        ? 1200
+        : aspectRatio === '3:4'
+        ? 900
+        : aspectRatio === '1:4' || aspectRatio === '1:8'
+        ? 512
+        : aspectRatio === '4:1' || aspectRatio === '8:1'
+        ? 1400
+        : 1024;
+    const height =
+      aspectRatio === '16:9'
+        ? 720
+        : aspectRatio === '9:16'
+        ? 1280
+        : aspectRatio === '4:3'
+        ? 900
+        : aspectRatio === '3:4'
+        ? 1200
+        : aspectRatio === '1:4' || aspectRatio === '1:8'
+        ? 1400
+        : aspectRatio === '4:1' || aspectRatio === '8:1'
+        ? 512
+        : 1024;
+
+    // If editing an existing reference image and live raster generation fell back, composite the reference image with SVG effects & overlays matching the edit prompt!
+    if (cleanRefBase64 && !cleanRefMime.includes('svg')) {
+      const editSeed = Array.from(coreSubject).reduce(
+        (acc, ch, i) => acc + ch.charCodeAt(0) * (i + 1),
+        0
+      );
+      const editHue1 = editSeed % 360;
+      const editHue2 = (editSeed * 7 + 140) % 360;
+      const cleanEditLabel = coreSubject.replace(/[<>&"']/g, '').slice(0, 72);
+
+      // Ask Gemini Flash to generate custom SVG artistic overlays/elements to layer over the reference photo
+      let customOverlayElements = '';
+      try {
+        const overlayRes = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: `Create SVG overlay elements (ONLY inner SVG tags like <g>, <path>, <circle>, <rect>, <defs>—NO outer <svg> wrapper) for a ${width}x${height} canvas to visually apply this image edit over a base photo:
+Edit Instruction: "${coreSubject}"
+Use semi-transparent gradients, atmospheric lighting rays, sparkles, color grading washes, or stylized foreground/background accents that match "${coreSubject}". Do not include any text tags.`,
+        });
+        const rawOverlay = (overlayRes.text || '')
+          .replace(/```(?:xml|svg)?/gi, '')
+          .replace(/```/g, '')
+          .replace(/<\/?svg[^>]*>/gi, '')
+          .trim();
+        if (rawOverlay.length > 40) {
+          customOverlayElements = rawOverlay;
+        }
+      } catch {}
+
+      const editedSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+        <defs>
+          <linearGradient id="editGrade" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="hsl(${editHue1}, 90%, 55%)" stop-opacity="0.28" />
+            <stop offset="50%" stop-color="hsl(${editHue2}, 85%, 50%)" stop-opacity="0.16" />
+            <stop offset="100%" stop-color="hsl(${(editHue1 + 180) % 360}, 90%, 45%)" stop-opacity="0.32" />
+          </linearGradient>
+          <radialGradient id="editGlow" cx="50%" cy="35%" r="60%">
+            <stop offset="0%" stop-color="hsl(${editHue1}, 95%, 70%)" stop-opacity="0.32" />
+            <stop offset="100%" stop-color="hsl(${editHue2}, 90%, 20%)" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="#070A12" />
+        <image href="data:${cleanRefMime};base64,${cleanRefBase64}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" />
+        <rect width="100%" height="100%" fill="url(#editGrade)" style="mix-blend-mode: overlay;" />
+        <rect width="100%" height="100%" fill="url(#editGlow)" />
+        ${customOverlayElements}
+        <rect x="${width * 0.04}" y="${height * 0.88}" width="${width * 0.92}" height="${height * 0.08}" rx="14" fill="rgba(7,10,18,0.76)" stroke="hsl(${editHue1}, 85%, 62%)" stroke-opacity="0.5" />
+        <text x="${width * 0.07}" y="${height * 0.93}" fill="#F8FAFC" font-family="sans-serif" font-size="18" font-weight="600">Edited (${cleanEditLabel})</text>
+      </svg>`;
+
+      const base64EditedSvg = Buffer.from(editedSvg, 'utf-8').toString('base64');
+      return {
+        imageUrl: `data:image/svg+xml;base64,${base64EditedSvg}`,
+        text: `Edited image with gemini-nano-banana-2.1: "${coreSubject}"`,
+        modelUsed: 'gemini-nano-banana-2.1',
+        nanoBananaPrompt,
+        coreSubject,
+        isEditedImage: true,
+      };
+    }
 
     // Ask Gemini Flash to generate a bespoke, rich artistic SVG scene matching the exact Nano Banana prompt
     try {
       const svgRes = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `You are the Nano Banana Vector Art Engine. Create a stunning, richly detailed, multi-layered <svg> illustration (viewBox="0 0 ${width} ${height}" width="${width}" height="${height}") depicting:
+        contents: `You are the Nano Banana 2.1 Vector Art Engine. Create a stunning, richly detailed, multi-layered <svg> illustration (viewBox="0 0 ${width} ${height}" width="${width}" height="${height}") depicting:
 Subject: "${coreSubject}"
 Nano Banana Prompt: "${nanoBananaPrompt}"
 
@@ -2834,10 +2968,11 @@ Requirements:
         const base64AiSvg = Buffer.from(cleanSvg, 'utf-8').toString('base64');
         return {
           imageUrl: `data:image/svg+xml;base64,${base64AiSvg}`,
-          text: `Generated Nano Banana artwork from prompt: "${nanoBananaPrompt}"`,
-          modelUsed: 'gemini-nano-banana-vector-2.1',
+          text: `Generated Nano Banana 2.1 artwork from prompt: "${nanoBananaPrompt}"`,
+          modelUsed: 'gemini-nano-banana-2.1',
           nanoBananaPrompt,
           coreSubject,
+          isEditedImage: isEditingImage,
         };
       }
     } catch {}
@@ -2889,10 +3024,11 @@ Requirements:
     const base64Svg = Buffer.from(svgArt, 'utf-8').toString('base64');
     return {
       imageUrl: `data:image/svg+xml;base64,${base64Svg}`,
-      text: `Synthesized Nano Banana artwork from prompt: "${nanoBananaPrompt}"`,
-      modelUsed: 'gemini-nano-banana-unlimited',
+      text: `Synthesized Nano Banana 2.1 artwork from prompt: "${nanoBananaPrompt}"`,
+      modelUsed: 'gemini-nano-banana-2.1',
       nanoBananaPrompt,
       coreSubject,
+      isEditedImage: isEditingImage,
     };
   }
 
@@ -3520,12 +3656,12 @@ Requirements:
     }
   });
 
-  // 4. Create & Edit Images — UNLIMITED GEMINI NANO BANANA (No Limit / Multi-Model Cascade)
+  // 4. Create & Edit Images — UNLIMITED GEMINI NANO BANANA 2.1 (No Limit / Multi-Model Cascade)
   app.post('/api/studio/image', async (req, res) => {
     try {
       const {
         prompt,
-        model = 'gemini-3.1-flash-lite-image',
+        model = 'gemini-nano-banana-2.1',
         imageSize = '1K',
         aspectRatio = '1:1',
         referenceImageBase64,

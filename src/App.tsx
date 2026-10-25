@@ -86,6 +86,7 @@ import { AuthModal } from './components/AuthModal';
 import { LiveVoiceModal } from './components/LiveVoiceModal';
 import { MultimodalStudio } from './components/MultimodalStudio';
 import { WorkspaceHub } from './components/WorkspaceHub';
+import { KaraFutureLogo } from './components/KaraFutureLogo';
 import type { User } from 'firebase/auth';
 
 type NavView = 'chat' | 'memories' | 'studio' | 'workspace';
@@ -1990,10 +1991,28 @@ export default function App() {
     }
   };
 
-  // Direct Text-to-Nano-Banana Image Generator in Chat
-  const handleGenerateNanoBananaInChat = async (textIdea: string, preConvertedPrompt?: string) => {
+  // Built-in Create & Edit Images (gemini-nano-banana-2.1) in Chat
+  const handleGenerateNanoBananaInChat = async (
+    textIdea: string,
+    preConvertedPrompt?: string,
+    options?: {
+      aspectRatio?: string;
+      imageSize?: string;
+      referenceImageBase64?: string | null;
+      referenceMimeType?: string;
+      referenceImageUrl?: string | null;
+      referenceImageName?: string;
+    }
+  ) => {
     const cleanIdea = textIdea.trim();
     if (!cleanIdea || isSending) return;
+
+    const isEditing = Boolean(options?.referenceImageBase64 || options?.referenceImageUrl);
+    const chosenAspect = options?.aspectRatio || '1:1';
+    const chosenSize = options?.imageSize || '1K';
+    const refDataUrl = options?.referenceImageUrl || undefined;
+    const refBase64 = options?.referenceImageBase64 || refDataUrl || undefined;
+    const refMime = options?.referenceMimeType || 'image/png';
 
     setIsSending(true);
     const userMsgId = `${activeSessionId}__msg_${Date.now()}_u`;
@@ -2002,10 +2021,14 @@ export default function App() {
       sessionId: activeSessionId,
       userId: activeStorageUserId,
       role: 'user',
-      content: `Generate Nano Banana Image: ${cleanIdea}`,
+      content: isEditing
+        ? `Edit Image (gemini-nano-banana-2.1 · ${chosenAspect} · ${chosenSize}): ${cleanIdea}`
+        : `Create Image (gemini-nano-banana-2.1 · ${chosenAspect} · ${chosenSize}): ${cleanIdea}`,
       mode: profile.preferredMode,
-      emotionDetected: 'Creative',
+      emotionDetected: isEditing ? 'Editing Visual' : 'Creative',
       soapTriggered: false,
+      sharedPhotoUrl: refDataUrl,
+      sharedPhotoName: options?.referenceImageName || (isEditing ? 'Reference Image' : undefined),
       createdAt: Date.now(),
     };
     setAllMessages((prev) => [...prev, userMsg]);
@@ -2015,7 +2038,7 @@ export default function App() {
         role: 'user',
         content: userMsg.content,
         mode: profile.preferredMode,
-        emotionDetected: 'Creative',
+        emotionDetected: userMsg.emotionDetected,
         soapTriggered: false,
       }).catch(() => {});
     }
@@ -2026,19 +2049,24 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: preConvertedPrompt || cleanIdea,
-          model: 'gemini-3.1-flash-lite-image',
-          imageSize: '1K',
-          aspectRatio: '1:1',
+          model: 'gemini-nano-banana-2.1',
+          imageSize: chosenSize,
+          aspectRatio: chosenAspect,
+          referenceImageBase64: refBase64,
+          referenceMimeType: refMime,
+          skipPromptExpansion: isEditing || Boolean(preConvertedPrompt),
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.imageUrl) {
-        throw new Error(data.error || 'Could not generate Nano Banana artwork.');
+        throw new Error(data.error || 'Could not generate or edit Nano Banana 2.1 artwork.');
       }
 
       const effectiveNanoPrompt = data.nanoBananaPrompt || preConvertedPrompt || cleanIdea;
       const assistantMsgId = `${activeSessionId}__msg_${Date.now()}_a`;
-      const replyContent = `Here's your Nano Banana artwork for "${cleanIdea}"! I converted your text into a full Nano Banana Image Generator Prompt so the lighting, composition, and details really pop.`;
+      const replyContent = isEditing
+        ? `Here is your edited image for "${cleanIdea}" powered by gemini-nano-banana-2.1 (${chosenAspect} · ${chosenSize})! You can click "Edit Image" on this result anytime to keep refining or layering more changes.`
+        : `Here's your newly created image for "${cleanIdea}" powered by gemini-nano-banana-2.1 (${chosenAspect} · ${chosenSize})! You can click "Edit Image" right on the artwork to modify details, lighting, or style with a text prompt.`;
       const assistantMsg: EnhancedChatMessage = {
         id: assistantMsgId,
         sessionId: activeSessionId,
@@ -2046,16 +2074,27 @@ export default function App() {
         role: 'assistant',
         content: replyContent,
         mode: profile.preferredMode,
-        emotionDetected: 'Inspired & Creative',
+        emotionDetected: isEditing ? 'Precision Visual Edit' : 'Inspired & Creative',
         soapTriggered: false,
         generatedImageUrl: data.imageUrl,
         generatedImagePrompt: effectiveNanoPrompt,
         modelUsed: data.modelUsed || 'gemini-nano-banana-2.1',
-        responseStyleUsed: 'Short & Punchy + Nano Banana Art',
+        reasoningTrace: [
+          isEditing
+            ? `Image Edit Pipeline (gemini-nano-banana-2.1): Loaded reference image (${
+                options?.referenceImageName || 'source image'
+              }) and parsed edit instruction "${cleanIdea}".`
+            : `Text-to-Image Pipeline (gemini-nano-banana-2.1): Expanded "${cleanIdea}" into a high-detail Nano Banana 2.1 visual prompt.`,
+          `Canvas & Resolution Config: Synthesized at ${chosenSize} resolution with ${chosenAspect} aspect ratio.`,
+          `Persona Integration: Presenting visual artwork in ${profile.preferredMode.toUpperCase()} mode with 1-tap iterative image editing ready.`,
+        ],
+        responseStyleUsed: isEditing
+          ? `Image Edit · gemini-nano-banana-2.1 (${chosenAspect})`
+          : `Image Creation · gemini-nano-banana-2.1 (${chosenAspect})`,
         followUps: [
-          `Generate another Nano Banana remix of: ${cleanIdea}`,
-          'Make a 16:9 cinematic version of this scene',
-          'Add cyberpunk neon rain to this image',
+          `Edit this image: add cinematic neon lighting`,
+          `Generate another variation of: ${cleanIdea}`,
+          'Make a 16:9 widescreen version of this scene',
         ],
         createdAt: Date.now(),
       };
@@ -2070,7 +2109,7 @@ export default function App() {
           role: 'assistant',
           content: replyContent,
           mode: profile.preferredMode,
-          emotionDetected: 'Inspired & Creative',
+          emotionDetected: assistantMsg.emotionDetected,
           soapTriggered: false,
         }).catch(() => {});
         setLastCloudSyncAt(Date.now());
@@ -2083,7 +2122,7 @@ export default function App() {
           sessionId: activeSessionId,
           userId: activeStorageUserId,
           role: 'assistant',
-          content: `Could not synthesize Nano Banana image: ${err?.message || 'Please try again.'}`,
+          content: `Could not synthesize image with gemini-nano-banana-2.1: ${err?.message || 'Please try again.'}`,
           mode: profile.preferredMode,
           emotionDetected: 'Concerned',
           soapTriggered: false,
@@ -2707,9 +2746,16 @@ export default function App() {
               e.preventDefault();
               setActiveView('chat');
             }}
-            className="text-lg font-bold tracking-tight text-white whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-2.5 text-lg font-bold tracking-tight text-white whitespace-nowrap shrink-0 group"
+            title="KARA — Adaptive Emotional AI & Studio"
           >
-            KARA
+            <KaraFutureLogo
+              size="md"
+              mode={profile.preferredMode}
+              isActive={Boolean(isSpeakingId || isSending)}
+              showWordmark
+              subtitle="FUTURE CORE"
+            />
           </a>
 
           {activeView !== 'chat' && (

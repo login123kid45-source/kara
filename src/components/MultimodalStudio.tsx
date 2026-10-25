@@ -14,13 +14,15 @@ type StudioTab = 'image' | 'video' | 'music' | 'analyze';
 export const MultimodalStudio: React.FC = () => {
   const [activeTab, setActiveTab] = useState<StudioTab>('image');
 
-  // Image Generation & Editing State — Unlimited Gemini Nano Banana (No Limit)
+  // Image Generation & Editing State — Unlimited Gemini Nano Banana 2.1 (No Limit)
   const [imgPrompt, setImgPrompt] = useState('');
   const [imgModel, setImgModel] = useState<
-    'gemini-3.1-flash-lite-image' | 'gemini-nano-banana-2.1' | 'gemini-3-pro-image-preview'
-  >('gemini-3.1-flash-lite-image');
+    'gemini-nano-banana-2.1' | 'gemini-3.1-flash-lite-image' | 'gemini-3-pro-image-preview'
+  >('gemini-nano-banana-2.1');
   const [imgSize, setImgSize] = useState<'1K' | '2K' | '4K'>('1K');
-  const [imgAspect, setImgAspect] = useState<'1:1' | '16:9' | '9:16' | '4:3' | '3:4'>('1:1');
+  const [imgAspect, setImgAspect] = useState<
+    '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '1:4' | '4:1' | '1:8' | '8:1'
+  >('1:1');
   const [refImageBase64, setRefImageBase64] = useState<string | null>(null);
   const [refImageMime, setRefImageMime] = useState<string>('image/png');
   const [refImageName, setRefImageName] = useState<string>('');
@@ -396,13 +398,17 @@ export const MultimodalStudio: React.FC = () => {
                     <option value="9:16">9:16 Portrait</option>
                     <option value="4:3">4:3 Editorial</option>
                     <option value="3:4">3:4 Poster</option>
+                    <option value="1:4">1:4 Tall Banner</option>
+                    <option value="4:1">4:1 Wide Banner</option>
+                    <option value="1:8">1:8 Ultra-Tall</option>
+                    <option value="8:1">8:1 Ultra-Wide</option>
                   </select>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs text-neutral-300 mb-1.5">
-                  Optional Reference Image (for Image Editing)
+                  Optional Reference Image (for Image Editing with gemini-nano-banana-2.1)
                 </label>
                 <label className="flex items-center justify-between px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg cursor-pointer hover:border-neutral-700 text-xs text-neutral-400">
                   <span className="truncate">
@@ -426,23 +432,30 @@ export const MultimodalStudio: React.FC = () => {
                   />
                 </label>
                 {refImageBase64 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRefImageBase64(null);
-                      setRefImageName('');
-                    }}
-                    className="mt-1 text-xs text-rose-400 hover:underline"
-                  >
-                    Clear uploaded image
-                  </button>
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <span className="text-[11px] font-mono text-sky-300">
+                      Editing: {refImageName || 'Loaded Image'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRefImageBase64(null);
+                        setRefImageName('');
+                      }}
+                      className="text-xs text-rose-400 hover:underline"
+                    >
+                      Clear uploaded image
+                    </button>
+                  </div>
                 )}
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <label className="block text-xs text-neutral-300">
-                    Text → Nano Banana Image Generator Prompt
+                    {refImageBase64
+                      ? 'Image Edit Prompt (gemini-nano-banana-2.1)'
+                      : 'Text → Nano Banana 2.1 Image Prompt'}
                   </label>
                   <button
                     type="button"
@@ -463,7 +476,11 @@ export const MultimodalStudio: React.FC = () => {
                   rows={3}
                   value={imgPrompt}
                   onChange={(e) => setImgPrompt(e.target.value)}
-                  placeholder="Type any plain text idea (e.g. 'cyberpunk rooftop cafe in rain') and click 'Text → Nano Banana Prompt' or generate directly..."
+                  placeholder={
+                    refImageBase64
+                      ? "Describe how to edit the image (e.g. 'Add neon cyberpunk lighting', 'Change background to sunset beach')..."
+                      : "Type any plain text idea (e.g. 'cyberpunk rooftop cafe in rain') to create with gemini-nano-banana-2.1..."
+                  }
                   className="w-full px-3.5 py-2.5 text-sm bg-neutral-900 border border-neutral-800 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-sky-500"
                 />
               </div>
@@ -479,10 +496,10 @@ export const MultimodalStudio: React.FC = () => {
               <Sparkles className="w-4 h-4" />
               <span>
                 {imgLoading
-                  ? 'Synthesizing Unlimited Nano Banana...'
+                  ? 'Synthesizing with gemini-nano-banana-2.1...'
                   : refImageBase64
-                  ? 'Edit Image with Nano Banana (No Limit)'
-                  : `Generate ${imgSize} Nano Banana Image (No Limit)`}
+                  ? 'Edit Image with gemini-nano-banana-2.1'
+                  : `Create ${imgSize} Image with gemini-nano-banana-2.1`}
               </span>
             </button>
           </form>
@@ -500,7 +517,7 @@ export const MultimodalStudio: React.FC = () => {
                   {generatedNanoPrompt && (
                     <div className="w-full p-3 rounded-xl bg-neutral-900/90 border border-amber-500/30 text-left space-y-1">
                       <div className="flex items-center justify-between text-[11px] font-mono text-amber-300">
-                        <span>Active Nano Banana Image Generator Prompt</span>
+                        <span>Active Nano Banana 2.1 Prompt</span>
                         <button
                           type="button"
                           onClick={() => navigator.clipboard?.writeText(generatedNanoPrompt)}
@@ -514,10 +531,23 @@ export const MultimodalStudio: React.FC = () => {
                       </p>
                     </div>
                   )}
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <span className="text-xs font-mono text-amber-300">
-                      Gemini Nano Banana · Unlimited Generation
+                      gemini-nano-banana-2.1 · Create &amp; Edit
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRefImageBase64(generatedImgUrl);
+                        setRefImageMime('image/png');
+                        setRefImageName('Generated_Nano_Banana_2.1.png');
+                        setImgPrompt('Add dramatic neon lighting and enhance atmospheric details');
+                      }}
+                      className="px-3.5 py-2 text-xs font-medium bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/50 text-sky-200 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Edit This Image</span>
+                    </button>
                     <a
                       href={generatedImgUrl}
                       download={`kara_nano_banana_${Date.now()}.png`}
