@@ -4,6 +4,8 @@ const DB_NAME = 'kara_room_database_v1';
 const DB_VERSION = 1;
 const MESSAGES_TABLE = 'chat_messages_table';
 const SYNC_MIRROR_PREFIX = 'kara_room_chat_mirror_v1_';
+const LATEST_ACTIVE_MIRROR_KEY = 'kara_room_latest_active_mirror_v1';
+const LAST_SAVED_MESSAGE_KEY = 'kara_last_saved_message_v1';
 
 /**
  * Room-style Local Database & DAO (IndexedDB + Write-Through Sync Mirror)
@@ -43,26 +45,110 @@ class KaraRoomDatabase {
   }
 
   /**
+   * Strip heavy base64 payloads only for the localStorage fallback mirror when quota is exceeded
+   * (IndexedDB still retains the full base64 images).
+   */
+  private makeQuotaSafeMessages(messages: EnhancedChatMessage[], limitCount = 50): EnhancedChatMessage[] {
+    return messages.slice(-limitCount).map((m, idx, arr) => {
+      const isVeryLast = idx >= arr.length - 2;
+      const copy: EnhancedChatMessage = { ...m };
+      if (!isVeryLast) {
+        if (copy.generatedImageUrl && copy.generatedImageUrl.length > 4000) {
+          delete copy.generatedImageUrl;
+        }
+        if (copy.sharedPhotoUrl && copy.sharedPhotoUrl.length > 4000) {
+          delete copy.sharedPhotoUrl;
+        }
+        if (copy.sharedPhotos && copy.sharedPhotos.length > 0) {
+          delete copy.sharedPhotos;
+        }
+      }
+      return copy;
+    });
+  }
+
+  /**
    * Synchronous read from write-through cache for zero-flicker startup hydration
    */
   public getMessagesSync(userId: string): EnhancedChatMessage[] {
     try {
       const raw = localStorage.getItem(this.getMirrorKey(userId));
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      // Fallback to the latest active conversation mirror so reloads before auth hydration still restore the last message
+      const fallbackRaw = localStorage.getItem(LATEST_ACTIVE_MIRROR_KEY);
+      if (fallbackRaw) {
+        const parsedFallback = JSON.parse(fallbackRaw);
+        if (Array.isArray(parsedFallback) && parsedFallback.length > 0) {
+          return parsedFallback;
+        }
+      }
+      return [];
     } catch {
       return [];
     }
   }
 
-  private writeMirrorSync(userId: string, messages: EnhancedChatMessage[]): void {
+  public getLastSavedMessageSync(): EnhancedChatMessage | null {
     try {
-      localStorage.setItem(
-        this.getMirrorKey(userId),
-        JSON.stringify(messages.slice(-100))
-      );
-    } catch {}
+      const raw = localStorage.getItem(LAST_SAVED_MESSAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' && parsed.id ? (parsed as EnhancedChatMessage) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private writeMirrorSync(userId: string, messages: EnhancedChatMessage[]): void {
+    if (!messages || messages.length === 0) return;
+    const key = this.getMirrorKey(userId);
+    const lastMsg = messages[messages.length - 1];
+
+    // Always persist the single last message independently so it is 100% guaranteed to survive reloads
+    if (lastMsg) {
+      try {
+        const compactLast: EnhancedChatMessage = { ...lastMsg };
+        if (compactLast.generatedImageUrl && compactLast.generatedImageUrl.length > 120000) {
+          delete compactLast.generatedImageUrl;
+        }
+        if (compactLast.sharedPhotoUrl && compactLast.sharedPhotoUrl.length > 120000) {
+          delete compactLast.sharedPhotoUrl;
+        }
+        if (compactLast.sharedPhotos) {
+          delete compactLast.sharedPhotos;
+        }
+        localStorage.setItem(LAST_SAVED_MESSAGE_KEY, JSON.stringify(compactLast));
+      } catch {}
+    }
+
+    try {
+      const serialized = JSON.stringify(messages.slice(-80));
+      localStorage.setItem(key, serialized);
+      localStorage.setItem(LATEST_ACTIVE_MIRROR_KEY, serialized);
+    } catch {
+      // QuotaExceededError fallback: strip heavy base64 images from older messages so text history & last message always save
+      try {
+        const compactSerialized = JSON.stringify(this.makeQuotaSafeMessages(messages, 40));
+        localStorage.setItem(key, compactSerialized);
+        localStorage.setItem(LATEST_ACTIVE_MIRROR_KEY, compactSerialized);
+      } catch {
+        try {
+          const minimalSerialized = JSON.stringify(this.makeQuotaSafeMessages(messages, 15).map((m) => ({
+            ...m,
+            generatedImageUrl: undefined,
+            sharedPhotoUrl: undefined,
+            sharedPhotos: undefined,
+          })));
+          localStorage.setItem(key, minimalSerialized);
+          localStorage.setItem(LATEST_ACTIVE_MIRROR_KEY, minimalSerialized);
+        } catch {}
+      }
+    }
   }
 
   /**
@@ -70,9 +156,18 @@ class KaraRoomDatabase {
    */
   public async getAllMessages(userId: string): Promise<EnhancedChatMessage[]> {
     const cleanUserId = (userId || 'guest').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const syncCached = this.getMessagesSync(cleanUserId);
+    const lastSavedMsg = this.getLastSavedMessageSync();
+
+    const ensureLastSavedIncluded = (list: EnhancedChatMessage[]): EnhancedChatMessage[] => {
+      if (!lastSavedMsg) return list;
+      if (list.some((m) => m.id === lastSavedMsg.id)) return list;
+      return [...list, lastSavedMsg];
+    };
+
     const db = await this.getDb();
     if (!db) {
-      return this.getMessagesSync(cleanUserId);
+      return ensureLastSavedIncluded(syncCached);
     }
 
     return new Promise((resolve) => {
@@ -92,15 +187,16 @@ class KaraRoomDatabase {
             return copy as EnhancedChatMessage;
           });
           if (cleaned.length > 0) {
-            this.writeMirrorSync(cleanUserId, cleaned);
-            resolve(cleaned);
+            const combined = ensureLastSavedIncluded(cleaned);
+            this.writeMirrorSync(cleanUserId, combined);
+            resolve(combined);
           } else {
-            resolve(this.getMessagesSync(cleanUserId));
+            resolve(ensureLastSavedIncluded(syncCached));
           }
         };
-        req.onerror = () => resolve(this.getMessagesSync(cleanUserId));
+        req.onerror = () => resolve(ensureLastSavedIncluded(syncCached));
       } catch {
-        resolve(this.getMessagesSync(cleanUserId));
+        resolve(ensureLastSavedIncluded(syncCached));
       }
     });
   }
@@ -156,6 +252,8 @@ class KaraRoomDatabase {
     const cleanUserId = (userId || 'guest').replace(/[^a-zA-Z0-9_\-]/g, '_');
     try {
       localStorage.removeItem(this.getMirrorKey(cleanUserId));
+      localStorage.removeItem(LATEST_ACTIVE_MIRROR_KEY);
+      localStorage.removeItem(LAST_SAVED_MESSAGE_KEY);
     } catch {}
 
     const db = await this.getDb();
@@ -189,6 +287,8 @@ class KaraRoomDatabase {
    */
   public async wipeAllDatabase(): Promise<void> {
     try {
+      localStorage.removeItem(LATEST_ACTIVE_MIRROR_KEY);
+      localStorage.removeItem(LAST_SAVED_MESSAGE_KEY);
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);

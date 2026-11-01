@@ -62,7 +62,7 @@ service cloud.firestore {
         data.userId == request.auth.uid &&
         isValidId(data.userId) &&
         data.category is string && data.category.size() >= 4 && data.category.size() <= 16 &&
-        (data.category == 'preference' || data.category == 'fact' || data.category == 'emotion' || data.category == 'bond' || data.category == 'date' || data.category == 'milestone') &&
+        (data.category == 'preference' || data.category == 'fact' || data.category == 'emotion' || data.category == 'bond' || data.category == 'date' || data.category == 'milestone' || data.category == 'chat_memory' || data.category == 'self_discovery' || data.category == 'human_nature') &&
         data.content is string && data.content.size() >= 1 && data.content.size() <= 500 &&
         data.importance is int && data.importance >= 1 && data.importance <= 5 &&
         data.createdAt is timestamp;
@@ -98,7 +98,7 @@ service cloud.firestore {
 
     // Connection test path (read-only check for offline detection)
     match /test/connection {
-      allow get: if isSignedIn();
+      allow get: if true;
     }
 
     // 4. Collection Rules

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..900&amp;family=Literata:wght@100..900&amp;family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary":"#3c0091","on-secondary-fixed-variant":"#004e5c","on-tertiary-fixed":"#2a1700","outline":"#958ea0","on-primary-container":"#340080","surface-container-high":"#292a2f","secondary-fixed":"#acedff","surface-container":"#1e1f25","tertiary":"#ffb95f","outline-variant":"#494454","surface-container-highest":"#34343a","on-surface-variant":"#cbc3d7","primary-container":"#a078ff","on-surface":"#e3e1e9","tertiary-container":"#ca8100","on-error":"#690005","inverse-surface":"#e3e1e9","on-primary-fixed-variant":"#5516be","inverse-on-surface":"#2f3036","secondary":"#4cd7f6","surface":"#121318","tertiary-fixed":"#ffddb8","error-container":"#93000a","background":"#121318","on-background":"#e3e1e9","on-tertiary":"#472a00","inverse-primary":"#6d3bd7","primary":"#d0bcff","on-secondary-fixed":"#001f26","on-secondary":"#003640","surface-container-low":"#1a1b21","on-tertiary-fixed-variant":"#653e00","surface-bright":"#38393f","secondary-fixed-dim":"#4cd7f6","surface-variant":"#34343a","on-primary-fixed":"#23005c","tertiary-fixed-dim":"#ffb95f","error":"#ffb4ab","surface-container-lowest":"#0d0e13","on-tertiary-container":"#3e2400","secondary-container":"#03b5d3","surface-tint":"#d0bcff","on-secondary-container":"#00424e","surface-dim":"#121318","primary-fixed":"#e9ddff","on-error-container":"#ffdad6","primary-fixed-dim":"#d0bcff"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"space-md":"1rem",gutter:"1rem","margin-desktop":"2rem","margin-tablet":"1.5rem","space-sm":"0.5rem","space-lg":"1.5rem","space-xs":"0.25rem","space-xl":"2.5rem","gutter-desktop":"1.5rem",margin:"1rem"},fontFamily:{"display-lg":["Literata"],"label-telemetry":["JetBrains Mono"],"body-sm":["Plus Jakarta Sans"],"headline-md":["Plus Jakarta Sans"],"headline-lg":["Literata"],"display-lg-mobile":["Literata"],"headline-lg-mobile":["Literata"],"label-code":["JetBrains Mono"],"body-lg":["Literata"],"body-md":["Plus Jakarta Sans"],"label-ui":["Plus Jakarta Sans"]},fontSize:{"display-lg":["48px",{lineHeight:"56px",letterSpacing:"-0.02em",fontWeight:"500"}],"label-telemetry":["11px",{lineHeight:"16px",letterSpacing:"0.04em",fontWeight:"500"}],"body-sm":["12px",{lineHeight:"18px",letterSpacing:"0.01em",fontWeight:"400"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-lg":["32px",{lineHeight:"40px",letterSpacing:"-0.015em",fontWeight:"500"}],"display-lg-mobile":["32px",{lineHeight:"40px",letterSpacing:"-0.01em",fontWeight:"500"}],"headline-lg-mobile":["24px",{lineHeight:"32px",letterSpacing:"-0.01em",fontWeight:"500"}],"label-code":["13px",{lineHeight:"20px",letterSpacing:"-0.01em",fontWeight:"400"}],"body-lg":["18px",{lineHeight:"30px",letterSpacing:"0em",fontWeight:"400"}],"body-md":["14px",{lineHeight:"22px",letterSpacing:"0em",fontWeight:"400"}],"label-ui":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface min-h-screen selection:bg-primary-container selection:text-on-primary-container"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest/90 backdrop-blur-2xl z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="flex flex-col flex-1 overflow-y-auto px-4 py-4 space-y-6"><div class="flex items-center justify-between px-2 pt-1"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-telemetry text-label-telemetry text-on-surface-variant uppercase tracking-wider">SYNTHETIC CORE</span></div><button class="flex items-center justify-center p-1 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[18px]">dock_to_left</span></button></div><div><div class="px-2 mb-2 font-label-telemetry text-label-telemetry text-outline uppercase tracking-wider">SYNTHESIS PRESETS</div><div class="space-y-1.5"><div class="px-3 py-2.5 rounded-xl bg-surface-container-high/60 backdrop-blur-md flex items-center justify-between shadow-[0_4px_16px_-4px_rgba(139,92,246,0.1)]"><div class="flex items-center gap-2.5"><div class="flex -space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-surface-container-lowest"></span><span class="w-2.5 h-2.5 rounded-full bg-secondary ring-2 ring-surface-container-lowest"></span><span class="w-2.5 h-2.5 rounded-full bg-tertiary ring-2 ring-surface-container-lowest"></span></div><span class="font-label-ui text-label-ui text-on-surface">Claude + Gemini + Grok</span></div><span class="font-label-telemetry text-label-telemetry text-secondary">BALANCED</span></div></div></div><nav class="space-y-1" data-active-classes="bg-surface-container-high text-on-surface font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.2)]"><div class="px-2 mb-2 font-label-telemetry text-label-telemetry text-outline uppercase tracking-wider">ORCHESTRATION</div><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="parallel-arena" href="#"><span>Parallel Arena</span><span class="font-label-telemetry text-label-telemetry text-outline">3x</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="omnibar-workspace" href="#"><span>Omnibar Workspace</span><span class="font-label-telemetry text-label-telemetry text-outline">PRO</span></a><a aria-current="page" class="flex items-center justify-between px-3 py-2 rounded-xl transition-all bg-surface-container-high text-on-surface font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.2)]" data-path="banana-gen" href="#"><span>Banana Synth</span><span class="font-label-telemetry text-label-telemetry text-tertiary">GEN</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="autonomous-agents-grokbots" href="#"><span>Autonomous Agents</span><span class="font-label-telemetry text-label-telemetry text-secondary">AUTO</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="email-comms-hub" href="#"><span>Email &amp; Comms Hub</span><span class="font-label-telemetry text-label-telemetry text-outline">SYNC</span></a></nav><div><div class="flex items-center justify-between px-2 mb-2"><span class="font-label-telemetry text-label-telemetry text-outline uppercase tracking-wider">RECENT SESSIONS</span><span class="material-symbols-outlined text-[14px] text-outline">history</span></div><div class="space-y-1 font-body-sm text-body-sm"><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors font-label-ui text-label-ui" data-path="session-quantum-inference" href="#">Quantum Kernel Inference</a><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors font-label-ui text-label-ui" data-path="session-multimodal-synthesis" href="#">Multimodal Spectral Analysis</a><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors font-label-ui text-label-ui" data-path="session-epistemic-tree" href="#">Epistemic Verification DAG</a><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors font-label-ui text-label-ui" data-path="session-neural-decompilation" href="#">Neural Bytecode Decompile</a></div></div></div><div class="p-4 bg-surface-container-low/60 backdrop-blur-md rounded-t-xl"><div class="flex items-center justify-between mb-2"><span class="font-label-telemetry text-label-telemetry text-on-surface-variant uppercase">ACTIVE RUNTIME TOKENS</span><span class="font-label-telemetry text-label-telemetry text-secondary font-medium">841.2K / 1.2M</span></div><div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden"><div class="h-full bg-gradient-to-r from-primary via-secondary to-tertiary w-[70%]"></div></div><div class="flex items-center justify-between mt-3 pt-2 text-outline font-label-telemetry text-label-telemetry"><span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-tertiary">bolt</span>78.4 t/s</span><span>LATENCY: 18ms</span></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface-container-lowest/80 backdrop-blur-2xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.3)]"><div class="h-16 w-full px-6 flex items-center justify-between gap-4"><div class="flex items-center gap-4 flex-shrink-0"><img alt="Kara AI Core Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1V3vyzJytsyaxJWwFB-vz0o3ggUVla4fCYsR7GfgXCfovXxg7KWARALODilyYWwBeCIPdp8T5hW2nF52XLJK58_9LH8A2U3i95fjR686selBiPlVyLybGvV1FaOnruBwz_7P3BRG6rw8rHyCOHY6L9epXt3RIietFIDPe21pgMp6e3C5XZ7DXqby2P1P666G2VjAkGTaLm7um38IzvZbpDvDWk6v1eXQf4HG5fmYPrvgA9qrstfy1EbHoik"/><div class="flex flex-col"><div class="flex items-center gap-2"><span class="font-label-ui text-label-ui text-on-surface tracking-tight font-bold">Kara 3.0</span><span class="text-outline text-body-sm">/</span><span class="font-label-ui text-label-ui text-on-surface-variant">Multi-Model Nexus</span></div></div></div><nav class="hidden xl:flex items-center gap-1 px-2 py-1 rounded-full bg-surface-container-low/70 backdrop-blur-md" data-active-classes="bg-surface-container-high text-on-surface shadow-[0_2px_12px_rgba(0,0,0,0.25)] font-semibold"><a class="px-3 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="parallel-arena" href="#">Parallel Arena</a><a class="px-3 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="omnibar-workspace" href="#">Omnibar Workspace</a><a aria-current="page" class="px-3 py-1.5 rounded-full transition-colors bg-surface-container-high text-on-surface shadow-[0_2px_12px_rgba(0,0,0,0.25)] font-semibold" data-path="banana-gen" href="#">Banana Synth</a><a class="px-3 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="autonomous-agents-grokbots" href="#">Autonomous Agents</a><a class="px-3 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="email-comms-hub" href="#">Email &amp; Comms Hub</a></nav><div class="flex items-center gap-3"><div class="hidden lg:flex items-center gap-2.5 px-3 py-1 rounded-full bg-surface-container-low/80 backdrop-blur-md font-label-telemetry text-label-telemetry"><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span><span class="text-outline">Grok-3:</span><span class="text-secondary">Active</span></div><span class="text-outline-variant">|</span><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span><span class="text-outline">Claude-3.7:</span><span class="text-tertiary">Reasoning</span></div><span class="text-outline-variant">|</span><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span><span class="text-outline">Gemini-2.0:</span><span class="text-primary">Vision</span></div></div><div class="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container font-label-telemetry text-label-telemetry text-secondary-fixed"><span class="material-symbols-outlined text-[14px] text-secondary">all_inclusive</span><span>UNCONSTRAINED COMPUTE // 1.2M CTX</span></div><button class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-container-high/80 hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-telemetry text-label-telemetry text-outline hidden sm:inline">Cmd+K</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_rgba(208,188,255,0.25)]"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Top Ambient Glow Field -->
+<div class="relative w-full overflow-hidden px-6 lg:px-8 py-6 flex flex-col gap-6">
+<div class="absolute -top-32 left-1/4 w-[600px] h-[350px] bg-primary/10 rounded-full blur-[140px] pointer-events-none"></div>
+<div class="absolute top-10 right-1/4 w-[480px] h-[300px] bg-secondary/10 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="absolute top-40 right-10 w-[300px] h-[220px] bg-tertiary/10 rounded-full blur-[100px] pointer-events-none"></div>
+<!-- Page Header & Action Matrix -->
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 relative z-10">
+<div class="flex flex-col gap-2 max-w-3xl">
+<div class="flex flex-wrap items-center gap-2.5">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high/90 backdrop-blur-md font-label-telemetry text-label-telemetry text-secondary shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-ping"></span>
+            SYNTH ENGINE // LATENT BANANA MATRIX v4.2
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-container/20 text-primary font-label-telemetry text-label-telemetry uppercase tracking-wider">
+<span class="material-symbols-outlined text-[13px]">lock_open</span>
+            UNRESTRICTED GENERATIVE WEIGHTS
+          </span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-container-low text-tertiary font-label-telemetry text-label-telemetry">
+            A100-SXM4-80GB
+          </span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight font-medium mt-1">
+          Banana Synth &amp; Multimodal Latent Studio
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl leading-relaxed">
+          Concurrent multi-model diffusion synthesis fusing Claude 3.7 spatial composition, Grok raw kinetic styling, and Gemini 2.0 photonic tensor grounding.
+        </p>
+</div>
+<!-- Action Cluster -->
+<div class="flex items-center flex-wrap gap-2.5">
+<button class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition-all font-label-ui text-label-ui shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">download_2</span>
+<span>Export 4K Bundle</span>
+</button>
+<button class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition-all font-label-ui text-label-ui shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">alt_route</span>
+<span>Batch Latent Warp</span>
+</button>
+<button class="flex items-center gap-2.5 px-5 py-2 rounded-xl bg-gradient-to-r from-primary-container via-primary to-secondary text-on-primary-container font-headline-md text-label-ui shadow-lg hover:brightness-110 active:scale-95 transition-all" id="btn-generate-main">
+<span class="material-symbols-outlined text-[18px]">auto_fix_high</span>
+<span>Generate Variations</span>
+</button>
+</div>
+</div>
+<!-- Quick Parameter Matrix / Live Telemetry Bar -->
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 relative z-10">
+<div class="p-3.5 rounded-xl bg-surface-container-low/90 backdrop-blur-md flex flex-col gap-1 shadow-sm">
+<div class="flex items-center justify-between text-outline">
+<span class="font-label-telemetry text-label-telemetry uppercase tracking-wider">Diffusion Mesh Core</span>
+<span class="material-symbols-outlined text-[14px] text-secondary">memory</span>
+</div>
+<span class="font-label-code text-label-code text-on-surface font-semibold truncate">Gemini 2.0 + Grok-3 Prime</span>
+<span class="font-label-telemetry text-label-telemetry text-secondary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 100% Concurrent Flow
+        </span>
+</div>
+<div class="p-3.5 rounded-xl bg-surface-container-low/90 backdrop-blur-md flex flex-col gap-1 shadow-sm">
+<div class="flex items-center justify-between text-outline">
+<span class="font-label-telemetry text-label-telemetry uppercase tracking-wider">VRAM Allocation</span>
+<span class="material-symbols-outlined text-[14px] text-tertiary">analytics</span>
+</div>
+<span class="font-label-code text-label-code text-on-surface font-semibold">24.1 GB / 48.0 GB Active</span>
+<div class="w-full bg-surface-container-highest rounded-full h-1 mt-1 overflow-hidden">
+<div class="bg-gradient-to-r from-secondary to-primary h-full w-[50.2%]"></div>
+</div>
+</div>
+<div class="p-3.5 rounded-xl bg-surface-container-low/90 backdrop-blur-md flex flex-col gap-1 shadow-sm">
+<div class="flex items-center justify-between text-outline">
+<span class="font-label-telemetry text-label-telemetry uppercase tracking-wider">Latent Prime Seed</span>
+<span class="material-symbols-outlined text-[14px] text-primary">tag</span>
+</div>
+<div class="flex items-center gap-1.5">
+<input class="bg-transparent font-label-code text-label-code text-primary w-full focus:outline-none select-all" spellcheck="false" type="text" value="0x8F92A-BANANA-PRIME"/>
+<button class="text-outline hover:text-on-surface transition-colors" title="Regenerate Seed">
+<span class="material-symbols-outlined text-[15px]">shuffle</span>
+</button>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-outline">Sub-seed: 491028402 (Noise: 0.08)</span>
+</div>
+<div class="p-3.5 rounded-xl bg-surface-container-low/90 backdrop-blur-md flex flex-col gap-1 shadow-sm">
+<div class="flex items-center justify-between text-outline">
+<span class="font-label-telemetry text-label-telemetry uppercase tracking-wider">Resolution &amp; Tensor</span>
+<span class="material-symbols-outlined text-[14px] text-secondary">crop_square</span>
+</div>
+<span class="font-label-code text-label-code text-on-surface font-semibold">1024 × 1024 [1:1] Octane</span>
+<span class="font-label-telemetry text-label-telemetry text-outline">FP16 Tensor Precision</span>
+</div>
+<div class="p-3.5 rounded-xl bg-surface-container-low/90 backdrop-blur-md flex flex-col gap-1 shadow-sm col-span-2 md:col-span-1">
+<div class="flex items-center justify-between text-outline">
+<span class="font-label-telemetry text-label-telemetry uppercase tracking-wider">Synthesis Latency</span>
+<span class="material-symbols-outlined text-[14px] text-tertiary">speed</span>
+</div>
+<span class="font-label-code text-label-code text-tertiary font-semibold">1.42s / Iteration</span>
+<span class="font-label-telemetry text-label-telemetry text-outline">50 Denoising Steps @ DDIM</span>
+</div>
+</div>
+<!-- Studio Tri-Pane Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 relative z-10">
+<!-- LEFT COLUMN: Multi-Model Prompting & Granular Steering (Col span 3.5 -> xl:col-span-4) -->
+<div class="xl:col-span-4 flex flex-col gap-5">
+<!-- Multi-Prompt Synthesis Bar Card -->
+<div class="p-5 rounded-2xl bg-surface-container-low/80 backdrop-blur-xl flex flex-col gap-4 shadow-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="font-label-ui text-label-ui text-on-surface font-semibold">Multi-Model Steering Matrix</span>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-outline">CONCURRENT TRI-PROMPT</span>
+</div>
+<!-- Prompt 1: Claude 3.7 Spatial composition -->
+<div class="flex flex-col gap-1.5 p-3 rounded-xl bg-surface-container/70 shadow-inner">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span class="font-label-telemetry text-label-telemetry text-tertiary uppercase">Claude 3.7 • Spatial Geometry</span>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-outline">Weight: 1.15</span>
+</div>
+<textarea class="w-full bg-transparent font-body-sm text-body-sm text-on-surface resize-none focus:outline-none" placeholder="Anatomical structural directives..." rows="2">Floating peeled cybernetic cyber-banana levitating symmetrically over heavy industrial pedestal with exposed internal wiring conduits and crystalline fruit core.</textarea>
+</div>
+<!-- Prompt 2: Grok Unhinged Style Engine -->
+<div class="flex flex-col gap-1.5 p-3 rounded-xl bg-surface-container/70 shadow-inner">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-label-telemetry text-label-telemetry text-secondary uppercase">Grok • Unhinged Style Vector</span>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-secondary">Chaos: 88%</span>
+</div>
+<textarea class="w-full bg-transparent font-body-sm text-body-sm text-on-surface resize-none focus:outline-none" placeholder="Unhinged cyber aesthetic injection..." rows="2">Hyper-saturated electric cyan spark plasma, holographic chromatic aberration, gritty distressed titanium alloy peeling, raw neon arc discharge.</textarea>
+</div>
+<!-- Prompt 3: Gemini Multimodal Grounding -->
+<div class="flex flex-col gap-1.5 p-3 rounded-xl bg-surface-container/70 shadow-inner">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+<span class="font-label-telemetry text-label-telemetry text-primary uppercase">Gemini 2.0 • Optics &amp; Grounding</span>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-outline">Photonic Raytracing</span>
+</div>
+<textarea class="w-full bg-transparent font-body-sm text-body-sm text-on-surface resize-none focus:outline-none" placeholder="Subsurface scattering &amp; raytracing physics..." rows="2">Subsurface scattering through translucent bioluminescent fruit flesh, dual rim lighting, dark chamber volumetric fog, anisotropic specular reflection.</textarea>
+</div>
+<!-- Negative Prompt Accordion -->
+<div class="flex flex-col gap-1 pt-1">
+<div class="flex items-center justify-between text-outline text-label-telemetry font-label-telemetry">
+<span>NEGATIVE EMBEDDING WEIGHTS</span>
+<span class="text-error">EXCLUDED</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-highest/40 font-label-telemetry text-label-telemetry text-outline-variant">
+              organic rot, low poly, noisy background, overexposure, text watermark, flat lighting, plastic fake skin, cartoon
+            </div>
+</div>
+</div>
+<!-- Granular Latent Sliders -->
+<div class="p-5 rounded-2xl bg-surface-container-low/80 backdrop-blur-xl flex flex-col gap-4 shadow-md">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface font-semibold">Latent Morphology Sliders</span>
+<span class="material-symbols-outlined text-[16px] text-outline">tune</span>
+</div>
+<!-- Slider 1: Ripeness Index -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between font-label-telemetry text-label-telemetry">
+<span class="text-on-surface-variant">Ripeness Index</span>
+<span class="text-tertiary font-bold" id="ripeness-val">Radioactive Gold (74%)</span>
+</div>
+<input class="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-tertiary" max="100" min="0" oninput="document.getElementById('ripeness-val').innerText = this.value &gt; 85 ? 'Overripe Void ('+this.value+'%)' : this.value &gt; 60 ? 'Radioactive Gold ('+this.value+'%)' : this.value &gt; 30 ? 'Neon Cyber ('+this.value+'%)' : 'Unripe Green ('+this.value+'%)'" type="range" value="74"/>
+<div class="flex justify-between text-[10px] font-label-telemetry text-outline px-0.5">
+<span>Unripe</span>
+<span>Neon</span>
+<span>Rad Gold</span>
+<span>Void</span>
+</div>
+</div>
+<!-- Slider 2: Peeling Factor -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between font-label-telemetry text-label-telemetry">
+<span class="text-on-surface-variant">Peeling Kinetic Arc</span>
+<span class="text-secondary font-bold" id="peel-val">68% Bloom</span>
+</div>
+<input class="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-secondary" max="100" min="0" oninput="document.getElementById('peel-val').innerText = this.value + '% Bloom'" type="range" value="68"/>
+</div>
+<!-- Slider 3: Cybernetic Mecha Infusion -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between font-label-telemetry text-label-telemetry">
+<span class="text-on-surface-variant">Cybernetic Infusion Factor</span>
+<span class="text-primary font-bold" id="mecha-val">84% Heavy Chassis</span>
+</div>
+<input class="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="0" oninput="document.getElementById('mecha-val').innerText = this.value + '% Heavy Chassis'" type="range" value="84"/>
+</div>
+<!-- Slider 4: Bioluminescent Lumens -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between font-label-telemetry text-label-telemetry">
+<span class="text-on-surface-variant">Bioluminescence Radiance</span>
+<span class="text-secondary font-bold" id="lumen-val">1,240 Lux</span>
+</div>
+<input class="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-secondary" max="2500" min="200" oninput="document.getElementById('lumen-val').innerText = Number(this.value).toLocaleString() + ' Lux'" step="50" type="range" value="1240"/>
+</div>
+<!-- Style Preset Capsules -->
+<div class="flex flex-col gap-2 pt-2">
+<span class="font-label-telemetry text-label-telemetry text-outline uppercase tracking-wider">Latent Preset Anchors</span>
+<div class="flex flex-wrap gap-1.5">
+<button class="px-2.5 py-1 rounded-full bg-primary/20 text-primary hover:bg-primary/30 font-label-telemetry text-label-telemetry transition-colors">
+                Cyberpunk Octane
+              </button>
+<button class="px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-telemetry text-label-telemetry transition-colors">
+                Solana Glitch
+              </button>
+<button class="px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-telemetry text-label-telemetry transition-colors">
+                Quantum Glass
+              </button>
+<button class="px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-telemetry text-label-telemetry transition-colors">
+                Hyper-Surrealism
+              </button>
+</div>
+</div>
+</div>
+</div>
+<!-- CENTER COLUMN: Interactive Canvas & Latent Viewport (Col span 5.5 -> xl:col-span-5) -->
+<div class="xl:col-span-5 flex flex-col gap-5">
+<!-- Hero Canvas Wrapper -->
+<div class="relative rounded-2xl bg-surface-container-lowest p-3 shadow-2xl flex flex-col overflow-hidden group">
+<!-- Ambient edge sheen -->
+<div class="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-secondary/10 pointer-events-none"></div>
+<!-- Top Canvas Overlay HUD -->
+<div class="flex items-center justify-between px-3 py-2 z-20">
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-surface-container-high/90 backdrop-blur-md font-label-telemetry text-label-telemetry text-on-surface">
+<span class="material-symbols-outlined text-[13px] text-tertiary">center_focus_strong</span>
+                UV: 1024x1024
+              </span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-high/80 font-label-telemetry text-label-telemetry text-secondary">
+                RGBA 32F
+              </span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded-lg bg-surface-container-high/80 hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-all" id="toggle-wireframe" title="Toggle UV Wireframe Grid">
+<span class="material-symbols-outlined text-[16px]">grid_4x4</span>
+</button>
+<button class="p-1.5 rounded-lg bg-surface-container-high/80 hover:bg-surface-container text-on-surface-variant hover:text-primary transition-all" title="Depth Map View">
+<span class="material-symbols-outlined text-[16px]">layers</span>
+</button>
+<button class="p-1.5 rounded-lg bg-surface-container-high/80 hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" title="Fullscreen Inspector">
+<span class="material-symbols-outlined text-[16px]">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- Main Generated Asset Canvas Container -->
+<div class="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-container-lowest flex items-center justify-center">
+<!-- Hero Synth Image -->
+<img alt="Synthesized Cybernetic Banana" class="w-full h-full object-cover select-none transition-transform duration-700 group-hover:scale-[1.02]" src="https://lh3.googleusercontent.com/aida/AEtjO1UG8qH1e95qXUf6cT9d52Yf-l83l7m8Vd5pM_d7s6j9N3k1t4b2g8w-v0=w1024-h1024"/>
+<!-- HUD Overlay Bounding Geometry Markers -->
+<div class="absolute inset-0 pointer-events-none transition-opacity duration-300" id="hud-overlay">
+<!-- Top Left Tag -->
+<div class="absolute top-4 left-4 p-2 rounded bg-surface-container-lowest/80 backdrop-blur-md font-label-telemetry text-label-telemetry text-secondary flex flex-col gap-0.5 shadow-sm">
+<span class="font-bold">NODE: BANANA_CHASSIS_PRIME</span>
+<span class="text-outline">TENSOR CONF: 99.82%</span>
+<span class="text-primary">SPECULAR RAY: 4.88 LUX</span>
+</div>
+<!-- Center Kinetic Reticle -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border border-secondary/30 rounded-full flex items-center justify-center animate-spin" style="animation-duration: 40s;">
+<div class="w-40 h-40 border border-primary/20 rounded-full border-dashed"></div>
+</div>
+<!-- Bottom Right Physics Tag -->
+<div class="absolute bottom-4 right-4 p-2 rounded bg-surface-container-lowest/80 backdrop-blur-md font-label-telemetry text-label-telemetry text-tertiary flex flex-col gap-0.5 text-right shadow-sm">
+<span>VOLUMETRIC FOG: ACTIVE</span>
+<span class="text-outline">EMISSIVE CORONA: 120nm λ</span>
+<span class="text-secondary font-bold">STABILITY DAG: VERIFIED</span>
+</div>
+</div>
+<!-- Floating Inpainting & Tool Island Bar -->
+<div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-2xl shadow-2xl">
+<button class="p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors" title="Zoom In (100%)">
+<span class="material-symbols-outlined text-[16px]">zoom_in</span>
+</button>
+<button class="p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors" title="Inpainting Brush">
+<span class="material-symbols-outlined text-[16px]">brush</span>
+</button>
+<button class="p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant hover:text-tertiary transition-colors" title="Outpaint Expansion">
+<span class="material-symbols-outlined text-[16px]">crop</span>
+</button>
+<span class="w-px h-4 bg-outline-variant mx-1"></span>
+<button class="p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors" title="Normal Map Inspector">
+<span class="material-symbols-outlined text-[16px]">texture</span>
+</button>
+<button class="p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors" title="Reroll Seed Latent">
+<span class="material-symbols-outlined text-[16px]">cached</span>
+</button>
+</div>
+</div>
+<!-- Bottom Canvas Details Bar -->
+<div class="flex items-center justify-between px-3 py-2 text-outline font-label-telemetry text-label-telemetry">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+<span>RENDER ENGINE: OCTANE-RTX KERNEL v9</span>
+</div>
+<div class="flex items-center gap-3">
+<span>LATENT COORD: [0.84, -0.12, 1.49]</span>
+<span class="text-tertiary">GAMMA: 2.2</span>
+</div>
+</div>
+</div>
+<!-- Multi-Model Generation Comparison Strip -->
+<div class="p-4 rounded-2xl bg-surface-container-low/80 backdrop-blur-xl flex flex-col gap-3 shadow-md">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface font-semibold">Tri-Model Execution Comparison</span>
+<span class="font-label-telemetry text-label-telemetry text-secondary">SIMULTANEOUS RUNS</span>
+</div>
+<!-- 4 Thumbnail Variants Grid -->
+<div class="grid grid-cols-4 gap-2.5">
+<!-- Variant 1: Kara Unified Tri-Blend (Active) -->
+<div class="relative p-1.5 rounded-xl bg-surface-container-high cursor-pointer hover:bg-surface-container-highest transition-all group shadow-sm ring-1 ring-primary">
+<div class="w-full aspect-square rounded-lg overflow-hidden bg-surface-container-lowest relative mb-1.5">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Cybernetic futuristic banana bathed in holographic violet and cyan neon lights, mechanical titanium peels exposing glowing circuit board core on dark tech pedestal" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5nSx1VJzp2JIIoQMIa1_Da-AgXvGVZ1doLecmTr_9xiDVKwisyFyu215scJcE_MeFDLtVuvv7mQIYLswWXyfDl_eTrwprRcvpI0_smbgJrcs15iNqV1Vidgdu8EuBUe9BIzfornroFRdbMGT1sMsgH13V6q3XaGXtwQvZkhXVBiHniiJXakP2S-BgifO2mgQ1RXMw7-GAvenHFfr721xPLBjef12_itl34JvlINgHQUQIU98UIhaOjg"/>
+<span class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-label-telemetry bg-primary text-on-primary font-bold">PRIME</span>
+</div>
+<span class="block font-label-telemetry text-[10px] text-on-surface font-medium truncate">Unified Tri-Blend</span>
+<span class="block font-label-telemetry text-[9px] text-secondary truncate">Synthesized</span>
+</div>
+<!-- Variant 2: Gemini Raw Imagen -->
+<div class="relative p-1.5 rounded-xl bg-surface-container-low/70 cursor-pointer hover:bg-surface-container-high transition-all group shadow-sm">
+<div class="w-full aspect-square rounded-lg overflow-hidden bg-surface-container-lowest relative mb-1.5">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Realistic translucent banana fruit with pure subsurface scattering lighting, clean glass reflections, studio darkness and precise raytracing" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAF27OmbI2F5xqYt3NdNiBAJRpIn9IparE7qCFPSo4gj1COQKldfN9eyp6aKXAiwDCFvJ2rshrVkKrgxVTU7Oo5BuzCvUL-68qUWEJLgNb2cLMoYXoncTStb4La58Smmg6L9Z2xW61g4dHcZGqxoKCKSSsyrOp7JQSOv1yyOHlZCUMQk7aX91_sTjT8ltbZZ-GcS_Im5okdn4al0HYVHjb6TufPAGloDgmaffH5tqJ3TRSZ5AvUcGgUIw"/>
+<span class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-label-telemetry bg-surface-container-lowest/80 text-primary">GEMINI</span>
+</div>
+<span class="block font-label-telemetry text-[10px] text-on-surface-variant font-medium truncate">Gemini Photonic</span>
+<span class="block font-label-telemetry text-[9px] text-outline truncate">Physical Optics</span>
+</div>
+<!-- Variant 3: Grok Unfiltered Chaos -->
+<div class="relative p-1.5 rounded-xl bg-surface-container-low/70 cursor-pointer hover:bg-surface-container-high transition-all group shadow-sm">
+<div class="w-full aspect-square rounded-lg overflow-hidden bg-surface-container-lowest relative mb-1.5">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Unhinged cyber banana with chaotic electric plasma bolts, wild neon glitches, raw cyberpunk wiring, hyper violent purple and cyan flare effects" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQHXstmNzhezFhJWnmDKUCCydj727IyqjnuIqWbZYiH4J9-Ytahm9a5HyZyk8MYUNSh9_yBFFUxvl5pn7TWu0YYqrueGE63QYIRO4mf-CJFil7n-bKMz1Dmec5V0BuTmmKCF9W9owsXt4-8bOe6LBRPI88eupwzyN12CyqmfT3EFLla27vBQnRxc_6LsLr5dE14X9sIIAKkHB5fYURuhCB4IgONaKRMTZnGyg8NAcKnKDNAMgh4X1yfA"/>
+<span class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-label-telemetry bg-surface-container-lowest/80 text-secondary">GROK</span>
+</div>
+<span class="block font-label-telemetry text-[10px] text-on-surface-variant font-medium truncate">Grok Chaos Vector</span>
+<span class="block font-label-telemetry text-[9px] text-secondary truncate">Unhinged Raw</span>
+</div>
+<!-- Variant 4: Claude Strict Composition -->
+<div class="relative p-1.5 rounded-xl bg-surface-container-low/70 cursor-pointer hover:bg-surface-container-high transition-all group shadow-sm">
+<div class="w-full aspect-square rounded-lg overflow-hidden bg-surface-container-lowest relative mb-1.5">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Architecturally perfect balanced banana sculpt in technical isometric orientation, golden ratio geometry, elegant golden reflections and minimal aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBl2BOOhcBB7LSsSMZO0zXonh9YhyM07TQow2LAolrwO7QlfeLLvorCFYOjDOQIBz_c_WJhEZhmT0HHR5neSZHHDdTEqqCq4EdpXWQtkaejf7Iz1tfc4-eMOscn3qwDRWP01BDqKWJA8D6Q6yNTfgNxby_QT9s3S003t_NccIiaDjoLxECxpoVQwsZj_7OePtvzqyHyl3JTYE9f5Cqu9XjdX8TO9OmKqdzm_NfvxPcM3dYFjg6YevynlA"/>
+<span class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-label-telemetry bg-surface-container-lowest/80 text-tertiary">CLAUDE</span>
+</div>
+<span class="block font-label-telemetry text-[10px] text-on-surface-variant font-medium truncate">Claude Structural</span>
+<span class="block font-label-telemetry text-[9px] text-tertiary truncate">Golden Ratio</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: Latent Deconstruction, Version Tree & Model Consensus (Col span 3.5 -> xl:col-span-3) -->
+<div class="xl:col-span-3 flex flex-col gap-5">
+<!-- Real-Time Model Consensus Card -->
+<div class="p-5 rounded-2xl bg-surface-container-low/80 backdrop-blur-xl flex flex-col gap-4 shadow-md">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface font-semibold">Tri-Model Consensus Index</span>
+<span class="material-symbols-outlined text-[16px] text-secondary">hub</span>
+</div>
+<div class="flex flex-col gap-3 font-label-telemetry text-label-telemetry">
+<!-- Grok Aesthetic -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary"></span> Grok-3 Style Punch
+                </span>
+<span class="text-secondary font-bold">98.0%</span>
+</div>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 98%;"></div>
+</div>
+</div>
+<!-- Gemini Optical Fidelity -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary"></span> Gemini Photonic Truth
+                </span>
+<span class="text-primary font-bold">99.4%</span>
+</div>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 99.4%;"></div>
+</div>
+</div>
+<!-- Claude Spatial Coherence -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> Claude Structural Topology
+                </span>
+<span class="text-tertiary font-bold">97.2%</span>
+</div>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+<div class="bg-tertiary h-full rounded-full" style="width: 97.2%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Latent Deconstruction Panel -->
+<div class="p-5 rounded-2xl bg-surface-container-low/80 backdrop-blur-xl flex flex-col gap-3.5 shadow-md">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface font-semibold">Latent Deconstruction</span>
+<span class="font-label-telemetry text-label-telemetry text-outline">4 LAYERS</span>
+</div>
+<div class="space-y-2">
+<!-- Layer 0 -->
+<div class="p-2.5 rounded-xl bg-surface-container/60 hover:bg-surface-container flex items-center justify-between transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-tertiary">visibility</span>
+<div class="flex flex-col">
+<span class="font-label-ui text-label-ui text-on-surface">L0: Subsurface Fruit Core</span>
+<span class="font-label-telemetry text-[10px] text-outline">Translucent Bioluminescence</span>
+</div>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-secondary">100%</span>
+</div>
+<!-- Layer 1 -->
+<div class="p-2.5 rounded-xl bg-surface-container/60 hover:bg-surface-container flex items-center justify-between transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-secondary">visibility</span>
+<div class="flex flex-col">
+<span class="font-label-ui text-label-ui text-on-surface">L1: Exoskeleton Peel &amp; Circuits</span>
+<span class="font-label-telemetry text-[10px] text-outline">Distressed Titanium Matrix</span>
+</div>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-secondary">92%</span>
+</div>
+<!-- Layer 2 -->
+<div class="p-2.5 rounded-xl bg-surface-container/60 hover:bg-surface-container flex items-center justify-between transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">visibility</span>
+<div class="flex flex-col">
+<span class="font-label-ui text-label-ui text-on-surface">L2: Quantum Corona Particle</span>
+<span class="font-label-telemetry text-[10px] text-outline">Plasma Arc Discharge Mesh</span>
+</div>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-secondary">78%</span>
+</div>
+<!-- Layer 3 -->
+<div class="p-2.5 rounded-xl bg-surface-container/60 hover:bg-surface-container flex items-center justify-between transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-outline">visibility</span>
+<div class="flex flex-col">
+<span class="font-label-ui text-label-ui text-on-surface">L3: Pedestal &amp; Volumetric Fog</span>
+<span class="font-label-telemetry text-[10px] text-outline">Heavy Mechanical Chamber Base</span>
+</div>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-secondary">85%</span>
+</div>
+</div>
+</div>
+<!-- Seed History & Version DAG Tree -->
+<div class="p-5 rounded-2xl bg-surface-container-low/80 backdrop-blur-xl flex flex-col gap-3 shadow-md">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface font-semibold">Iteration Tree &amp; DAG</span>
+<span class="material-symbols-outlined text-[16px] text-outline">account_tree</span>
+</div>
+<div class="space-y-2 relative pl-3">
+<div class="absolute left-1 top-2 bottom-2 w-0.5 bg-surface-container-highest"></div>
+<div class="relative flex items-center justify-between p-2 rounded-lg bg-surface-container-high shadow-sm">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-code text-label-code text-on-surface font-semibold">v3.1 PRIME (Current)</span>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-secondary">Active</span>
+</div>
+<div class="relative flex items-center justify-between p-2 rounded-lg hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+<span class="font-label-code text-label-code text-on-surface-variant">v2.4 Neon Bloom Warp</span>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-outline">3m ago</span>
+</div>
+<div class="relative flex items-center justify-between p-2 rounded-lg hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+<span class="font-label-code text-label-code text-on-surface-variant">v1.0 Baseline Wireframe</span>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-outline">12m ago</span>
+</div>
+</div>
+</div>
+<!-- Quick Export Matrix -->
+<div class="p-5 rounded-2xl bg-surface-container-low/80 backdrop-blur-xl flex flex-col gap-3 shadow-md">
+<span class="font-label-ui text-label-ui text-on-surface font-semibold">Instant Export Buffers</span>
+<div class="grid grid-cols-2 gap-2">
+<button class="p-2.5 rounded-xl bg-surface-container/70 hover:bg-surface-container flex flex-col items-start gap-1 transition-all">
+<div class="flex items-center justify-between w-full">
+<span class="font-label-code text-label-code text-primary font-bold">EXR 32-bit</span>
+<span class="material-symbols-outlined text-[14px] text-outline">download</span>
+</div>
+<span class="font-label-telemetry text-[10px] text-outline">HDR Tensor Map</span>
+</button>
+<button class="p-2.5 rounded-xl bg-surface-container/70 hover:bg-surface-container flex flex-col items-start gap-1 transition-all">
+<div class="flex items-center justify-between w-full">
+<span class="font-label-code text-label-code text-secondary font-bold">PNG 4K</span>
+<span class="material-symbols-outlined text-[14px] text-outline">download</span>
+</div>
+<span class="font-label-telemetry text-[10px] text-outline">Alpha Pass Included</span>
+</button>
+<button class="p-2.5 rounded-xl bg-surface-container/70 hover:bg-surface-container flex flex-col items-start gap-1 transition-all">
+<div class="flex items-center justify-between w-full">
+<span class="font-label-code text-label-code text-tertiary font-bold">GLTF 3D</span>
+<span class="material-symbols-outlined text-[14px] text-outline">view_in_ar</span>
+</div>
+<span class="font-label-telemetry text-[10px] text-outline">Mesh + Normal Maps</span>
+</button>
+<button class="p-2.5 rounded-xl bg-surface-container/70 hover:bg-surface-container flex flex-col items-start gap-1 transition-all">
+<div class="flex items-center justify-between w-full">
+<span class="font-label-code text-label-code text-on-surface font-bold">WebP Web</span>
+<span class="material-symbols-outlined text-[14px] text-outline">speed</span>
+</div>
+<span class="font-label-telemetry text-[10px] text-outline">Optimized 1.2 MB</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Micro-interactions Script -->
+<script>
+    (function initBananaStudio() {
+      const wireframeBtn = document.getElementById('toggle-wireframe');
+      const hudOverlay = document.getElementById('hud-overlay');
+      let wireframeActive = true;
+
+      if (wireframeBtn && hudOverlay) {
+        wireframeBtn.addEventListener('click', () => {
+          wireframeActive = !wireframeActive;
+          hudOverlay.style.opacity = wireframeActive ? '1' : '0';
+          wireframeBtn.classList.toggle('text-secondary', wireframeActive);
+        });
+      }
+
+      const generateBtn = document.getElementById('btn-generate-main');
+      if (generateBtn) {
+        generateBtn.addEventListener('click', () => {
+          const originalContent = generateBtn.innerHTML;
+          generateBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span><span>Synthesizing Latents...</span>';
+          generateBtn.classList.add('opacity-80', 'pointer-events-none');
+          setTimeout(() => {
+            generateBtn.innerHTML = originalContent;
+            generateBtn.classList.remove('opacity-80', 'pointer-events-none');
+          }, 1400);
+        });
+      }
+    })();
+  </script>
+</div></main></div></body></html>

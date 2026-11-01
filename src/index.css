@@ -1,6 +1,72 @@
 @import "tailwindcss";
 
 :root,
+[data-kara-theme="gemini-grok-fusion"] {
+  --kara-bg-app: #05070B;
+  --kara-bg-chat: #080B12;
+  --kara-bg-header: #0B0F19;
+  --kara-bg-banner: #090C15;
+  --kara-bg-composer: #080B12;
+  --kara-bg-input: #0F1422;
+  --kara-bg-ai-bubble: #0D121E;
+  --kara-bg-card: #0A0E18;
+  --kara-bg-chip: #121828;
+  --kara-text-primary: #F8FAFC;
+  --kara-text-secondary: #94A3B8;
+  --kara-text-muted: #64748B;
+  --kara-border: rgba(255, 255, 255, 0.09);
+  --kara-border-strong: rgba(155, 114, 203, 0.48);
+  --kara-accent: #4C8DF6;
+  --kara-accent-secondary: #9B72CB;
+  --kara-accent-tertiary: #D96570;
+  --kara-user-bubble-bg: linear-gradient(135deg, #2563EB 0%, #7C3AED 55%, #C026D3 100%);
+  --kara-user-bubble-text: #FFFFFF;
+  --kara-send-btn-bg: linear-gradient(135deg, #4C8DF6 0%, #9B72CB 54%, #D96570 100%);
+  --kara-send-btn-text: #FFFFFF;
+  --kara-chat-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.85), 0 0 42px -18px rgba(76, 141, 246, 0.22);
+  --kara-chat-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+[data-kara-theme="kara-3-nexus"] {
+  --kara-bg-app: #090A0F;
+  --kara-bg-chat: #121318;
+  --kara-bg-header: #0d0e13;
+  --kara-bg-banner: #11131F;
+  --kara-bg-composer: #0d0e13;
+  --kara-bg-input: #1a1b21;
+  --kara-bg-ai-bubble: #181B2C;
+  --kara-bg-card: #11131F;
+  --kara-bg-chip: #1e1f25;
+  --kara-text-primary: #e3e1e9;
+  --kara-text-secondary: #cbc3d7;
+  --kara-text-muted: #958ea0;
+  --kara-border: rgba(255, 255, 255, 0.08);
+  --kara-border-strong: rgba(208, 188, 255, 0.45);
+  --kara-accent: #d0bcff;
+  --kara-accent-secondary: #4cd7f6;
+  --kara-accent-tertiary: #ffb95f;
+  --kara-user-bubble-bg: linear-gradient(135deg, #8B5CF6 0%, #6d3bd7 55%, #06B6D4 100%);
+  --kara-user-bubble-text: #FFFFFF;
+  --kara-send-btn-bg: linear-gradient(135deg, #d0bcff 0%, #4cd7f6 60%, #ffb95f 100%);
+  --kara-send-btn-text: #090A0F;
+  --kara-chat-shadow: 0 8px 32px -4px rgba(139, 92, 246, 0.18), 0 8px 32px -4px rgba(6, 182, 212, 0.12);
+  --kara-chat-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.font-literata {
+  font-family: 'Literata', Georgia, serif;
+}
+.font-jakarta {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.font-jetbrains {
+  font-family: 'JetBrains Mono', monospace;
+}
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+}
+
 [data-kara-theme="minimalist-slate"] {
   --kara-bg-app: #090D14;
   --kara-bg-chat: #111621;
@@ -201,28 +267,225 @@
   --kara-chat-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+[data-kara-theme="monster-high"] {
+  --kara-bg-app: #0A030E;
+  --kara-bg-chat: #12061B;
+  --kara-bg-header: #1A0826;
+  --kara-bg-banner: #150720;
+  --kara-bg-composer: #0E0415;
+  --kara-bg-input: #230B33;
+  --kara-bg-ai-bubble: #1F0A2E;
+  --kara-bg-card: #160721;
+  --kara-bg-chip: #290D3D;
+  --kara-text-primary: #FDF2F8;
+  --kara-text-secondary: #F472B6;
+  --kara-text-muted: #22D3EE;
+  --kara-border: rgba(255, 42, 157, 0.32);
+  --kara-border-strong: rgba(0, 229, 255, 0.6);
+  --kara-accent: #FF2A9D;
+  --kara-accent-secondary: #00E5FF;
+  --kara-accent-tertiary: #A855F7;
+  --kara-user-bubble-bg: linear-gradient(135deg, #FF2A9D 0%, #9333EA 55%, #00E5FF 100%);
+  --kara-user-bubble-text: #FFFFFF;
+  --kara-send-btn-bg: linear-gradient(135deg, #FF2A9D 0%, #00E5FF 100%);
+  --kara-send-btn-text: #0A030E;
+  --kara-chat-shadow: 0 20px 55px -12px rgba(255, 42, 157, 0.35), 0 0 32px -12px rgba(0, 229, 255, 0.28);
+  --kara-chat-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+[data-kara-theme="marvel-avengers"] {
+  --kara-bg-app: #0B0406;
+  --kara-bg-chat: #14070A;
+  --kara-bg-header: #1F0A0E;
+  --kara-bg-banner: #18080C;
+  --kara-bg-composer: #100507;
+  --kara-bg-input: #280D13;
+  --kara-bg-ai-bubble: #230B11;
+  --kara-bg-card: #1A080D;
+  --kara-bg-chip: #301017;
+  --kara-text-primary: #FFFBEB;
+  --kara-text-secondary: #FDE68A;
+  --kara-text-muted: #F87171;
+  --kara-border: rgba(230, 36, 41, 0.34);
+  --kara-border-strong: rgba(245, 158, 11, 0.62);
+  --kara-accent: #E62429;
+  --kara-accent-secondary: #F59E0B;
+  --kara-accent-tertiary: #38BDF8;
+  --kara-user-bubble-bg: linear-gradient(135deg, #E62429 0%, #B91C1C 58%, #F59E0B 100%);
+  --kara-user-bubble-text: #FFFFFF;
+  --kara-send-btn-bg: linear-gradient(135deg, #E62429 0%, #F59E0B 100%);
+  --kara-send-btn-text: #FFFFFF;
+  --kara-chat-shadow: 0 20px 55px -12px rgba(230, 36, 41, 0.36), 0 0 30px -12px rgba(245, 158, 11, 0.26);
+  --kara-chat-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+[data-kara-theme="dc-gotham-justice"] {
+  --kara-bg-app: #04070F;
+  --kara-bg-chat: #080E1E;
+  --kara-bg-header: #0C152C;
+  --kara-bg-banner: #0A1124;
+  --kara-bg-composer: #060B17;
+  --kara-bg-input: #111E3D;
+  --kara-bg-ai-bubble: #0E1934;
+  --kara-bg-card: #0A1226;
+  --kara-bg-chip: #15254A;
+  --kara-text-primary: #F8FAFC;
+  --kara-text-secondary: #FEF08A;
+  --kara-text-muted: #60A5FA;
+  --kara-border: rgba(59, 130, 246, 0.3);
+  --kara-border-strong: rgba(250, 204, 21, 0.58);
+  --kara-accent: #FACC15;
+  --kara-accent-secondary: #2563EB;
+  --kara-accent-tertiary: #EF4444;
+  --kara-user-bubble-bg: linear-gradient(135deg, #1D4ED8 0%, #0F172A 55%, #EAB308 100%);
+  --kara-user-bubble-text: #FFFFFF;
+  --kara-send-btn-bg: linear-gradient(135deg, #FACC15 0%, #2563EB 100%);
+  --kara-send-btn-text: #04070F;
+  --kara-chat-shadow: 0 22px 55px -12px rgba(37, 99, 235, 0.34), 0 0 30px -14px rgba(250, 204, 21, 0.25);
+  --kara-chat-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 /* MxChat Chatbot Themes Version 2.1.6 Bubble Shape & Font Scale Modifiers */
+[data-mxchat-bubble="rounded"] .kara-ai-bubble,
+[data-mxchat-bubble="rounded"] .kara-user-bubble {
+  border-radius: 1.35rem !important;
+}
+
 [data-mxchat-bubble="sharp"] .kara-ai-bubble,
 [data-mxchat-bubble="sharp"] .kara-user-bubble {
-  border-radius: 0.65rem !important;
+  border-radius: 0.45rem !important;
 }
 
 [data-mxchat-bubble="pill"] .kara-ai-bubble,
 [data-mxchat-bubble="pill"] .kara-user-bubble {
-  border-radius: 1.85rem !important;
+  border-radius: 1.95rem !important;
 }
 
+[data-mxchat-bubble="ios-tail"] .kara-ai-bubble {
+  border-radius: 1.4rem 1.4rem 1.4rem 0.32rem !important;
+}
+
+[data-mxchat-bubble="ios-tail"] .kara-user-bubble {
+  border-radius: 1.4rem 1.4rem 0.32rem 1.4rem !important;
+}
+
+[data-mxchat-bubble="android-tonal"] .kara-ai-bubble {
+  border-radius: 1.75rem 1.75rem 1.75rem 0.65rem !important;
+  box-shadow: 0 8px 24px -6px rgba(56, 189, 248, 0.16), inset 0 1px 0 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-mxchat-bubble="android-tonal"] .kara-user-bubble {
+  border-radius: 1.75rem 1.75rem 0.65rem 1.75rem !important;
+  box-shadow: 0 8px 24px -6px rgba(168, 85, 247, 0.22), inset 0 1px 0 0 rgba(255, 255, 255, 0.16) !important;
+}
+
+[data-mxchat-bubble="chamfered"] .kara-ai-bubble {
+  border-radius: 1.15rem 0.25rem 1.15rem 0.25rem !important;
+  border-left: 2px solid var(--kara-accent, #38BDF8) !important;
+}
+
+[data-mxchat-bubble="chamfered"] .kara-user-bubble {
+  border-radius: 0.25rem 1.15rem 0.25rem 1.15rem !important;
+  border-right: 2px solid rgba(255, 255, 255, 0.45) !important;
+}
+
+[data-mxchat-bubble="editorial-card"] .kara-ai-bubble {
+  border-radius: 0.6rem !important;
+  border-left: 3.5px solid var(--kara-accent, #38BDF8) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-mxchat-bubble="editorial-card"] .kara-user-bubble {
+  border-radius: 0.6rem !important;
+  border-right: 3.5px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-mxchat-bubble="cloud-plush"] .kara-ai-bubble,
+[data-mxchat-bubble="cloud-plush"] .kara-user-bubble {
+  border-radius: 2.25rem !important;
+  box-shadow: 0 14px 34px -8px rgba(56, 189, 248, 0.2), inset 0 1.5px 1px rgba(255, 255, 255, 0.18) !important;
+}
+
+[data-mxchat-bubble="glass-prism"] .kara-ai-bubble {
+  border-radius: 1.6rem 0.55rem 1.6rem 0.55rem !important;
+  backdrop-filter: blur(24px) saturate(190%) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.24), 0 10px 28px -8px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-mxchat-bubble="glass-prism"] .kara-user-bubble {
+  border-radius: 0.55rem 1.6rem 0.55rem 1.6rem !important;
+  backdrop-filter: blur(24px) saturate(190%) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.28), 0 10px 28px -8px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Typography Scale & Font-Family Presets */
 [data-mxchat-font="compact"] .kara-ai-bubble,
 [data-mxchat-font="compact"] .kara-user-bubble {
   font-size: 0.8125rem !important;
-  line-height: 1.45 !important;
+  line-height: 1.46 !important;
+  letter-spacing: -0.005em !important;
+}
+
+[data-mxchat-font="default"] .kara-ai-bubble,
+[data-mxchat-font="default"] .kara-user-bubble {
+  font-size: 0.90625rem !important;
+  line-height: 1.58 !important;
 }
 
 [data-mxchat-font="comfortable"] .kara-ai-bubble,
 [data-mxchat-font="comfortable"] .kara-user-bubble {
-  font-size: 0.96rem !important;
+  font-size: 0.96875rem !important;
   line-height: 1.68 !important;
 }
+
+[data-mxchat-font="spacious-xl"] .kara-ai-bubble,
+[data-mxchat-font="spacious-xl"] .kara-user-bubble {
+  font-size: 1.0625rem !important;
+  line-height: 1.75 !important;
+  letter-spacing: 0.005em !important;
+}
+
+[data-mxchat-font="ios-sf"] .kara-ai-bubble,
+[data-mxchat-font="ios-sf"] .kara-user-bubble {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', sans-serif !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.52 !important;
+  letter-spacing: -0.014em !important;
+}
+
+[data-mxchat-font="android-geometric"] .kara-ai-bubble,
+[data-mxchat-font="android-geometric"] .kara-user-bubble {
+  font-family: 'Bricolage Grotesque', 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.6 !important;
+  letter-spacing: -0.008em !important;
+}
+
+[data-mxchat-font="editorial-serif"] .kara-ai-bubble,
+[data-mxchat-font="editorial-serif"] .kara-user-bubble {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif !important;
+  font-size: 0.985rem !important;
+  line-height: 1.72 !important;
+  letter-spacing: 0.006em !important;
+}
+
+[data-mxchat-font="mono-terminal"] .kara-ai-bubble,
+[data-mxchat-font="mono-terminal"] .kara-user-bubble {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 0.84rem !important;
+  line-height: 1.62 !important;
+  letter-spacing: -0.01em !important;
+}
+
+[data-mxchat-font="velvet-script"] .kara-ai-bubble,
+[data-mxchat-font="velvet-script"] .kara-user-bubble {
+  font-family: 'Didot', 'Bodoni MT', 'Playfair Display', Georgia, serif !important;
+  font-size: 0.98rem !important;
+  line-height: 1.7 !important;
+  letter-spacing: 0.012em !important;
+}
+
 
 @layer base {
   :root {
@@ -255,26 +518,227 @@
 .kara-app-shell {
   background-color: var(--kara-bg-app);
   color: var(--kara-text-primary);
-  transition: background-color 0.35s ease, color 0.35s ease;
+  transition: background-color 0.5s ease, color 0.35s ease;
+}
+
+@property --kara-morph-c1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(56, 189, 248, 0.17);
+}
+
+@property --kara-morph-c1-mid {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(14, 165, 233, 0.07);
+}
+
+@property --kara-morph-c2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(99, 102, 241, 0.14);
+}
+
+@property --kara-morph-c2-mid {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(56, 189, 248, 0.05);
+}
+
+@property --kara-morph-c3 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(34, 211, 238, 0.11);
+}
+
+@property --kara-morph-x1 {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 18%;
+}
+
+@property --kara-morph-y1 {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 14%;
+}
+
+@property --kara-morph-x2 {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 84%;
+}
+
+@property --kara-morph-y2 {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 86%;
+}
+
+.kara-morphing-bg-stage {
+  transition:
+    --kara-morph-c1 1.55s cubic-bezier(0.22, 1, 0.36, 1),
+    --kara-morph-c1-mid 1.55s cubic-bezier(0.22, 1, 0.36, 1),
+    --kara-morph-c2 1.65s cubic-bezier(0.22, 1, 0.36, 1),
+    --kara-morph-c2-mid 1.65s cubic-bezier(0.22, 1, 0.36, 1),
+    --kara-morph-c3 1.5s cubic-bezier(0.22, 1, 0.36, 1),
+    --kara-morph-x1 1.65s cubic-bezier(0.22, 1, 0.36, 1),
+    --kara-morph-y1 1.65s cubic-bezier(0.22, 1, 0.36, 1),
+    --kara-morph-x2 1.75s cubic-bezier(0.22, 1, 0.36, 1),
+    --kara-morph-y2 1.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kara-morph-liquid-field {
+  background-image: radial-gradient(
+    68% 58% at var(--kara-morph-x1) var(--kara-morph-y1),
+    var(--kara-morph-c1) 0%,
+    var(--kara-morph-c1-mid) 46%,
+    transparent 78%
+  );
+  filter: blur(22px);
+  opacity: 0.92;
+  will-change: transform, border-radius, filter, opacity;
+  transition:
+    transform 1.65s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 1.75s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 1.2s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 1.2s ease-out;
+}
+
+.kara-morph-liquid-field--secondary {
+  background-image: radial-gradient(
+    64% 55% at var(--kara-morph-x2) var(--kara-morph-y2),
+    var(--kara-morph-c2) 0%,
+    var(--kara-morph-c2-mid) 50%,
+    transparent 80%
+  );
+  filter: blur(26px);
+  opacity: 0.88;
+}
+
+.kara-morph-liquid-core {
+  background-image: radial-gradient(
+    55% 48% at calc(100% - var(--kara-morph-x1)) var(--kara-morph-y2),
+    var(--kara-morph-c3) 0%,
+    transparent 74%
+  );
+  filter: blur(34px);
+  opacity: 0.72;
+  will-change: transform, border-radius, filter, opacity;
+  transition:
+    transform 1.85s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 1.85s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 1.25s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 1.25s ease-out;
+}
+
+.kara-morph-liquid-field--switching {
+  filter: blur(34px) saturate(1.18);
+  opacity: 1;
+}
+
+.kara-morph-liquid-core--switching {
+  filter: blur(44px) saturate(1.24);
+  opacity: 0.95;
+}
+
+.kara-mode-gradient-plane {
+  will-change: opacity, filter, transform;
+  transition:
+    opacity 1.45s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 1.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kara-mode-gradient-plane--active {
+  filter: blur(0px) saturate(1);
+  transform: scale3d(1, 1, 1);
+}
+
+.kara-mode-gradient-plane--inactive {
+  filter: blur(18px) saturate(1.12);
+  transform: scale3d(1.03, 0.98, 1);
+}
+
+@keyframes karaDynamicOrbDriftPrimary {
+  0%, 100% {
+    opacity: 0.9;
+    filter: blur(2px);
+  }
+  50% {
+    opacity: 1;
+    filter: blur(8px);
+  }
+}
+
+@keyframes karaDynamicOrbDriftSecondary {
+  0%, 100% {
+    opacity: 0.84;
+    filter: blur(4px);
+  }
+  50% {
+    opacity: 0.98;
+    filter: blur(10px);
+  }
+}
+
+.kara-dynamic-bg-orb {
+  will-change: transform, border-radius, opacity;
+  transition:
+    transform 1.65s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 1.75s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: karaDynamicOrbDriftPrimary 12s ease-in-out infinite;
+}
+
+.kara-dynamic-bg-orb--secondary {
+  animation: karaDynamicOrbDriftSecondary 15s ease-in-out infinite reverse;
+}
+
+.kara-dynamic-bg-vignette {
+  transition: opacity 1.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .kara-app-topbar {
-  background-color: color-mix(in srgb, var(--kara-bg-header) 92%, transparent);
+  background-color: color-mix(in srgb, var(--kara-bg-header) 86%, transparent);
   border-color: var(--kara-border);
-  transition: background-color 0.35s ease, border-color 0.35s ease;
+  transition: background-color 0.45s ease, border-color 0.45s ease;
 }
 
 .kara-chat-shell {
-  background-color: var(--kara-bg-chat);
+  background-color: color-mix(in srgb, var(--kara-bg-chat) 94%, transparent);
   border-color: var(--kara-border);
   box-shadow: var(--kara-chat-shadow);
   color: var(--kara-text-primary);
   font-family: var(--kara-chat-font);
   transition:
-    background-color 0.38s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.38s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.65s cubic-bezier(0.22, 1, 0.36, 1),
     color 0.3s ease;
+}
+
+[data-kara-mode="regular"] .kara-chat-shell {
+  box-shadow: var(--kara-chat-shadow), 0 0 65px -22px rgba(56, 189, 248, 0.16);
+}
+
+[data-kara-mode="romantic"] .kara-chat-shell {
+  border-color: color-mix(in srgb, var(--kara-border) 70%, rgba(251, 113, 133, 0.38));
+  box-shadow: var(--kara-chat-shadow), 0 0 70px -20px rgba(251, 113, 133, 0.2), 0 0 40px -24px rgba(245, 158, 11, 0.14);
+}
+
+[data-kara-mode="bratty"] .kara-chat-shell {
+  border-color: color-mix(in srgb, var(--kara-border) 70%, rgba(232, 121, 249, 0.36));
+  box-shadow: var(--kara-chat-shadow), 0 0 68px -20px rgba(232, 121, 249, 0.2);
+}
+
+[data-kara-mode="uncensored"] .kara-chat-shell {
+  border-color: color-mix(in srgb, var(--kara-border) 70%, rgba(251, 191, 36, 0.36));
+  box-shadow: var(--kara-chat-shadow), 0 0 68px -20px rgba(251, 191, 36, 0.19);
+}
+
+[data-kara-mode="parent"] .kara-chat-shell {
+  border-color: color-mix(in srgb, var(--kara-border) 70%, rgba(52, 211, 153, 0.36));
+  box-shadow: var(--kara-chat-shadow), 0 0 68px -20px rgba(52, 211, 153, 0.18);
 }
 
 .kara-chat-header {
@@ -310,17 +774,49 @@
   border-color: var(--kara-accent);
 }
 
+@keyframes karaBubblePopIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .kara-ai-bubble {
   background-color: var(--kara-bg-ai-bubble);
   border-color: var(--kara-border);
   color: var(--kara-text-primary);
-  transition: background-color 0.35s ease, border-color 0.35s ease, color 0.3s ease;
+  transform-origin: bottom left;
+  animation: karaBubblePopIn 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transition:
+    transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.28s ease-out,
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    color 0.3s ease,
+    box-shadow 0.35s ease;
+  will-change: transform, opacity;
 }
 
 .kara-user-bubble {
   background: var(--kara-user-bubble-bg);
   color: var(--kara-user-bubble-text);
-  transition: background 0.35s ease, color 0.3s ease;
+  transform-origin: bottom right;
+  animation: karaBubblePopIn 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transition:
+    transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.28s ease-out,
+    background 0.35s ease,
+    color 0.3s ease,
+    box-shadow 0.35s ease;
+  will-change: transform, opacity;
 }
 
 .kara-send-btn {
@@ -344,6 +840,170 @@
 
 .kara-chat-control-btn:hover {
   border-color: var(--kara-accent);
+}
+
+/* ==========================================================================
+   Gemini × Grok Hybrid Layout & Theme Utilities
+   ========================================================================== */
+.kara-gemini-aurora-text {
+  background: linear-gradient(135deg, #4C8DF6 0%, #9B72CB 52%, #D96570 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.kara-gemini-aurora-pill {
+  background: linear-gradient(
+    135deg,
+    rgba(76, 141, 246, 0.14) 0%,
+    rgba(155, 114, 203, 0.14) 52%,
+    rgba(217, 101, 112, 0.14) 100%
+  );
+  border-color: rgba(155, 114, 203, 0.36);
+}
+
+.kara-gemini-grok-dock {
+  background: linear-gradient(180deg, rgba(16, 21, 34, 0.96) 0%, rgba(9, 12, 20, 0.99) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    0 20px 48px -14px rgba(0, 0, 0, 0.82),
+    0 0 0 1px rgba(76, 141, 246, 0.08),
+    0 -2px 26px -8px rgba(155, 114, 203, 0.16);
+  transition: border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.kara-gemini-grok-dock:focus-within {
+  border-color: rgba(155, 114, 203, 0.48);
+  box-shadow:
+    0 22px 54px -12px rgba(0, 0, 0, 0.88),
+    0 0 0 1px rgba(76, 141, 246, 0.26),
+    0 0 32px -4px rgba(155, 114, 203, 0.24);
+}
+
+[data-kara-theme="gemini-grok-fusion"] .kara-ai-bubble {
+  background: linear-gradient(165deg, rgba(14, 19, 31, 0.96) 0%, rgba(10, 14, 23, 0.96) 100%);
+  border-color: rgba(155, 114, 203, 0.22);
+  box-shadow:
+    0 12px 32px -12px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 0 rgba(76, 141, 246, 0.14);
+}
+
+[data-kara-theme="gemini-grok-fusion"] .kara-user-bubble {
+  box-shadow:
+    0 10px 28px -10px rgba(76, 141, 246, 0.35),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
+}
+
+/* ==========================================================================
+   iOS 18 Liquid Glass × Android 15 Material You Hybrid Mix Theme & Layout
+   ========================================================================== */
+[data-kara-theme="ios-android-mix"] {
+  --kara-bg-app: #060911;
+  --kara-bg-chat: rgba(12, 16, 28, 0.88);
+  --kara-bg-header: rgba(16, 21, 36, 0.82);
+  --kara-bg-banner: rgba(14, 19, 33, 0.86);
+  --kara-bg-composer: rgba(13, 18, 31, 0.86);
+  --kara-bg-input: rgba(21, 28, 46, 0.92);
+  --kara-bg-ai-bubble: rgba(21, 28, 45, 0.94);
+  --kara-bg-card: rgba(15, 20, 34, 0.92);
+  --kara-bg-chip: rgba(24, 32, 52, 0.88);
+  --kara-text-primary: #F8FAFC;
+  --kara-text-secondary: #CBD5E1;
+  --kara-text-muted: #94A3B8;
+  --kara-border: rgba(255, 255, 255, 0.13);
+  --kara-border-strong: rgba(10, 132, 255, 0.52);
+  --kara-accent: #0A84FF;
+  --kara-accent-secondary: #34D399;
+  --kara-accent-tertiary: #D0BCFF;
+  --kara-user-bubble-bg: linear-gradient(135deg, #0A84FF 0%, #4F46E5 58%, #7C3AED 100%);
+  --kara-user-bubble-text: #FFFFFF;
+  --kara-send-btn-bg: linear-gradient(135deg, #0A84FF 0%, #6366F1 52%, #34D399 100%);
+  --kara-send-btn-text: #FFFFFF;
+  --kara-chat-shadow:
+    0 24px 64px -16px rgba(0, 0, 0, 0.86),
+    0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 0 42px -12px rgba(10, 132, 255, 0.22),
+    0 0 36px -14px rgba(52, 211, 153, 0.14);
+  --kara-chat-font: -apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'SF Pro Display', 'Google Sans', sans-serif;
+}
+
+[data-kara-theme="ios-android-mix"] .kara-chat-shell {
+  backdrop-filter: blur(28px) saturate(185%);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
+  border-radius: 28px;
+}
+
+[data-kara-theme="ios-android-mix"] .kara-chat-header {
+  backdrop-filter: blur(26px) saturate(190%);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border-bottom-color: rgba(255, 255, 255, 0.11);
+}
+
+[data-kara-theme="ios-android-mix"] .kara-ai-bubble {
+  background: linear-gradient(160deg, rgba(25, 33, 52, 0.94) 0%, rgba(16, 22, 37, 0.96) 100%);
+  border-color: rgba(208, 188, 255, 0.22);
+  border-radius: 22px 22px 22px 6px;
+  box-shadow:
+    0 12px 30px -12px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+[data-kara-theme="ios-android-mix"] .kara-user-bubble {
+  border-radius: 22px 22px 6px 22px;
+  box-shadow:
+    0 12px 28px -10px rgba(10, 132, 255, 0.42),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.28);
+}
+
+.kara-ios-android-mix-text {
+  background: linear-gradient(135deg, #38BDF8 0%, #A78BFA 50%, #34D399 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.kara-ios-dynamic-island {
+  background: rgba(4, 6, 12, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 12px 32px -6px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(10, 132, 255, 0.16),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  transition:
+    transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.28s ease,
+    border-color 0.28s ease;
+}
+
+.kara-ios-dynamic-island:hover {
+  transform: scale(1.015);
+  border-color: rgba(56, 189, 248, 0.42);
+  box-shadow:
+    0 14px 36px -6px rgba(0, 0, 0, 0.9),
+    0 0 24px -4px rgba(10, 132, 255, 0.32),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.kara-android-m3-tile {
+  background: linear-gradient(145deg, rgba(27, 35, 56, 0.88) 0%, rgba(18, 24, 40, 0.92) 100%);
+  border: 1px solid rgba(208, 188, 255, 0.18);
+  border-radius: 18px;
+  transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kara-android-m3-tile:hover {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: linear-gradient(145deg, rgba(33, 43, 68, 0.94) 0%, rgba(22, 30, 49, 0.96) 100%);
+}
+
+.kara-ios-android-bottom-nav {
+  background: linear-gradient(180deg, rgba(15, 21, 36, 0.84) 0%, rgba(9, 13, 24, 0.94) 100%);
+  backdrop-filter: blur(26px) saturate(190%);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 14px 36px -10px rgba(0, 0, 0, 0.78),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 
 /* Vintage Paper light-theme contrast adjustments inside the chat interface */
@@ -543,6 +1203,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .kara-dynamic-bg-orb,
+  .kara-morph-liquid-field,
+  .kara-morph-liquid-core,
   .kara-mode-shimmer-sweep,
   .kara-mode-ambient-glow,
   .kara-thought-drawer--open,
@@ -550,6 +1213,12 @@
   .kara-thought-top-beam {
     animation: none;
   }
+  .kara-morphing-bg-stage,
+  .kara-morph-liquid-field,
+  .kara-morph-liquid-core,
+  .kara-mode-gradient-plane,
+  .kara-dynamic-bg-orb,
+  .kara-dynamic-bg-vignette,
   .kara-mode-card,
   .kara-mode-option-btn,
   .kara-thought-drawer,
@@ -598,6 +1267,36 @@
   50% {
     box-shadow: 0 0 10px 2px rgba(56, 189, 248, 0.45);
   }
+}
+
+@keyframes karaThinkingBreathe {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.38;
+  }
+}
+
+@keyframes karaThinkingBubbleBreathe {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 10px 28px -10px rgba(76, 141, 246, 0.22), 0 0 18px -6px rgba(155, 114, 203, 0.18);
+  }
+  50% {
+    opacity: 0.76;
+    box-shadow: 0 12px 32px -8px rgba(155, 114, 203, 0.34), 0 0 24px -4px rgba(76, 141, 246, 0.28);
+  }
+}
+
+.kara-thinking-breathe {
+  animation: karaThinkingBreathe 2.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: opacity;
+}
+
+.kara-thinking-bubble-breathe {
+  animation: karaThinkingBubbleBreathe 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: opacity, box-shadow;
 }
 
 .kara-thought-trigger {
@@ -727,3 +1426,397 @@
   animation: karaThoughtSynapsePulse 3s ease-in-out infinite;
   animation-delay: calc(var(--step-index) * 0.1s);
 }
+
+/* ============================================================================
+   SYNAPSE FIRING ANIMATION (Reasoning Trace Steps & Neural Pathway Impulses)
+   ============================================================================ */
+@keyframes karaSynapseNodeFire {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 0 rgba(217, 70, 239, 0.55),
+      0 0 8px 1px rgba(56, 189, 248, 0.35);
+    border-color: rgba(217, 70, 239, 0.85);
+  }
+  40% {
+    transform: scale(1.12);
+    box-shadow:
+      0 0 0 5px rgba(217, 70, 239, 0),
+      0 0 16px 3px rgba(56, 189, 248, 0.75);
+    border-color: rgba(56, 189, 248, 0.95);
+  }
+  70% {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 7px rgba(56, 189, 248, 0),
+      0 0 12px 2px rgba(232, 121, 249, 0.55);
+    border-color: rgba(232, 121, 249, 0.9);
+  }
+}
+
+@keyframes karaSynapseAxonTravel {
+  0% {
+    top: -18%;
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.95;
+  }
+  80% {
+    opacity: 0.95;
+  }
+  100% {
+    top: 102%;
+    opacity: 0;
+  }
+}
+
+@keyframes karaSynapseDendriteFlash {
+  0%, 100% {
+    opacity: 0.28;
+    transform: scaleX(0.88);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scaleX(1.08);
+  }
+}
+
+@keyframes karaSynapseStepSurface {
+  0%, 100% {
+    border-color: rgba(217, 70, 239, 0.36);
+    box-shadow:
+      0 0 18px -6px rgba(217, 70, 239, 0.22),
+      inset 0 0 14px -8px rgba(56, 189, 248, 0.16);
+  }
+  50% {
+    border-color: rgba(56, 189, 248, 0.62);
+    box-shadow:
+      0 0 24px -4px rgba(56, 189, 248, 0.34),
+      inset 0 0 18px -6px rgba(217, 70, 239, 0.24);
+  }
+}
+
+@keyframes karaSynapseWaveSweep {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.55;
+  }
+  70% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateX(220%);
+    opacity: 0;
+  }
+}
+
+.kara-synapse-axon-track {
+  position: relative;
+  overflow: hidden;
+}
+
+.kara-synapse-axon-spark {
+  position: absolute;
+  left: -1px;
+  width: 4px;
+  height: 28px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    180deg,
+    rgba(56, 189, 248, 0) 0%,
+    rgba(56, 189, 248, 0.95) 45%,
+    rgba(232, 121, 249, 1) 75%,
+    rgba(232, 121, 249, 0) 100%
+  );
+  box-shadow: 0 0 10px 2px rgba(56, 189, 248, 0.7);
+  animation: karaSynapseAxonTravel 1.85s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+.kara-synapse-node--firing {
+  animation: karaSynapseNodeFire 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, box-shadow;
+}
+
+.kara-synapse-dendrite {
+  transform-origin: left center;
+  animation: karaSynapseDendriteFlash 1.5s ease-in-out infinite;
+  animation-delay: calc(var(--step-index, 0) * 0.22s);
+}
+
+.kara-synapse-step-active {
+  position: relative;
+  overflow: hidden;
+  animation: karaSynapseStepSurface 1.8s ease-in-out infinite;
+}
+
+.kara-synapse-step-active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(56, 189, 248, 0.09) 45%,
+    rgba(217, 70, 239, 0.12) 60%,
+    transparent 100%
+  );
+  animation: karaSynapseWaveSweep 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kara-thinking-breathe,
+  .kara-thinking-bubble-breathe,
+  .kara-synapse-axon-spark,
+  .kara-synapse-node--firing,
+  .kara-synapse-dendrite,
+  .kara-synapse-step-active,
+  .kara-synapse-step-active::after,
+  .kara-voice-pulse-shell,
+  .kara-ai-bubble,
+  .kara-user-bubble,
+  .kara-ai-bubble--speaking {
+    animation: none !important;
+  }
+}
+
+/* ============================================================================
+   REAL-TIME VOICE PULSE WAVEFORM (Web Audio API AnalyserNode Synchronized)
+   ============================================================================ */
+@keyframes karaVoicePulseAura {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(var(--kara-voice-rgb, 56, 189, 248), 0.28),
+      0 10px 30px -10px rgba(var(--kara-voice-rgb, 56, 189, 248), 0.28),
+      inset 0 0 18px -10px rgba(var(--kara-voice-rgb, 56, 189, 248), 0.22);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(var(--kara-voice-rgb, 56, 189, 248), 0.48),
+      0 12px 34px -8px rgba(var(--kara-voice-rgb, 56, 189, 248), 0.4),
+      inset 0 0 24px -8px rgba(var(--kara-voice-rgb, 56, 189, 248), 0.32);
+  }
+}
+
+.kara-ai-bubble--speaking {
+  transition:
+    transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.28s ease-out,
+    box-shadow 0.15s ease-out,
+    border-color 0.2s ease-out;
+  animation:
+    karaBubblePopIn 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    karaVoicePulseAura 2.2s ease-in-out infinite;
+}
+
+.kara-voice-pulse-shell {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    rgba(9, 13, 24, 0.92) 0%,
+    rgba(15, 23, 42, 0.84) 55%,
+    rgba(9, 13, 24, 0.94) 100%
+  );
+  backdrop-filter: blur(12px);
+  transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.kara-voice-pulse-bar {
+  will-change: height, opacity, transform;
+  transition: height 55ms linear, opacity 80ms ease-out;
+}
+
+
+
+
+/* ============================================================================
+   PERFORMANCE & SMOOTH RENDERING (Zero-lag message lists & hardware acceleration)
+   ============================================================================ */
+.kara-message-bubble-wrapper {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 110px;
+}
+
+.kara-smooth-gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+/* Maintain stable scrollbars without reflow */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* ============================================================================
+   GLOBAL DEEP BLACK DARK MODE (Late-Night Eye Strain Reduction)
+   Applies a pitch-black OLED theme (#000000 - #050508) across all UI components,
+   dimming ambient glare and softening border/text contrast for late-night comfort.
+   ============================================================================ */
+html[data-kara-dark-mode="true"],
+[data-kara-dark-mode="true"] {
+  --kara-bg-app: #000000 !important;
+  --kara-bg-chat: #000000 !important;
+  --kara-bg-header: #020204 !important;
+  --kara-bg-banner: #030306 !important;
+  --kara-bg-composer: #010103 !important;
+  --kara-bg-input: #050508 !important;
+  --kara-bg-ai-bubble: #06060A !important;
+  --kara-bg-card: #040407 !important;
+  --kara-bg-chip: #08080D !important;
+  --kara-text-primary: #E2E8F0 !important;
+  --kara-text-secondary: #94A3B8 !important;
+  --kara-text-muted: #64748B !important;
+  --kara-border: rgba(255, 255, 255, 0.065) !important;
+  --kara-chat-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.99), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  background-color: #000000 !important;
+  color: #E2E8F0;
+}
+
+html[data-kara-dark-mode="true"] body {
+  background-color: #000000 !important;
+  color: #E2E8F0 !important;
+}
+
+/* Dim ambient radial gradient orbs in late-night dark mode to prevent glare */
+html[data-kara-dark-mode="true"] .kara-morphing-bg-stage,
+[data-kara-dark-mode="true"] .kara-morphing-bg-stage {
+  opacity: 0.16 !important;
+  filter: brightness(0.45) saturate(0.8) !important;
+}
+
+/* Deep black overrides for core KARA layout shells, headers, docks & bubbles */
+html[data-kara-dark-mode="true"] .kara-app-shell,
+[data-kara-dark-mode="true"].kara-app-shell,
+html[data-kara-dark-mode="true"] .kara-chat-shell,
+[data-kara-dark-mode="true"] .kara-chat-shell {
+  background: #000000 !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.065) !important;
+}
+
+html[data-kara-dark-mode="true"] .kara-chat-header,
+[data-kara-dark-mode="true"] .kara-chat-header,
+html[data-kara-dark-mode="true"] .kara-chat-composer,
+[data-kara-dark-mode="true"] .kara-chat-composer {
+  background: rgba(2, 2, 4, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.065) !important;
+}
+
+html[data-kara-dark-mode="true"] .kara-gemini-grok-dock,
+[data-kara-dark-mode="true"] .kara-gemini-grok-dock,
+html[data-kara-dark-mode="true"] .kara-ios-dynamic-island,
+[data-kara-dark-mode="true"] .kara-ios-dynamic-island {
+  background: #030306 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 14px 36px -10px rgba(0, 0, 0, 0.98) !important;
+}
+
+html[data-kara-dark-mode="true"] .kara-android-m3-tile,
+[data-kara-dark-mode="true"] .kara-android-m3-tile,
+html[data-kara-dark-mode="true"] .kara-ai-bubble,
+[data-kara-dark-mode="true"] .kara-ai-bubble {
+  background: #050509 !important;
+  border-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Override slate/neutral surface classes inside modals, drawers, and cards */
+html[data-kara-dark-mode="true"] .bg-\[\#0F131C\],
+[data-kara-dark-mode="true"] .bg-\[\#0F131C\],
+html[data-kara-dark-mode="true"] .bg-neutral-900,
+[data-kara-dark-mode="true"] .bg-neutral-900,
+html[data-kara-dark-mode="true"] .bg-neutral-900\/95,
+[data-kara-dark-mode="true"] .bg-neutral-900\/95,
+html[data-kara-dark-mode="true"] .bg-neutral-900\/90,
+[data-kara-dark-mode="true"] .bg-neutral-900\/90,
+html[data-kara-dark-mode="true"] .bg-neutral-900\/80,
+[data-kara-dark-mode="true"] .bg-neutral-900\/80,
+html[data-kara-dark-mode="true"] .bg-neutral-900\/70,
+[data-kara-dark-mode="true"] .bg-neutral-900\/70,
+html[data-kara-dark-mode="true"] .bg-neutral-900\/60,
+[data-kara-dark-mode="true"] .bg-neutral-900\/60,
+html[data-kara-dark-mode="true"] .bg-neutral-950,
+[data-kara-dark-mode="true"] .bg-neutral-950,
+html[data-kara-dark-mode="true"] .bg-neutral-950\/95,
+[data-kara-dark-mode="true"] .bg-neutral-950\/95,
+html[data-kara-dark-mode="true"] .bg-neutral-950\/90,
+[data-kara-dark-mode="true"] .bg-neutral-950\/90,
+html[data-kara-dark-mode="true"] .bg-neutral-950\/85,
+[data-kara-dark-mode="true"] .bg-neutral-950\/85,
+html[data-kara-dark-mode="true"] .bg-neutral-950\/80,
+[data-kara-dark-mode="true"] .bg-neutral-950\/80,
+html[data-kara-dark-mode="true"] .bg-slate-900,
+[data-kara-dark-mode="true"] .bg-slate-900,
+html[data-kara-dark-mode="true"] .bg-slate-950,
+[data-kara-dark-mode="true"] .bg-slate-950 {
+  background-color: #030306 !important;
+}
+
+html[data-kara-dark-mode="true"] .border-neutral-800,
+[data-kara-dark-mode="true"] .border-neutral-800,
+html[data-kara-dark-mode="true"] .border-neutral-800\/80,
+[data-kara-dark-mode="true"] .border-neutral-800\/80,
+html[data-kara-dark-mode="true"] .border-neutral-800\/90,
+[data-kara-dark-mode="true"] .border-neutral-800\/90 {
+  border-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* ============================================================================
+   ACTIVE PERSONA MODE HEADER INDICATOR — SUBTLE GLOWING PULSE
+   Adapts dynamically to Regular (Sky), Bratty (Fuchsia), Uncensored (Amber),
+   Romantic (Rose), and Parent (Emerald) via --kara-mode-glow-rgb
+   ============================================================================ */
+@keyframes karaPersonaGlowPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(var(--kara-mode-glow-rgb, 56, 189, 248), 0.32),
+      0 0 12px -2px rgba(var(--kara-mode-glow-rgb, 56, 189, 248), 0.28),
+      inset 0 0 10px -4px rgba(var(--kara-mode-glow-rgb, 56, 189, 248), 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(var(--kara-mode-glow-rgb, 56, 189, 248), 0.62),
+      0 0 20px 2px rgba(var(--kara-mode-glow-rgb, 56, 189, 248), 0.46),
+      inset 0 0 14px -2px rgba(var(--kara-mode-glow-rgb, 56, 189, 248), 0.30);
+  }
+}
+
+@keyframes karaPersonaDotHalo {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.75);
+    opacity: 0.15;
+  }
+}
+
+.kara-persona-mode-glow {
+  animation: karaPersonaGlowPulse 3.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease,
+    color 0.35s ease;
+}
+
+.kara-persona-dot-halo {
+  animation: karaPersonaDotHalo 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kara-persona-mode-glow,
+  .kara-persona-dot-halo {
+    animation: none !important;
+  }
+}
+
+

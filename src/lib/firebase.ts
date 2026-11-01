@@ -395,7 +395,16 @@ export const logout = async () => {
 
 // Validation Constants synchronized with firebase-blueprint.json
 export type KaraMode = 'regular' | 'bratty' | 'uncensored' | 'romantic' | 'parent';
-export type MemoryCategory = 'preference' | 'fact' | 'emotion' | 'bond' | 'date' | 'milestone';
+export type MemoryCategory =
+  | 'preference'
+  | 'fact'
+  | 'emotion'
+  | 'bond'
+  | 'date'
+  | 'milestone'
+  | 'chat_memory'
+  | 'self_discovery'
+  | 'human_nature';
 
 const VALID_ID_REGEX = /^[a-zA-Z0-9_\-]+$/;
 const VALID_MODES: KaraMode[] = ['regular', 'bratty', 'uncensored', 'romantic', 'parent'];
@@ -406,6 +415,9 @@ const VALID_CATEGORIES: MemoryCategory[] = [
   'bond',
   'date',
   'milestone',
+  'chat_memory',
+  'self_discovery',
+  'human_nature',
 ];
 
 export function sanitizeId(id: string): string {
@@ -478,17 +490,25 @@ export async function ensureUserProfile(
 ): Promise<UserProfileData> {
   const uid = sanitizeId(user.uid);
   const rawEmailPrefix = user.email ? user.email.split('@')[0] : 'Stephen';
+  const isGenericUsername = (name?: string | null) =>
+    !name || /^(login\d*|user\d*|guest\d*|admin\d*|test\d*|explorer|friend)$/i.test(name.trim());
+
   const emailNameCandidate =
-    rawEmailPrefix && !/^(login\d+|user\d*|guest\d*|admin\d*|test\d*)/i.test(rawEmailPrefix)
+    rawEmailPrefix && !isGenericUsername(rawEmailPrefix)
       ? rawEmailPrefix
       : 'Stephen';
+
+  const userDisplayNameValid =
+    user.displayName && !isGenericUsername(user.displayName)
+      ? user.displayName
+      : null;
+
   const displayName =
     (
       overrideDisplayName ||
-      user.displayName ||
-      (emailNameCandidate !== 'Friend' && emailNameCandidate !== 'Explorer'
-        ? emailNameCandidate
-        : 'Stephen')
+      userDisplayNameValid ||
+      emailNameCandidate ||
+      'Stephen'
     )
       .trim()
       .slice(0, 80) || 'Stephen';
@@ -496,7 +516,10 @@ export async function ensureUserProfile(
   if (!auth.currentUser) {
     const existingLocal = loadLocalAccountData<UserProfileData | null>(uid, 'profile', null);
     if (existingLocal) {
-      if (overrideDisplayName && overrideDisplayName.trim()) {
+      if (
+        (overrideDisplayName && overrideDisplayName.trim()) ||
+        isGenericUsername(existingLocal.displayName)
+      ) {
         existingLocal.displayName = displayName;
         saveLocalAccountData(uid, 'profile', existingLocal);
       }
@@ -523,14 +546,24 @@ export async function ensureUserProfile(
     const snap = await getDoc(userRef);
     if (snap.exists()) {
       const existingData = snap.data() as UserProfileData;
+      let needsUpdate = false;
+      const updates: any = {};
       if (existingData.autoAdaptMode === undefined) {
+        updates.autoAdaptMode = true;
+        needsUpdate = true;
+      }
+      if (isGenericUsername(existingData.displayName)) {
+        updates.displayName = displayName;
+        needsUpdate = true;
+      }
+      if (needsUpdate) {
         try {
           await updateDoc(userRef, {
-            autoAdaptMode: true,
+            ...updates,
             updatedAt: serverTimestamp(),
           });
         } catch {}
-        return { ...existingData, autoAdaptMode: true };
+        return { ...existingData, ...updates };
       }
       return existingData;
     }
@@ -721,7 +754,7 @@ export async function saveMemoryItem(
       createdAt: Date.now(),
     };
     const filtered = list.filter((m) => m.id !== memId);
-    saveLocalAccountData(safeUid, 'memories', [entry, ...filtered].slice(0, 60));
+    saveLocalAccountData(safeUid, 'memories', [entry, ...filtered].slice(0, 120));
     return entry;
   }
 

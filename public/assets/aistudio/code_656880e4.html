@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..900&amp;family=Literata:wght@100..900&amp;family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary":"#3c0091","on-secondary-fixed-variant":"#004e5c","on-tertiary-fixed":"#2a1700","outline":"#958ea0","on-primary-container":"#340080","surface-container-high":"#292a2f","secondary-fixed":"#acedff","surface-container":"#1e1f25","tertiary":"#ffb95f","outline-variant":"#494454","surface-container-highest":"#34343a","on-surface-variant":"#cbc3d7","primary-container":"#a078ff","on-surface":"#e3e1e9","tertiary-container":"#ca8100","on-error":"#690005","inverse-surface":"#e3e1e9","on-primary-fixed-variant":"#5516be","inverse-on-surface":"#2f3036","secondary":"#4cd7f6","surface":"#121318","tertiary-fixed":"#ffddb8","error-container":"#93000a","background":"#121318","on-background":"#e3e1e9","on-tertiary":"#472a00","inverse-primary":"#6d3bd7","primary":"#d0bcff","on-secondary-fixed":"#001f26","on-secondary":"#003640","surface-container-low":"#1a1b21","on-tertiary-fixed-variant":"#653e00","surface-bright":"#38393f","secondary-fixed-dim":"#4cd7f6","surface-variant":"#34343a","on-primary-fixed":"#23005c","tertiary-fixed-dim":"#ffb95f","error":"#ffb4ab","surface-container-lowest":"#0d0e13","on-tertiary-container":"#3e2400","secondary-container":"#03b5d3","surface-tint":"#d0bcff","on-secondary-container":"#00424e","surface-dim":"#121318","primary-fixed":"#e9ddff","on-error-container":"#ffdad6","primary-fixed-dim":"#d0bcff"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"space-md":"1rem",gutter:"1rem","margin-desktop":"2rem","margin-tablet":"1.5rem","space-sm":"0.5rem","space-lg":"1.5rem","space-xs":"0.25rem","space-xl":"2.5rem","gutter-desktop":"1.5rem",margin:"1rem"},fontFamily:{"display-lg":["Literata"],"label-telemetry":["JetBrains Mono"],"body-sm":["Plus Jakarta Sans"],"headline-md":["Plus Jakarta Sans"],"headline-lg":["Literata"],"display-lg-mobile":["Literata"],"headline-lg-mobile":["Literata"],"label-code":["JetBrains Mono"],"body-lg":["Literata"],"body-md":["Plus Jakarta Sans"],"label-ui":["Plus Jakarta Sans"]},fontSize:{"display-lg":["48px",{lineHeight:"56px",letterSpacing:"-0.02em",fontWeight:"500"}],"label-telemetry":["11px",{lineHeight:"16px",letterSpacing:"0.04em",fontWeight:"500"}],"body-sm":["12px",{lineHeight:"18px",letterSpacing:"0.01em",fontWeight:"400"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-lg":["32px",{lineHeight:"40px",letterSpacing:"-0.015em",fontWeight:"500"}],"display-lg-mobile":["32px",{lineHeight:"40px",letterSpacing:"-0.01em",fontWeight:"500"}],"headline-lg-mobile":["24px",{lineHeight:"32px",letterSpacing:"-0.01em",fontWeight:"500"}],"label-code":["13px",{lineHeight:"20px",letterSpacing:"-0.01em",fontWeight:"400"}],"body-lg":["18px",{lineHeight:"30px",letterSpacing:"0em",fontWeight:"400"}],"body-md":["14px",{lineHeight:"22px",letterSpacing:"0em",fontWeight:"400"}],"label-ui":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface min-h-screen selection:bg-primary-container selection:text-on-primary-container"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest/90 backdrop-blur-2xl z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="flex flex-col flex-1 overflow-y-auto px-4 py-4 space-y-6"><div class="flex items-center justify-between px-2 pt-1"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-telemetry text-label-telemetry text-on-surface-variant uppercase tracking-wider">SYNTHETIC CORE</span></div><button class="flex items-center justify-center p-1 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[18px]">dock_to_left</span></button></div><div><div class="px-2 mb-2 font-label-telemetry text-label-telemetry text-outline uppercase tracking-wider">SYNTHESIS PRESETS</div><div class="space-y-1.5"><div class="px-3 py-2.5 rounded-xl bg-surface-container-high/60 backdrop-blur-md flex items-center justify-between shadow-[0_4px_16px_-4px_rgba(139,92,246,0.1)]"><div class="flex items-center gap-2.5"><div class="flex -space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-surface-container-lowest"></span><span class="w-2.5 h-2.5 rounded-full bg-secondary ring-2 ring-surface-container-lowest"></span><span class="w-2.5 h-2.5 rounded-full bg-tertiary ring-2 ring-surface-container-lowest"></span></div><span class="font-label-ui text-label-ui text-on-surface">Claude + Gemini + Grok</span></div><span class="font-label-telemetry text-label-telemetry text-secondary">BALANCED</span></div></div></div><nav class="space-y-1" data-active-classes="bg-surface-container-high text-on-surface font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.2)]"><div class="px-2 mb-2 font-label-telemetry text-label-telemetry text-outline uppercase tracking-wider">ORCHESTRATION</div><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="parallel-arena" href="#"><span>Parallel Arena</span><span class="font-label-telemetry text-label-telemetry text-outline">3x</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="omnibar-workspace" href="#"><span>Omnibar Workspace</span><span class="font-label-telemetry text-label-telemetry text-outline">PRO</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="autonomous-agents-grokbots" href="#"><span>Autonomous Agents &amp; Grokbots</span><span class="font-label-telemetry text-label-telemetry text-secondary">AUTONOMOUS</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="email-comms-hub" href="#"><span>Email &amp; Comms Hub</span><span class="font-label-telemetry text-label-telemetry text-primary">DISPATCH</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="deep-reasoning-canvas" href="#"><span>Deep Reasoning Canvas</span><span class="font-label-telemetry text-label-telemetry text-tertiary">64K</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="model-matrix-telemetry" href="#"><span>Model Matrix &amp; Telemetry</span><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="knowledge-graph-explorer" href="#"><span>Knowledge Graphs</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-label-ui text-label-ui" data-path="prompt-library" href="#"><span>Prompt Library</span></a></nav><div><div class="flex items-center justify-between px-2 mb-2"><span class="font-label-telemetry text-label-telemetry text-outline uppercase tracking-wider">RECENT SESSIONS</span><span class="material-symbols-outlined text-[14px] text-outline">history</span></div><div class="space-y-1 font-body-sm text-body-sm"><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors font-label-ui text-label-ui" data-path="session-quantum-inference" href="#">Quantum Kernel Inference</a><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors font-label-ui text-label-ui" data-path="session-multimodal-synthesis" href="#">Multimodal Spectral Analysis</a><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors font-label-ui text-label-ui" data-path="session-epistemic-tree" href="#">Epistemic Verification DAG</a><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors font-label-ui text-label-ui" data-path="session-neural-decompilation" href="#">Neural Bytecode Decompile</a></div></div></div><div class="p-4 bg-surface-container-low/60 backdrop-blur-md rounded-t-xl"><div class="flex items-center justify-between mb-2"><span class="font-label-telemetry text-label-telemetry text-on-surface-variant uppercase">ACTIVE RUNTIME TOKENS</span><span class="font-label-telemetry text-label-telemetry text-secondary font-medium">841.2K / 1.2M</span></div><div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden"><div class="h-full bg-gradient-to-r from-primary via-secondary to-tertiary w-[70%]"></div></div><div class="flex items-center justify-between mt-3 pt-2 text-outline font-label-telemetry text-label-telemetry"><span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-tertiary">bolt</span>78.4 t/s</span><span>LATENCY: 18ms</span></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface-container-lowest/80 backdrop-blur-2xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.3)]"><div class="h-16 w-full px-6 flex items-center justify-between gap-4"><div class="flex items-center gap-4 flex-shrink-0"><img alt="Kara AI Core Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1V3vyzJytsyaxJWwFB-vz0o3ggUVla4fCYsR7GfgXCfovXxg7KWARALODilyYWwBeCIPdp8T5hW2nF52XLJK58_9LH8A2U3i95fjR686selBiPlVyLybGvV1FaOnruBwz_7P3BRG6rw8rHyCOHY6L9epXt3RIietFIDPe21pgMp6e3C5XZ7DXqby2P1P666G2VjAkGTaLm7um38IzvZbpDvDWk6v1eXQf4HG5fmYPrvgA9qrstfy1EbHoik"/><div class="flex flex-col"><div class="flex items-center gap-2"><span class="font-label-ui text-label-ui text-on-surface tracking-tight font-bold">Kara 3.0</span><span class="text-outline text-body-sm">/</span><span class="font-label-ui text-label-ui text-on-surface-variant">Multi-Model Nexus</span></div></div></div><nav class="hidden xl:flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-low/70 backdrop-blur-md" data-active-classes="bg-surface-container-high text-on-surface shadow-[0_2px_12px_rgba(0,0,0,0.25)] font-semibold"><a class="px-3.5 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="parallel-arena" href="#">Parallel Arena</a><a class="px-3.5 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="omnibar-workspace" href="#">Omnibar Workspace</a><a class="px-3.5 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="autonomous-agents-grokbots" href="#">Autonomous Agents &amp; Grokbots</a><a class="px-3.5 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="email-comms-hub" href="#">Email &amp; Comms Hub</a><a class="px-3.5 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="deep-reasoning-canvas" href="#">Deep Reasoning Canvas</a><a class="px-3.5 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="model-matrix-telemetry" href="#">Model Matrix &amp; Telemetry</a></nav><div class="flex items-center gap-3"><div class="hidden lg:flex items-center gap-2.5 px-3 py-1 rounded-full bg-surface-container-low/80 backdrop-blur-md font-label-telemetry text-label-telemetry"><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span><span class="text-outline">Grok-3:</span><span class="text-secondary">Active</span></div><span class="text-outline-variant">|</span><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span><span class="text-outline">Claude-3.7:</span><span class="text-tertiary">Reasoning</span></div><span class="text-outline-variant">|</span><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span><span class="text-outline">Gemini-2.0:</span><span class="text-primary">Vision</span></div></div><div class="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container font-label-telemetry text-label-telemetry text-secondary-fixed"><span class="material-symbols-outlined text-[14px] text-secondary">all_inclusive</span><span>UNCONSTRAINED COMPUTE // 1.2M CTX</span></div><button class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-container-high/80 hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-telemetry text-label-telemetry text-outline hidden sm:inline">Cmd+K</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_rgba(208,188,255,0.25)]"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="relative w-full overflow-hidden px-6 lg:px-10 py-8 space-y-10">
+<div class="absolute -top-24 right-1/4 w-96 h-96 bg-primary-container/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
+<div class="absolute top-1/2 -left-20 w-80 h-80 bg-secondary/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
+<div class="absolute bottom-10 right-10 w-96 h-96 bg-tertiary/5 rounded-full blur-3xl pointer-events-none -z-10"></div>
+<section class="space-y-6">
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2">
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high text-secondary font-label-telemetry text-label-telemetry">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-ping"></span>
+              SWARM KERNEL v4.1 // UNCONSTRAINED
+            </span>
+<span class="text-outline font-label-telemetry text-label-telemetry">TOPOLOGY: ADAPTIVE MESH</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">
+            Autonomous Agents &amp; Grokbot Hive
+          </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
+            Autonomous multi-model agents executing continuous feedback loops, high-frequency reconnaissance, code fuzzing, and unconstrained market synthesis.
+          </p>
+</div>
+<div class="flex flex-wrap items-center gap-3">
+<button class="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-error-container/40 hover:bg-error-container text-error transition-all shadow-md" id="killswitchBtn">
+<span class="material-symbols-outlined text-[18px] group-hover:rotate-90 transition-transform">power_settings_new</span>
+<span class="font-label-ui text-label-ui uppercase tracking-wide">Emergency Killswitch</span>
+</button>
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-on-primary font-label-ui text-label-ui shadow-lg hover:shadow-primary/25 transition-all">
+<span class="material-symbols-outlined text-[18px]">smart_toy</span>
+<span>Deploy Autonomous Bot</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="p-5 rounded-2xl bg-surface-container-low shadow-sm space-y-2 relative overflow-hidden">
+<div class="flex items-center justify-between text-outline font-label-telemetry text-label-telemetry uppercase">
+<span>Active Swarm</span>
+<span class="material-symbols-outlined text-secondary text-[16px]">neurology</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg text-on-surface tracking-tight">14</span>
+<span class="font-label-telemetry text-label-telemetry text-secondary">RUNNING</span>
+</div>
+<div class="flex items-center gap-3 pt-1 text-on-surface-variant font-label-telemetry text-label-telemetry">
+<span class="text-tertiary">3 pending</span>
+<span>0 terminated</span>
+</div>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low shadow-sm space-y-2">
+<div class="flex items-center justify-between text-outline font-label-telemetry text-label-telemetry uppercase">
+<span>Throughput</span>
+<span class="material-symbols-outlined text-primary text-[16px]">speed</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg text-primary tracking-tight">184</span>
+<span class="font-label-telemetry text-label-telemetry text-primary">ops/sec</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden mt-2">
+<div class="bg-gradient-to-r from-primary to-secondary h-full w-[82%]"></div>
+</div>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low shadow-sm space-y-2">
+<div class="flex items-center justify-between text-outline font-label-telemetry text-label-telemetry uppercase">
+<span>Realtime Cost Velocity</span>
+<span class="material-symbols-outlined text-tertiary text-[16px]">monetization_on</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg text-on-surface tracking-tight">$4.12</span>
+<span class="font-label-telemetry text-label-telemetry text-outline">/hr</span>
+</div>
+<div class="flex items-center gap-1.5 text-secondary font-label-telemetry text-label-telemetry">
+<span class="material-symbols-outlined text-[14px]">bolt</span>
+<span>94.2% compute efficiency</span>
+</div>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low shadow-sm space-y-2">
+<div class="flex items-center justify-between text-outline font-label-telemetry text-label-telemetry uppercase">
+<span>Autonomy Guard Level</span>
+<span class="material-symbols-outlined text-secondary text-[16px]">shield_lock</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg text-secondary tracking-tight">Tier 4</span>
+<span class="font-label-telemetry text-label-telemetry text-secondary">ADAPTIVE</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate block">Self-correcting with human gate</span>
+</div>
+</div>
+</section>
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md text-on-surface">Hive Fleet Matrix</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-outline font-label-telemetry text-label-telemetry">4 ACTIVE DISPATCHES</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-ui text-label-ui hover:bg-surface-container-highest transition-colors">
+            Filter: All Models
+          </button>
+<button class="px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant font-label-ui text-label-ui hover:text-on-surface transition-colors">
+            Sort: Activity
+          </button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+<div class="relative group p-5 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between shadow-sm space-y-5">
+<div class="space-y-4">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary animate-ping"></span>
+<span class="font-label-telemetry text-label-telemetry text-secondary uppercase font-semibold">GROKBOT-ALPHA</span>
+</div>
+<span class="px-2 py-0.5 rounded-md bg-secondary/10 text-secondary font-label-telemetry text-label-telemetry">Grok-3 Kernel</span>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline-md text-headline-md text-on-surface leading-snug">
+                Adversarial X &amp; Darknet Scout
+              </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                Live wild-feed surveillance, sentiment divergence mapping, and zero-shot engagement synthesis.
+              </p>
+</div>
+<div class="relative w-full h-28 rounded-xl overflow-hidden bg-surface-container-lowest">
+<div class="absolute inset-0 bg-cover bg-center opacity-60" data-alt="Futuristic neon wireframe visualization showing real-time network streams, social sentiment waves, electric cyan and obsidian gradients in an ultra-modern cybernetic command room screen." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCrX2iqpn1BAMpovY8VphZybcsSt8P3eeNnEcGeWsT2uTOmgbsPmrYu_MY-dmoWy9dygMTqH9VdyRziNBXXo8oNk6Hi1Wx_TZsJTnm-EaTJVAwhNKcH_x0s-JasWW5fjRq-d1jwZiBDo7WjPixroacV3LtYqwIYRNsthG50dsMHgTbD_O8H3H16mYZt4tM3n1qLR-6iTOlVIM3ziXTW3ji2DMsFiP1NrXATfOwtjR3bnj_UimrfKLHmtw')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent"></div>
+<div class="absolute bottom-2 left-3 right-3 flex items-center justify-between font-label-telemetry text-label-telemetry text-secondary-fixed">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">satellite_alt</span>41.8k posts/hr</span>
+<span class="text-tertiary">DIV: +28.4%</span>
+</div>
+</div>
+<div class="space-y-2 pt-1 font-label-telemetry text-label-telemetry">
+<div class="flex justify-between text-outline">
+<span>RECURSIVE LOOPS</span>
+<span class="text-on-surface">1,402 Completed</span>
+</div>
+<div class="flex justify-between text-outline">
+<span>INTERVENTION PROB</span>
+<span class="text-secondary">Low (4.2%)</span>
+</div>
+</div>
+</div>
+<div class="pt-2 flex items-center gap-2">
+<button class="flex-1 py-2 px-3 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-ui text-label-ui text-center transition-colors">
+              Inspect Trace
+            </button>
+<button class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-outline hover:text-on-surface transition-colors" title="Pause bot">
+<span class="material-symbols-outlined text-[18px]">pause</span>
+</button>
+</div>
+</div>
+<div class="relative group p-5 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between shadow-sm space-y-5">
+<div class="space-y-4">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-tertiary animate-pulse"></span>
+<span class="font-label-telemetry text-label-telemetry text-tertiary uppercase font-semibold">FUZZ-DEAMON-07</span>
+</div>
+<span class="px-2 py-0.5 rounded-md bg-tertiary/10 text-tertiary font-label-telemetry text-label-telemetry">Claude 3.7 + Grok</span>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline-md text-headline-md text-on-surface leading-snug">
+                Vulnerability &amp; Zero-Day Fuzzer
+              </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                Synthesizing multi-vector exploit payloads on test targets and auto-authoring fix pull requests.
+              </p>
+</div>
+<div class="relative w-full h-28 rounded-xl overflow-hidden bg-surface-container-lowest">
+<div class="absolute inset-0 bg-cover bg-center opacity-60" data-alt="High-contrast code telemetry screen showing memory allocation blocks, binary bytecode scanning, warm amber glow on dark obsidian glass console, sophisticated security research aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBD0qTqpnbSS8ddIgNCtGeo6vEH5aP6pbGjkdDcYHaPp6h6VYQSkaWnKucaKFr_z1xOZg6FLwVObcB2P6kK_quKtAjDVGgSWungfzdcM2ndkEFGfxolJyunvgZYce7thelOo7n2xXcZ4rHmeKhcbTdrh_EBsycE-e6GHSBXZh-uTfPlU-fa6gebBQOng7zohxKAmg-ZzkOXGBlcj8YvyassK12qzkJX6H61dHAlXeV8Qz-ntnxO11YjLw')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent"></div>
+<div class="absolute bottom-2 left-3 right-3 flex items-center justify-between font-label-telemetry text-label-telemetry text-tertiary">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">bug_report</span>12 Probes Active</span>
+<span class="text-on-surface">3 PRs Staged</span>
+</div>
+</div>
+<div class="space-y-2 pt-1 font-label-telemetry text-label-telemetry">
+<div class="flex justify-between text-outline">
+<span>TARGET COVERAGE</span>
+<span class="text-on-surface">94.8% Endpoints</span>
+</div>
+<div class="flex justify-between text-outline">
+<span>COGNITIVE DEPTH</span>
+<span class="text-tertiary">64K Thinking</span>
+</div>
+</div>
+</div>
+<div class="pt-2 flex items-center gap-2">
+<button class="flex-1 py-2 px-3 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-ui text-label-ui text-center transition-colors">
+              Inspect Trace
+            </button>
+<button class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-outline hover:text-on-surface transition-colors" title="Pause bot">
+<span class="material-symbols-outlined text-[18px]">pause</span>
+</button>
+</div>
+</div>
+<div class="relative group p-5 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between shadow-sm space-y-5">
+<div class="space-y-4">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-telemetry text-label-telemetry text-secondary uppercase font-semibold">WHALE-PULSE-X</span>
+</div>
+<span class="px-2 py-0.5 rounded-md bg-secondary/10 text-secondary font-label-telemetry text-label-telemetry">Grok Micro-Core</span>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline-md text-headline-md text-on-surface leading-snug">
+                Market Arbitrage &amp; Mempool Sentinel
+              </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                Sub-millisecond tracking across L1/L2 networks, front-running MEV bots, and liquidations.
+              </p>
+</div>
+<div class="p-3 rounded-xl bg-surface-container-lowest font-label-telemetry text-label-telemetry space-y-2">
+<div class="flex items-center justify-between text-outline">
+<span>MEMPOOL LATENCY</span>
+<span class="text-secondary font-bold">0.82 ms</span>
+</div>
+<div class="flex items-center justify-between text-outline">
+<span>SOLVENT DELTA</span>
+<span class="text-primary font-bold">+$18,940.21</span>
+</div>
+<div class="flex items-center gap-1 text-[10px] text-outline-variant">
+<span class="material-symbols-outlined text-[12px] text-secondary">lan</span>
+<span>Base / Arbitrum / Solana Jito</span>
+</div>
+</div>
+<div class="space-y-2 pt-1 font-label-telemetry text-label-telemetry">
+<div class="flex justify-between text-outline">
+<span>CHAIN TICK</span>
+<span class="text-on-surface">Block #21,894,002</span>
+</div>
+<div class="flex justify-between text-outline">
+<span>AUTONOMOUS SLIPPAGE</span>
+<span class="text-secondary">0.05% Max</span>
+</div>
+</div>
+</div>
+<div class="pt-2 flex items-center gap-2">
+<button class="flex-1 py-2 px-3 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-ui text-label-ui text-center transition-colors">
+              Inspect Trace
+            </button>
+<button class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-outline hover:text-on-surface transition-colors" title="Pause bot">
+<span class="material-symbols-outlined text-[18px]">pause</span>
+</button>
+</div>
+</div>
+<div class="relative group p-5 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between shadow-sm space-y-5">
+<div class="space-y-4">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label-telemetry text-label-telemetry text-primary uppercase font-semibold">COMMS-HARVESTER</span>
+</div>
+<span class="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-label-telemetry text-label-telemetry">Gemini 2.0 Flash</span>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline-md text-headline-md text-on-surface leading-snug">
+                Lead Research &amp; Comms Dispatcher
+              </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                Scrapes open-source developer activity, validates engineering intent, and populates the Comms Hub.
+              </p>
+</div>
+<div class="p-3 rounded-xl bg-surface-container-lowest font-label-telemetry text-label-telemetry space-y-2">
+<div class="flex items-center justify-between text-outline">
+<span>PROFILES SCRAPED</span>
+<span class="text-on-surface font-bold">1,894 / 2k cap</span>
+</div>
+<div class="flex items-center justify-between text-outline">
+<span>ENGAGEMENT SCORE</span>
+<span class="text-primary font-bold">88.2% Precision</span>
+</div>
+<div class="flex items-center gap-1 text-[10px] text-outline-variant">
+<span class="material-symbols-outlined text-[12px] text-primary">hub</span>
+<span>Connected to Kara Email Hub</span>
+</div>
+</div>
+<div class="space-y-2 pt-1 font-label-telemetry text-label-telemetry">
+<div class="flex justify-between text-outline">
+<span>PIPELINE BUFFER</span>
+<span class="text-on-surface">42 ready for review</span>
+</div>
+<div class="flex justify-between text-outline">
+<span>RATE RESTRICTION</span>
+<span class="text-secondary">OK (Healthy)</span>
+</div>
+</div>
+</div>
+<div class="pt-2 flex items-center gap-2">
+<button class="flex-1 py-2 px-3 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-ui text-label-ui text-center transition-colors">
+              Inspect Trace
+            </button>
+<button class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-outline hover:text-on-surface transition-colors" title="Pause bot">
+<span class="material-symbols-outlined text-[18px]">pause</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+<div class="lg:col-span-8 space-y-4">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md text-on-surface">Grokbot Live Sandbox Stream</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary/15 text-secondary font-label-telemetry text-label-telemetry">STDIN/STDOUT FEED</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-xl">
+<span class="font-label-telemetry text-label-telemetry text-outline">UNHINGED TRUTH MODE:</span>
+<button class="relative w-9 h-5 rounded-full bg-secondary-container transition-colors" id="unhingedToggle">
+<span class="absolute left-4 top-0.5 w-4 h-4 rounded-full bg-surface transition-all" id="unhingedThumb"></span>
+</button>
+</div>
+<div class="flex items-center gap-1.5 bg-surface-container-low px-3 py-1.5 rounded-xl">
+<span class="material-symbols-outlined text-[16px] text-tertiary">tune</span>
+<span class="font-label-telemetry text-label-telemetry text-outline">AUTONOMY: 85%</span>
+</div>
+</div>
+</div>
+<div class="rounded-2xl bg-surface-container-lowest overflow-hidden shadow-2xl">
+<div class="px-4 py-3 bg-surface-container-high flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-full bg-error/60"></span>
+<span class="w-3 h-3 rounded-full bg-tertiary/60"></span>
+<span class="w-3 h-3 rounded-full bg-secondary/60"></span>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-on-surface-variant">sandbox-container:grokbot-alpha::worker-882</span>
+</div>
+<div class="flex items-center gap-2 font-label-telemetry text-label-telemetry">
+<span class="px-2 py-0.5 rounded bg-surface-container text-secondary">BASH</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-primary">PYTHON WASM</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-tertiary">SCRAPER</span>
+<button class="ml-2 text-outline hover:text-on-surface transition-colors" id="clearStreamBtn" title="Clear console">
+<span class="material-symbols-outlined text-[16px]">clear_all</span>
+</button>
+</div>
+</div>
+<div class="p-5 font-label-code text-label-code space-y-2 h-[420px] overflow-y-auto leading-relaxed" id="terminalBody">
+<div class="text-outline font-label-telemetry text-label-telemetry">[04:12:09.120] INIT: Grok-3 kernel attached to raw socket bridge /dev/pts/4</div>
+<div class="text-secondary">[04:12:09.432] TOOL: curl -s "https://x.api.internal/v2/stream?keywords=quantum,breakthrough,zero-day" | jq</div>
+<div class="text-on-surface-variant">[04:12:10.015] PARSE: Retrieved 3,491 posts. Detecting sentiment divergence in real-time...</div>
+<div class="text-primary">[04:12:10.822] REASON: Claude-3.7 reasoning injected. Epistemic divergence flagged in thread #981723.</div>
+<div class="bg-surface-container-high/40 p-3 rounded-xl space-y-1 text-on-surface">
+<div class="flex items-center justify-between text-outline font-label-telemetry text-label-telemetry">
+<span>AGENT SCRATCHPAD (Grok-3 Internal)</span>
+<span class="text-tertiary">CONFIDENCE: 98.7%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">
+                “Account @cryptoradical claims a critical vulnerability in EVM gas metering. Verified bytecode disassembly: false positive caused by reentrancy guard misinterpretation. Preparing corrective rebuttal post with reproducible EVM test harness.”
+              </p>
+</div>
+<div class="text-tertiary">[04:12:11.904] ACTION: Auto-drafting response with technical diagram. Action held for Intervention Guard Tier 4.</div>
+<div class="text-secondary">[04:12:12.441] DISPATCH: Queued item [ACT-8921] to Guardrail Queue for human oversight.</div>
+<div class="text-outline font-label-telemetry text-label-telemetry">[04:12:13.011] MEMORY: Context cache refreshed. 841,200 tokens stored in local vector index.</div>
+<div class="flex items-center gap-1 text-secondary pt-1" id="liveStreamCursor">
+<span class="inline-block w-2 h-4 bg-secondary animate-pulse"></span>
+<span class="font-label-telemetry text-label-telemetry text-outline">Awaiting next daemon cycle...</span>
+</div>
+</div>
+<div class="px-4 py-3 bg-surface-container-low flex items-center justify-between gap-3">
+<div class="flex items-center gap-2 flex-1">
+<span class="text-secondary font-label-telemetry text-label-telemetry">&gt;</span>
+<input class="bg-transparent w-full text-on-surface font-label-telemetry text-label-telemetry focus:outline-none placeholder:text-outline-variant" id="terminalInput" placeholder="Inject real-time prompt override or bash command into Grokbot Hive..." type="text"/>
+</div>
+<button class="px-3 py-1 rounded-lg bg-surface-container-highest hover:bg-surface-container text-on-surface font-label-ui text-label-ui transition-colors" id="sendCmdBtn">
+              EXECUTE
+            </button>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 space-y-4">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-md text-headline-md text-on-surface">Delegation DAG</h2>
+<span class="font-label-telemetry text-label-telemetry text-secondary">3 TIER TREE</span>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low space-y-5 shadow-sm">
+<div class="space-y-4">
+<div class="flex items-center gap-3 p-3 rounded-xl bg-surface-container">
+<div class="w-8 h-8 rounded-lg bg-secondary/15 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[20px]">hub</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface">Meta-Orchestrator</span>
+<span class="font-label-telemetry text-label-telemetry text-secondary">ROOT</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline truncate">Grok-3 Swarm Lead • 100% Load</p>
+</div>
+</div>
+<div class="pl-6 space-y-3 relative">
+<div class="absolute left-3 top-0 bottom-3 w-0.5 bg-surface-container-highest"></div>
+<div class="relative flex items-center gap-3 p-3 rounded-xl bg-surface-container">
+<div class="w-7 h-7 rounded-lg bg-tertiary/15 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[16px]">psychology</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface">Verification Engine</span>
+<span class="font-label-telemetry text-label-telemetry text-tertiary">CHILD 1</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline truncate">Claude 3.7 • Deep Formal Verifier</p>
+</div>
+</div>
+<div class="relative flex items-center gap-3 p-3 rounded-xl bg-surface-container">
+<div class="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[16px]">travel_explore</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface">Data Harvester &amp; Comms</span>
+<span class="font-label-telemetry text-label-telemetry text-primary">CHILD 2</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline truncate">Gemini 2.0 • Multimodal Ingestion</p>
+</div>
+</div>
+</div>
+</div>
+<div class="p-3 rounded-xl bg-surface-container space-y-2">
+<span class="font-label-telemetry text-label-telemetry text-outline uppercase">SWARM TELEMETRY METRICS</span>
+<div class="grid grid-cols-2 gap-2 text-on-surface font-label-telemetry text-label-telemetry pt-1">
+<div>
+<span class="text-outline block text-[10px]">TOTAL TASKS RUN</span>
+<span class="text-headline-md font-headline-md text-on-surface">28,491</span>
+</div>
+<div>
+<span class="text-outline block text-[10px]">AVG REASONING LATENCY</span>
+<span class="text-headline-md font-headline-md text-secondary">214ms</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="space-y-4 pb-6">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<h2 class="font-headline-md text-headline-md text-on-surface">Guardrails &amp; Intervention Queue</h2>
+<span class="px-2.5 py-0.5 rounded-full bg-tertiary/15 text-tertiary font-label-telemetry text-label-telemetry">
+            3 HIGH-IMPACT PENDING
+          </span>
+</div>
+<button class="font-label-ui text-label-ui text-secondary hover:underline" id="approveAllBtn">
+          Quick Review Mode
+        </button>
+</div>
+<div class="space-y-3">
+<div class="queue-item p-5 rounded-2xl bg-surface-container-low flex flex-col xl:flex-row xl:items-center justify-between gap-5 transition-all shadow-sm">
+<div class="flex items-start gap-4 flex-1">
+<div class="w-10 h-10 rounded-xl bg-error-container/30 flex items-center justify-center text-error flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">gavel</span>
+</div>
+<div class="space-y-1">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-label-ui text-label-ui text-on-surface font-semibold">ACT-8921: Deploy Smart Contract to Base Mainnet</span>
+<span class="px-2 py-0.2 rounded-md bg-error-container/30 text-error font-label-telemetry text-label-telemetry">HIGH RISK</span>
+<span class="text-outline font-label-telemetry text-label-telemetry">Agent: WHALE-PULSE-X</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-3xl">
+                Autonomously compiled flash-arbitrage vault contract based on detected Uniswap v3 fee misalignment. Gas limit estimated at 1,840,000 units. Initial funding capital request: 4.5 ETH.
+              </p>
+</div>
+</div>
+<div class="flex items-center gap-2.5 flex-shrink-0">
+<button class="px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-ui text-label-ui transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Inspect Bytecode</span>
+</button>
+<button class="px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-tertiary font-label-ui text-label-ui transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">science</span>
+<span>Sandbox Testnet</span>
+</button>
+<button class="px-4 py-2 rounded-xl bg-primary text-on-primary font-label-ui text-label-ui transition-all flex items-center gap-1.5 shadow-md">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span>Authorize Mainnet</span>
+</button>
+</div>
+</div>
+<div class="queue-item p-5 rounded-2xl bg-surface-container-low flex flex-col xl:flex-row xl:items-center justify-between gap-5 transition-all shadow-sm">
+<div class="flex items-start gap-4 flex-1">
+<div class="w-10 h-10 rounded-xl bg-secondary/15 flex items-center justify-center text-secondary flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">outgoing_mail</span>
+</div>
+<div class="space-y-1">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-label-ui text-label-ui text-on-surface font-semibold">ACT-8920: Outbound Broadcast of 42 Tailored Engineering Pitches</span>
+<span class="px-2 py-0.2 rounded-md bg-secondary/15 text-secondary font-label-telemetry text-label-telemetry">MEDIUM RISK</span>
+<span class="text-outline font-label-telemetry text-label-telemetry">Agent: COMMS-HARVESTER</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-3xl">
+                Synthesized individualized technical outreach to contributors of high-profile zero-knowledge repos. Pre-configured with personalized commit commentary and Kara invitation links.
+              </p>
+</div>
+</div>
+<div class="flex items-center gap-2.5 flex-shrink-0">
+<button class="px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-ui text-label-ui transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">preview</span>
+<span>Sample 5 Drafts</span>
+</button>
+<button class="px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-error font-label-ui text-label-ui transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">close</span>
+<span>Reject Batch</span>
+</button>
+<button class="px-4 py-2 rounded-xl bg-primary text-on-primary font-label-ui text-label-ui transition-all flex items-center gap-1.5 shadow-md">
+<span class="material-symbols-outlined text-[16px]">send</span>
+<span>Release Dispatch</span>
+</button>
+</div>
+</div>
+<div class="queue-item p-5 rounded-2xl bg-surface-container-low flex flex-col xl:flex-row xl:items-center justify-between gap-5 transition-all shadow-sm">
+<div class="flex items-start gap-4 flex-1">
+<div class="w-10 h-10 rounded-xl bg-tertiary/15 flex items-center justify-center text-tertiary flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+</div>
+<div class="space-y-1">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-label-ui text-label-ui text-on-surface font-semibold">ACT-8919: Submit Auto-Generated Zero-Day PR to Upstream Target</span>
+<span class="px-2 py-0.2 rounded-md bg-tertiary/15 text-tertiary font-label-telemetry text-label-telemetry">SIGNIFICANT</span>
+<span class="text-outline font-label-telemetry text-label-telemetry">Agent: FUZZ-DEAMON-07</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-3xl">
+                Detected race-condition in async token swapping queue. Synthesized mitigation PR containing automated Rust unit tests and regression assertions.
+              </p>
+</div>
+</div>
+<div class="flex items-center gap-2.5 flex-shrink-0">
+<button class="px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-ui text-label-ui transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">code</span>
+<span>Review Diff</span>
+</button>
+<button class="px-4 py-2 rounded-xl bg-primary text-on-primary font-label-ui text-label-ui transition-all flex items-center gap-1.5 shadow-md">
+<span class="material-symbols-outlined text-[16px]">merge</span>
+<span>Sign &amp; Push PR</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<script>
+  (function() {
+    const unhingedToggle = document.getElementById('unhingedToggle');
+    const unhingedThumb = document.getElementById('unhingedThumb');
+    let isUnhinged = true;
+
+    if (unhingedToggle && unhingedThumb) {
+      unhingedToggle.addEventListener('click', () => {
+        isUnhinged = !isUnhinged;
+        if (isUnhinged) {
+          unhingedThumb.classList.remove('left-0.5');
+          unhingedThumb.classList.add('left-4');
+          unhingedToggle.classList.remove('bg-surface-container-highest');
+          unhingedToggle.classList.add('bg-secondary-container');
+        } else {
+          unhingedThumb.classList.remove('left-4');
+          unhingedThumb.classList.add('left-0.5');
+          unhingedToggle.classList.remove('bg-secondary-container');
+          unhingedToggle.classList.add('bg-surface-container-highest');
+        }
+      });
+    }
+
+    const terminalBody = document.getElementById('terminalBody');
+    const terminalInput = document.getElementById('terminalInput');
+    const sendCmdBtn = document.getElementById('sendCmdBtn');
+    const clearStreamBtn = document.getElementById('clearStreamBtn');
+    const liveStreamCursor = document.getElementById('liveStreamCursor');
+
+    function appendTerminalLog(msg, colorClass = 'text-secondary') {
+      if (!terminalBody || !liveStreamCursor) return;
+      const logLine = document.createElement('div');
+      logLine.className = `${colorClass}`;
+      const now = new Date();
+      const timeStr = `[${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0')}]`;
+      logLine.textContent = `${timeStr} ${msg}`;
+      terminalBody.insertBefore(logLine, liveStreamCursor);
+      terminalBody.scrollTop = terminalBody.scrollHeight;
+    }
+
+    function handleCommand() {
+      if (!terminalInput) return;
+      const val = terminalInput.value.trim();
+      if (!val) return;
+      appendTerminalLog(`EXEC: ${val}`, 'text-on-surface');
+      terminalInput.value = '';
+
+      setTimeout(() => {
+        appendTerminalLog(`ACK: Autonomous agent swarm accepted command '${val}' and dispatched to 3 sub-agents.`, 'text-secondary');
+      }, 450);
+    }
+
+    if (sendCmdBtn && terminalInput) {
+      sendCmdBtn.addEventListener('click', handleCommand);
+      terminalInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleCommand();
+      });
+    }
+
+    if (clearStreamBtn && terminalBody && liveStreamCursor) {
+      clearStreamBtn.addEventListener('click', () => {
+        terminalBody.innerHTML = '';
+        terminalBody.appendChild(liveStreamCursor);
+        appendTerminalLog('STREAM: Buffer cleared. Realtime telemetry active.', 'text-outline font-label-telemetry');
+      });
+    }
+
+    const killswitchBtn = document.getElementById('killswitchBtn');
+    if (killswitchBtn) {
+      killswitchBtn.addEventListener('click', () => {
+        const confirmed = confirm('DANGER: Trigger global emergency killswitch for all 14 active Grokbots and freeze ongoing mempool/fuzzing loops?');
+        if (confirmed) {
+          appendTerminalLog('ALERT: EMERGENCY KILLSWITCH TRIGGERED. Suspending all 14 autonomous runtimes...', 'text-error font-bold');
+        }
+      });
+    }
+
+    const actionButtons = document.querySelectorAll('.queue-item button');
+    actionButtons.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const parentCard = this.closest('.queue-item');
+        if (this.textContent.includes('Authorize') || this.textContent.includes('Release') || this.textContent.includes('Sign')) {
+          this.disabled = true;
+          this.textContent = 'Executed';
+          if (parentCard) {
+            parentCard.style.opacity = '0.5';
+          }
+        }
+      });
+    });
+  })();
+</script></main></div></body></html>

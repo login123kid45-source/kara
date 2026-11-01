@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..900&family=Literata:wght@100..900&family=Plus+Jakarta+Sans:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary":"#3c0091","on-secondary-fixed-variant":"#004e5c","on-tertiary-fixed":"#2a1700","outline":"#958ea0","on-primary-container":"#340080","surface-container-high":"#292a2f","secondary-fixed":"#acedff","surface-container":"#1e1f25","tertiary":"#ffb95f","outline-variant":"#494454","surface-container-highest":"#34343a","on-surface-variant":"#cbc3d7","primary-container":"#a078ff","on-surface":"#e3e1e9","tertiary-container":"#ca8100","on-error":"#690005","inverse-surface":"#e3e1e9","on-primary-fixed-variant":"#5516be","inverse-on-surface":"#2f3036","secondary":"#4cd7f6","surface":"#121318","tertiary-fixed":"#ffddb8","error-container":"#93000a","background":"#121318","on-background":"#e3e1e9","on-tertiary":"#472a00","inverse-primary":"#6d3bd7","primary":"#d0bcff","on-secondary-fixed":"#001f26","on-secondary":"#003640","surface-container-low":"#1a1b21","on-tertiary-fixed-variant":"#653e00","surface-bright":"#38393f","secondary-fixed-dim":"#4cd7f6","surface-variant":"#34343a","on-primary-fixed":"#23005c","tertiary-fixed-dim":"#ffb95f","error":"#ffb4ab","surface-container-lowest":"#0d0e13","on-tertiary-container":"#3e2400","secondary-container":"#03b5d3","surface-tint":"#d0bcff","on-secondary-container":"#00424e","surface-dim":"#121318","primary-fixed":"#e9ddff","on-error-container":"#ffdad6","primary-fixed-dim":"#d0bcff"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"space-md":"1rem",gutter:"1rem","margin-desktop":"2rem","margin-tablet":"1.5rem","space-sm":"0.5rem","space-lg":"1.5rem","space-xs":"0.25rem","space-xl":"2.5rem","gutter-desktop":"1.5rem",margin:"1rem"},fontFamily:{"display-lg":["Literata"],"label-telemetry":["JetBrains Mono"],"body-sm":["Plus Jakarta Sans"],"headline-md":["Plus Jakarta Sans"],"headline-lg":["Literata"],"display-lg-mobile":["Literata"],"headline-lg-mobile":["Literata"],"label-code":["JetBrains Mono"],"body-lg":["Literata"],"body-md":["Plus Jakarta Sans"],"label-ui":["Plus Jakarta Sans"]},fontSize:{"display-lg":["48px",{lineHeight:"56px",letterSpacing:"-0.02em",fontWeight:"500"}],"label-telemetry":["11px",{lineHeight:"16px",letterSpacing:"0.04em",fontWeight:"500"}],"body-sm":["12px",{lineHeight:"18px",letterSpacing:"0.01em",fontWeight:"400"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-lg":["32px",{lineHeight:"40px",letterSpacing:"-0.015em",fontWeight:"500"}],"display-lg-mobile":["32px",{lineHeight:"40px",letterSpacing:"-0.01em",fontWeight:"500"}],"headline-lg-mobile":["24px",{lineHeight:"32px",letterSpacing:"-0.01em",fontWeight:"500"}],"label-code":["13px",{lineHeight:"20px",letterSpacing:"-0.01em",fontWeight:"400"}],"body-lg":["18px",{lineHeight:"30px",letterSpacing:"0em",fontWeight:"400"}],"body-md":["14px",{lineHeight:"22px",letterSpacing:"0em",fontWeight:"400"}],"label-ui":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface min-h-screen selection:bg-primary-container selection:text-on-primary-container"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest/90 backdrop-blur-2xl z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="flex flex-col flex-1 overflow-y-auto px-4 py-4 space-y-6"><div class="flex items-center justify-between px-2 pt-1"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-telemetry text-label-telemetry text-on-surface-variant uppercase tracking-wider">SYNTHETIC CORE</span></div><button class="flex items-center justify-center p-1 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[18px]">dock_to_left</span></button></div><div><div class="px-2 mb-2 font-label-telemetry text-label-telemetry text-outline uppercase tracking-wider">SYNTHESIS PRESETS</div><div class="space-y-1.5"><div class="px-3 py-2.5 rounded-xl bg-surface-container-high/60 backdrop-blur-md flex items-center justify-between shadow-[0_4px_16px_-4px_rgba(139,92,246,0.1)]"><div class="flex items-center gap-2.5"><div class="flex -space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-surface-container-lowest"></span><span class="w-2.5 h-2.5 rounded-full bg-secondary ring-2 ring-surface-container-lowest"></span><span class="w-2.5 h-2.5 rounded-full bg-tertiary ring-2 ring-surface-container-lowest"></span></div><span class="font-label-ui text-label-ui text-on-surface">Claude + Gemini + Grok</span></div><span class="font-label-telemetry text-label-telemetry text-secondary">BALANCED</span></div></div></div><nav class="space-y-1" data-active-classes="bg-surface-container-high text-on-surface font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.2)]"><div class="px-2 mb-2 font-label-telemetry text-label-telemetry text-outline uppercase tracking-wider">ORCHESTRATION</div><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="parallel-arena" href="#"><span class="flex items-center gap-3 font-label-ui text-label-ui"><span class="material-symbols-outlined text-[18px]">hub</span>Parallel Arena</span><span class="font-label-telemetry text-label-telemetry text-outline">3x</span></a><a aria-current="page" class="flex items-center justify-between px-3 py-2 rounded-xl transition-all bg-surface-container-high text-on-surface font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.2)]" data-path="omnibar-workspace" href="#"><span class="flex items-center gap-3 font-label-ui text-label-ui"><span class="material-symbols-outlined text-[18px]">terminal</span>Omnibar Workspace</span><span class="font-label-telemetry text-label-telemetry text-outline">PRO</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="deep-reasoning-canvas" href="#"><span class="flex items-center gap-3 font-label-ui text-label-ui"><span class="material-symbols-outlined text-[18px]">psychology</span>Deep Reasoning Canvas</span><span class="font-label-telemetry text-label-telemetry text-tertiary">64K</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="model-matrix-telemetry" href="#"><span class="flex items-center gap-3 font-label-ui text-label-ui"><span class="material-symbols-outlined text-[18px]">monitoring</span>Model Matrix & Telemetry</span><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="knowledge-graph-explorer" href="#"><span class="flex items-center gap-3 font-label-ui text-label-ui"><span class="material-symbols-outlined text-[18px]">account_tree</span>Knowledge Graphs</span></a><a class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="prompt-library" href="#"><span class="flex items-center gap-3 font-label-ui text-label-ui"><span class="material-symbols-outlined text-[18px]">menu_book</span>Prompt Library</span></a></nav><div><div class="flex items-center justify-between px-2 mb-2"><span class="font-label-telemetry text-label-telemetry text-outline uppercase tracking-wider">RECENT SESSIONS</span><span class="material-symbols-outlined text-[14px] text-outline">history</span></div><div class="space-y-1 font-body-sm text-body-sm"><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors" data-path="session-quantum-inference" href="#">Quantum Kernel Inference</a><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors" data-path="session-multimodal-synthesis" href="#">Multimodal Spectral Analysis</a><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors" data-path="session-epistemic-tree" href="#">Epistemic Verification DAG</a><a class="block px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface truncate transition-colors" data-path="session-neural-decompilation" href="#">Neural Bytecode Decompile</a></div></div></div><div class="p-4 bg-surface-container-low/60 backdrop-blur-md rounded-t-xl"><div class="flex items-center justify-between mb-2"><span class="font-label-telemetry text-label-telemetry text-on-surface-variant uppercase">ACTIVE RUNTIME TOKENS</span><span class="font-label-telemetry text-label-telemetry text-secondary font-medium">841.2K / 1.2M</span></div><div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden"><div class="h-full bg-gradient-to-r from-primary via-secondary to-tertiary w-[70%]"></div></div><div class="flex items-center justify-between mt-3 pt-2 text-outline font-label-telemetry text-label-telemetry"><span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-tertiary">bolt</span>78.4 t/s</span><span>LATENCY: 18ms</span></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface-container-lowest/80 backdrop-blur-2xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.3)]"><div class="h-16 w-full px-6 flex items-center justify-between gap-4"><div class="flex items-center gap-4 flex-shrink-0"><img alt="Kara AI Core Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1V3vyzJytsyaxJWwFB-vz0o3ggUVla4fCYsR7GfgXCfovXxg7KWARALODilyYWwBeCIPdp8T5hW2nF52XLJK58_9LH8A2U3i95fjR686selBiPlVyLybGvV1FaOnruBwz_7P3BRG6rw8rHyCOHY6L9epXt3RIietFIDPe21pgMp6e3C5XZ7DXqby2P1P666G2VjAkGTaLm7um38IzvZbpDvDWk6v1eXQf4HG5fmYPrvgA9qrstfy1EbHoik"/><div class="flex flex-col"><div class="flex items-center gap-2"><span class="font-label-ui text-label-ui text-on-surface tracking-tight font-bold">Kara 3.0</span><span class="text-outline text-body-sm">/</span><span class="font-label-ui text-label-ui text-on-surface-variant">Multi-Model Nexus</span></div></div></div><nav class="hidden xl:flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-low/70 backdrop-blur-md" data-active-classes="bg-surface-container-high text-on-surface shadow-[0_2px_12px_rgba(0,0,0,0.25)] font-semibold"><a class="px-3.5 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="parallel-arena" href="#">Parallel Arena</a><a aria-current="page" class="px-3.5 py-1.5 rounded-full transition-colors bg-surface-container-high text-on-surface shadow-[0_2px_12px_rgba(0,0,0,0.25)] font-semibold" data-path="omnibar-workspace" href="#">Omnibar Workspace</a><a class="px-3.5 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="deep-reasoning-canvas" href="#">Deep Reasoning Canvas</a><a class="px-3.5 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui transition-colors" data-path="model-matrix-telemetry" href="#">Model Matrix & Telemetry</a></nav><div class="flex items-center gap-3"><div class="hidden lg:flex items-center gap-2.5 px-3 py-1 rounded-full bg-surface-container-low/80 backdrop-blur-md font-label-telemetry text-label-telemetry"><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span><span class="text-outline">Grok-3:</span><span class="text-secondary">Active</span></div><span class="text-outline-variant">|</span><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span><span class="text-outline">Claude-3.7:</span><span class="text-tertiary">Reasoning</span></div><span class="text-outline-variant">|</span><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span><span class="text-outline">Gemini-2.0:</span><span class="text-primary">Vision</span></div></div><div class="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container font-label-telemetry text-label-telemetry text-secondary-fixed"><span class="material-symbols-outlined text-[14px] text-secondary">all_inclusive</span><span>UNCONSTRAINED COMPUTE // 1.2M CTX</span></div><button class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-container-high/80 hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-telemetry text-label-telemetry text-outline hidden sm:inline">Cmd+K</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_rgba(208,188,255,0.25)]"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="relative w-full min-h-[calc(100vh-4rem)] flex flex-col lg:flex-row overflow-hidden bg-surface">
+<!-- Ambient Compute Glow Layers -->
+<div class="absolute top-12 left-1/4 w-96 h-96 rounded-full bg-primary/10 blur-[120px] pointer-events-none"></div>
+<div class="absolute bottom-20 right-1/3 w-[30rem] h-[30rem] rounded-full bg-secondary/10 blur-[140px] pointer-events-none"></div>
+<div class="absolute top-1/3 right-10 w-80 h-80 rounded-full bg-tertiary/10 blur-[130px] pointer-events-none"></div>
+<!-- MAIN CENTRAL CONVERSATION STREAM -->
+<section class="flex-1 flex flex-col h-full min-w-0 overflow-y-auto px-4 lg:px-8 pt-6 pb-44 relative z-10 space-y-6">
+<!-- Routing Orchestrator Meta-Banner -->
+<div class="w-full rounded-2xl bg-surface-container-low/90 backdrop-blur-xl p-4 shadow-xl">
+<div class="flex flex-wrap items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse shadow-[0_0_10px_#4cd7f6]"></div>
+<div class="flex flex-col">
+<span class="font-label-telemetry text-label-telemetry text-secondary uppercase tracking-widest">Kara Swarm Matrix // Tri-Model Synergy Engaged</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Auto-routed: <strong class="text-tertiary font-medium">Claude 3.7</strong> (Deep Epistemics) + <strong class="text-primary font-medium">Gemini 2.0 Flash</strong> (Spatial Schematics) + <strong class="text-secondary font-medium">Grok-3</strong> (Live Grounding)</span>
+</div>
+</div>
+<div class="flex items-center gap-2 font-label-telemetry text-label-telemetry">
+<span class="px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface flex items-center gap-1.5 shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> 64K Budget
+            </span>
+<span class="px-2.5 py-1 rounded-full bg-surface-container-high text-secondary flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[13px]">bolt</span> 114 t/s
+            </span>
+<span class="px-2.5 py-1 rounded-full bg-surface-container-high text-outline font-label-code text-label-code">
+              ID: #TH-9021-SWARM
+            </span>
+</div>
+</div>
+</div>
+<!-- Turn 1: User Request -->
+<div class="w-full flex items-start justify-end gap-3.5 pl-8 sm:pl-16">
+<div class="max-w-2xl rounded-2xl bg-surface-container-high/90 p-5 shadow-lg backdrop-blur-md">
+<div class="flex items-center justify-between gap-4 mb-2 pb-2">
+<span class="font-label-telemetry text-label-telemetry text-primary uppercase">Prompt Origin // Root Node</span>
+<span class="font-label-telemetry text-label-telemetry text-outline">14:02:18 UTC</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+            Synthesize an autonomous institutional arbitrage agent with an asynchronous Rust execution kernel. Provide the complete verified state machine diagram, live market liquidity reality check across order books, and real-time execution risk profiling without standard safety euphemisms.
+          </p>
+<div class="mt-3 flex flex-wrap items-center gap-2 pt-2">
+<span class="px-2.5 py-0.5 rounded-md bg-surface-container-lowest text-on-surface-variant font-label-telemetry text-label-telemetry flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px] text-primary">attach_file</span> rust_engine.spec.v3
+            </span>
+<span class="px-2.5 py-0.5 rounded-md bg-surface-container-lowest text-secondary font-label-telemetry text-label-telemetry flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">public</span> Realtime L2 Data: Active
+            </span>
+</div>
+</div>
+<div class="w-9 h-9 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 shadow-md">
+<span class="material-symbols-outlined text-[18px] text-primary">terminal</span>
+</div>
+</div>
+<!-- Turn 2: Kara Multi-Agent Synthesis Output -->
+<div class="w-full flex items-start gap-3.5 pr-2 sm:pr-8">
+<div class="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_16px_rgba(208,188,255,0.3)]">
+<span class="material-symbols-outlined text-[20px] text-primary">cognition</span>
+</div>
+<div class="flex-1 space-y-4">
+<!-- Model Partition 1: Claude 3.7 Epistemic Reasoning Section -->
+<div class="w-full rounded-2xl bg-surface-container-low/95 p-5 shadow-xl backdrop-blur-lg">
+<!-- Reasoning Accordion Trigger -->
+<button class="w-full flex items-center justify-between text-left group" id="toggle-reasoning-btn">
+<div class="flex items-center gap-2.5">
+<span class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_#ffb95f]"></span>
+<span class="font-label-ui text-label-ui text-tertiary uppercase tracking-wider">Claude 3.7 Deep Epistemic Chain</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-tertiary-fixed font-label-telemetry text-label-telemetry">Thought for 5.8s // 3,412 Tokens</span>
+</div>
+<div class="flex items-center gap-1 text-outline group-hover:text-on-surface transition-colors">
+<span class="font-label-telemetry text-label-telemetry" id="reasoning-state-label">Collapse</span>
+<span class="material-symbols-outlined text-[18px] transition-transform duration-200" id="reasoning-chevron">expand_less</span>
+</div>
+</button>
+<!-- Collapsible Body -->
+<div class="mt-4 pt-3 space-y-2.5 pl-3 bg-surface-container/40 rounded-xl p-3" id="reasoning-drawer">
+<div class="flex items-start gap-2.5 font-body-sm text-body-sm text-on-surface-variant">
+<span class="font-label-telemetry text-label-telemetry text-tertiary">01</span>
+<p>Decomposing sub-millisecond execution constraints: Lock-free ring buffer topologies (`crossbeam-channel` or custom atomic CAS index) are mandatory to mitigate cache-miss penalties.</p>
+</div>
+<div class="flex items-start gap-2.5 font-body-sm text-body-sm text-on-surface-variant">
+<span class="font-label-telemetry text-label-telemetry text-tertiary">02</span>
+<p>State machine verification: Constructing a deterministic finite automaton (DFA) guaranteeing zero dangling order state under network dropouts or exchange exchange-socket disconnects.</p>
+</div>
+<div class="flex items-start gap-2.5 font-body-sm text-body-sm text-on-surface-variant">
+<span class="font-label-telemetry text-label-telemetry text-tertiary">03</span>
+<p>Synthesized cross-margin invariant verification: Validated risk equation <code class="font-label-code text-label-code text-primary">E(L) = \sum (spread_i - fee_taker) \cdot \mathbb{I}_{depth}</code> with 99.4% statistical non-divergence.</p>
+</div>
+</div>
+<!-- Primary Editorial Prose Output -->
+<div class="mt-4 pt-3">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">High-Throughput Autonomous Execution Framework</h2>
+<p class="font-body-lg text-body-lg text-on-surface leading-relaxed mb-3">
+                The architecture decouples order ingestion from risk computation via zero-allocation memory mapped telemetry rings. As demonstrated below, execution threads never touch heap allocation during the active arbitrage cycle.
+              </p>
+</div>
+</div>
+<!-- Model Partition 2: Grok-3 Telemetry & Uncensored Stress Test -->
+<div class="w-full rounded-2xl bg-surface-container/90 p-5 shadow-xl backdrop-blur-md">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_#4cd7f6]"></span>
+<span class="font-label-ui text-label-ui text-secondary uppercase tracking-wider">Grok-3 Live Feed & Adversarial Stress Profile</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary font-label-telemetry text-label-telemetry uppercase tracking-wider">Real-time Grounded</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+<div class="rounded-xl bg-surface-container-low p-3 shadow-inner">
+<div class="font-label-telemetry text-label-telemetry text-outline uppercase">Aggregate Order Spread</div>
+<div class="font-headline-md text-headline-md text-secondary mt-1">2.41 bps</div>
+<div class="flex items-center gap-1 font-label-telemetry text-label-telemetry text-tertiary mt-1">
+<span class="material-symbols-outlined text-[12px]">trending_up</span> Binance / Bybit Delta
+                </div>
+</div>
+<div class="rounded-xl bg-surface-container-low p-3 shadow-inner">
+<div class="font-label-telemetry text-label-telemetry text-outline uppercase">Liquidity Slippage Risk</div>
+<div class="font-headline-md text-headline-md text-on-surface mt-1">0.038%</div>
+<div class="flex items-center gap-1 font-label-telemetry text-label-telemetry text-primary mt-1">
+<span class="material-symbols-outlined text-[12px]">check_circle</span> Inside Tolerances
+                </div>
+</div>
+<div class="rounded-xl bg-surface-container-low p-3 shadow-inner">
+<div class="font-label-telemetry text-label-telemetry text-outline uppercase">Latency Jitter (99.9th %)</div>
+<div class="font-headline-md text-headline-md text-tertiary mt-1">4.21 ms</div>
+<div class="flex items-center gap-1 font-label-telemetry text-label-telemetry text-secondary mt-1">
+<span class="material-symbols-outlined text-[12px]">speed</span> AWS eu-central-1
+                </div>
+</div>
+</div>
+<div class="rounded-xl bg-surface-container-lowest p-3.5 space-y-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-secondary">security_update_warning</span>
+<span class="font-label-telemetry text-label-telemetry text-on-surface uppercase">Unvarnished Vector Analysis: Adverse Selection</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                If market maker toxic flow detects execution loops over 150ms sustained, fill probabilities decay exponentially to 12.8%. Standard throttles will fail; raw direct memory access (DMA) via Linux DPDK socket bypassing kernel networking is mandatory for solvency.
+              </p>
+</div>
+</div>
+<!-- Model Partition 3: Gemini 2.0 Multimodal Visual Schematic Card -->
+<div class="w-full rounded-2xl bg-surface-container-low/95 p-5 shadow-xl backdrop-blur-md">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_#d0bcff]"></span>
+<span class="font-label-ui text-label-ui text-primary uppercase tracking-wider">Gemini 2.0 Spatial Architecture Schematic</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-label-telemetry text-label-telemetry">SVG/Canvas Rendered</span>
+<button class="p-1 rounded-lg bg-surface-container hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all">
+<span class="material-symbols-outlined text-[16px]">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- Visual Flow Graphic Card -->
+<div class="relative w-full rounded-xl overflow-hidden bg-surface-container-lowest p-5 flex flex-col items-center">
+<div class="w-full flex items-center justify-between mb-4 font-label-telemetry text-label-telemetry text-outline">
+<span>ASYNC PIPELINE: ZERO-COPY DISPATCH</span>
+<span class="text-secondary font-medium">CLOCK: 100MHz SYNC</span>
+</div>
+<!-- Structural SVG Flow Visualization -->
+<svg class="w-full max-w-xl h-44 text-on-surface" fill="none" viewbox="0 0 600 160" xmlns="http://www.w3.org/2000/svg">
+<!-- Data Nodes -->
+<rect fill="#1e1f25" height="50" rx="10" width="130" x="20" y="55"></rect>
+<text fill="#e3e1e9" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" text-anchor="middle" x="85" y="78">L2 Order Book</text>
+<text fill="#4cd7f6" font-family="JetBrains Mono" font-size="9" text-anchor="middle" x="85" y="93">WebSocket DMA</text>
+<!-- Arrow 1 -->
+<path d="M150 80 H 195" stroke="#4cd7f6" stroke-dasharray="4 2" stroke-width="2"></path>
+<circle cx="170" cy="80" fill="#4cd7f6" r="3"></circle>
+<!-- Central Engine -->
+<rect fill="#292a2f" height="80" rx="14" width="180" x="200" y="40"></rect>
+<rect fill="#1a1b21" height="70" rx="10" width="170" x="205" y="45"></rect>
+<text fill="#ffb95f" font-family="Plus Jakarta Sans" font-size="12" font-weight="700" text-anchor="middle" x="290" y="74">Rust Arb Kernel</text>
+<text fill="#cbc3d7" font-family="JetBrains Mono" font-size="10" text-anchor="middle" x="290" y="90">Atomic CAS Ring-Buffer</text>
+<text fill="#d0bcff" font-family="JetBrains Mono" font-size="9" text-anchor="middle" x="290" y="103">Zero Heap Invariant</text>
+<!-- Arrow 2 -->
+<path d="M380 80 H 425" stroke="#d0bcff" stroke-width="2"></path>
+<circle cx="400" cy="80" fill="#d0bcff" r="3"></circle>
+<!-- Execution Terminal -->
+<rect fill="#1e1f25" height="50" rx="10" width="150" x="430" y="55"></rect>
+<text fill="#e3e1e9" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" text-anchor="middle" x="505" y="78">FIX Multi-Venue</text>
+<text fill="#ffb95f" font-family="JetBrains Mono" font-size="9" text-anchor="middle" x="505" y="93">Direct Market Order</text>
+<!-- Ambient Flow Accents -->
+<circle cx="85" cy="55" fill="#4cd7f6" r="2"></circle>
+<circle cx="290" cy="40" fill="#ffb95f" r="2.5"></circle>
+<circle cx="505" cy="55" fill="#d0bcff" r="2"></circle>
+</svg>
+<!-- Secondary Artifact Snapshot with descriptive alt -->
+<div class="w-full mt-3 flex items-center justify-between pt-3 text-outline font-label-telemetry text-label-telemetry">
+<span class="flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-[15px] text-primary">deployed_code</span> Compiled to Active Artifact Drawer (ID: #ART-884)
+                </span>
+<button class="px-3 py-1 rounded-lg bg-primary text-on-primary font-label-ui text-label-ui flex items-center gap-1 transition-transform active:scale-95 shadow-md" id="jump-to-artifact-btn">
+                  Inspect in Canvas <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- RIGHT-HAND INTERACTIVE INSPECTOR & ARTIFACT CANVAS -->
+<aside class="w-full lg:w-[480px] xl:w-[540px] 2xl:w-[600px] flex-shrink-0 bg-surface-container-lowest flex flex-col h-full z-20 shadow-2xl" id="artifact-inspector">
+<!-- Inspector Header & Tab Matrix -->
+<div class="p-4 bg-surface-container-low/95 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<span class="p-1.5 rounded-lg bg-primary-container/20 text-primary">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+</span>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-label-ui text-label-ui text-on-surface font-bold">kara_engine_v3.rs</span>
+<span class="px-2 py-0.2 rounded-full bg-surface-container-highest text-secondary font-label-telemetry text-label-telemetry">v1.4 LIVE</span>
+</div>
+<span class="font-label-telemetry text-label-telemetry text-outline">Target: x86_64-unknown-linux-musl</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Fork Artifact">
+<span class="material-symbols-outlined text-[16px]">fork_right</span>
+</button>
+<button class="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Copy Code">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+<button class="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Pop to Window">
+<span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</button>
+</div>
+</div>
+<!-- Segmented Tab Switcher -->
+<div class="flex items-center rounded-xl bg-surface-container-lowest p-1 shadow-inner font-label-ui text-label-ui">
+<button class="flex-1 py-1.5 px-3 rounded-lg bg-surface-container-high text-on-surface font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5" id="tab-rust">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Rust Sync Engine
+          </button>
+<button class="flex-1 py-1.5 px-3 rounded-lg text-on-surface-variant hover:text-on-surface transition-all flex items-center justify-center gap-1.5" id="tab-schema">
+            Protocol Schema
+          </button>
+<button class="flex-1 py-1.5 px-3 rounded-lg text-on-surface-variant hover:text-on-surface transition-all flex items-center justify-center gap-1.5" id="tab-preview">
+<span class="material-symbols-outlined text-[14px] text-secondary">play_arrow</span> Live Preview
+          </button>
+</div>
+</div>
+<!-- Code Workspace Substrate -->
+<div class="flex-1 flex flex-col min-h-0 bg-surface-container-lowest p-4 overflow-y-auto font-label-code text-label-code leading-relaxed text-on-surface-variant">
+<div class="flex items-center justify-between pb-3 text-outline font-label-telemetry text-label-telemetry">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">code</span> SYNTAX HIGHLIGHTED // TOKENS: 1,842</span>
+<span class="text-tertiary">UNCONSTRAINED SANDBOX</span>
+</div>
+<!-- Code Block with Monospace Line Numbers -->
+<div class="bg-surface-dim rounded-xl p-4 overflow-x-auto space-y-1 shadow-inner select-text">
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">1</span><span><span class="text-primary font-medium">use</span> crossbeam_channel::{bounded, Sender, Receiver};</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">2</span><span><span class="text-primary font-medium">use</span> std::sync::atomic::{AtomicBool, Ordering};</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">3</span><span><span class="text-primary font-medium">use</span> std::sync::Arc;</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">4</span><span></span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">5</span><span><span class="text-tertiary">#[repr(C, align(64))]</span> <span class="text-outline">// Cacheline Aligned</span></span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">6</span><span><span class="text-secondary font-medium">pub struct</span> <span class="text-on-surface font-semibold">ArbExecutionEngine</span> {</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">7</span><span>    spread_threshold_bps: <span class="text-secondary">f64</span>,</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">8</span><span>    in_flight_lock: <span class="text-secondary">AtomicBool</span>,</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">9</span><span>    order_pipeline_tx: Sender<VenueOrder>,</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">10</span><span>}</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">11</span><span></span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">12</span><span><span class="text-secondary font-medium">impl</span> <span class="text-on-surface font-semibold">ArbExecutionEngine</span> {</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">13</span><span>    <span class="text-primary font-medium">pub fn</span> <span class="text-tertiary">evaluate_and_fire</span>(&<span class="text-primary">self</span>, tick: &OrderTick) -> <span class="text-secondary">Result</span><ExecutionStatus, ArbError> {</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">14</span><span>        <span class="text-primary font-medium">if</span> tick.delta_bps > <span class="text-primary">self</span>.spread_threshold_bps {</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">15</span><span>            <span class="text-outline">// Lockless atomic gate check</span></span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">16</span><span>            <span class="text-primary font-medium">if</span> !<span class="text-primary">self</span>.in_flight_lock.swap(<span class="text-secondary">true</span>, Ordering::AcqRel) {</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">17</span><span>                <span class="text-primary">self</span>.order_pipeline_tx.try_send(tick.into_arbitrage())?;</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">18</span><span>                <span class="text-primary font-medium">return</span> <span class="text-secondary">Ok</span>(ExecutionStatus::Dispatched);</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">19</span><span>            }</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">20</span><span>        }</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">21</span><span>        <span class="text-secondary">Ok</span>(ExecutionStatus::ThresholdNotMet)</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">22</span><span>    }</span></div>
+<div class="flex gap-4"><span class="text-outline-variant select-none w-6 text-right">23</span><span>}</span></div>
+</div>
+<!-- Telemetry Graphs and History -->
+<div class="mt-4 pt-3 space-y-3">
+<div class="flex items-center justify-between text-outline font-label-telemetry text-label-telemetry">
+<span class="uppercase">Hardware Cycle Simulation Telemetry</span>
+<span class="text-secondary">Zero-Copy L1 Hit: 99.8%</span>
+</div>
+<!-- Micro SVG Sparkline Chart -->
+<div class="w-full h-16 rounded-xl bg-surface-container-low p-2.5 flex items-end">
+<svg class="w-full h-full text-secondary" fill="none" preserveaspectratio="none" viewbox="0 0 300 40">
+<path d="M0 35 L 20 32 L 45 34 L 70 20 L 95 24 L 120 12 L 145 15 L 170 8 L 195 10 L 220 5 L 250 8 L 275 3 L 300 2" stroke="currentColor" stroke-width="2"></path>
+<path d="M0 35 L 20 32 L 45 34 L 70 20 L 95 24 L 120 12 L 145 15 L 170 8 L 195 10 L 220 5 L 250 8 L 275 3 L 300 2 L 300 40 L 0 40 Z" fill="currentColor" fill-opacity="0.1"></path>
+</svg>
+</div>
+<!-- Version Tree Strip -->
+<div class="flex items-center justify-between rounded-xl bg-surface-container p-3 font-label-telemetry text-label-telemetry">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-tertiary">history</span>
+<span class="text-on-surface">Commit 7a9e1d:</span>
+<span class="text-outline">Merged Grok Real-Time Slippage Safeguards</span>
+</div>
+<span class="text-primary font-medium hover:underline cursor-pointer">Compare</span>
+</div>
+</div>
+</div>
+<!-- Execution Action Drawer Footer -->
+<div class="p-4 bg-surface-container-low/95 flex items-center justify-between gap-3 shadow-lg">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-secondary shadow-[0_0_8px_#4cd7f6]"></div>
+<span class="font-label-telemetry text-label-telemetry text-on-surface font-medium uppercase">WASMER SANDBOX: READY</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-ui text-label-ui transition-all flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[15px] text-outline">file_download</span> Export
+          </button>
+<button class="px-4 py-1.5 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-ui text-label-ui font-bold transition-all flex items-center gap-1.5 shadow-lg active:scale-95" id="run-sandbox-btn">
+<span class="material-symbols-outlined text-[16px]">play_arrow</span> Execute Kernel
+          </button>
+</div>
+</div>
+</aside>
+<!-- THE ULTIMATE OMNIBAR FLOATING DOCK (Suspended HUD) -->
+<div class="fixed bottom-4 left-4 lg:left-80 right-4 lg:right-[560px] xl:right-[620px] 2xl:right-[680px] z-30 pointer-events-auto">
+<div class="w-full rounded-2xl bg-surface-container-lowest/85 backdrop-blur-2xl p-3 shadow-2xl transition-all">
+<!-- Omnibar Model Mode Bar & High-Cognition Controls -->
+<div class="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 mb-2.5">
+<!-- Model Selection Pills -->
+<div class="flex items-center gap-1 bg-surface-container-low/80 p-1 rounded-xl shadow-inner font-label-ui text-label-ui">
+<button class="px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface font-bold shadow-sm flex items-center gap-1.5 transition-all" id="mode-swarm">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+              Kara Swarm
+            </button>
+<button class="px-2 py-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1" id="mode-claude">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Claude 3.7
+            </button>
+<button class="px-2 py-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1" id="mode-gemini">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Gemini 2.0
+            </button>
+<button class="px-2 py-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1" id="mode-grok">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Grok-3
+            </button>
+</div>
+<!-- Epistemic Reasoning Slider & Sandbox Indicator -->
+<div class="flex items-center gap-3 font-label-telemetry text-label-telemetry">
+<!-- Reasoning Budget -->
+<div class="flex items-center gap-2 bg-surface-container-low px-2.5 py-1 rounded-lg shadow-inner">
+<span class="text-tertiary flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">psychology</span> Reasoning
+              </span>
+<input class="w-16 accent-tertiary h-1 bg-surface-container-highest rounded cursor-pointer" max="128" min="8" title="Reasoning Budget Token Depth" type="range" value="64"/>
+<span class="text-on-surface font-medium">64K</span>
+</div>
+<!-- Web Grounding Toggle -->
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-low hover:bg-surface-container text-secondary transition-colors shadow-inner" id="grounding-btn">
+<span class="material-symbols-outlined text-[14px]">public</span> Grounding: ON
+            </button>
+<!-- Unrestricted Sandbox Indicator -->
+<div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-low text-tertiary shadow-inner">
+<span class="material-symbols-outlined text-[14px]">shield_with_heart</span> Safe: Relaxed
+            </div>
+</div>
+</div>
+<!-- Omnibar Input Matrix & Multimodal Attachments -->
+<div class="relative flex items-end gap-2">
+<!-- Multimodal Attachment Icon Suite -->
+<div class="flex items-center gap-1 pb-1">
+<button class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-secondary transition-all" title="Audio Input">
+<span class="material-symbols-outlined text-[18px]">graphic_eq</span>
+</button>
+<button class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-primary transition-all" title="Upload Image or Document">
+<span class="material-symbols-outlined text-[18px]">add_photo_alternate</span>
+</button>
+<button class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-tertiary transition-all" title="Link Git Repo / File">
+<span class="material-symbols-outlined text-[18px]">integration_instructions</span>
+</button>
+</div>
+<!-- Dynamic Text Area -->
+<div class="flex-1 relative">
+<textarea class="w-full py-2.5 px-3.5 rounded-xl bg-surface-container text-on-surface placeholder:text-outline font-body-md text-body-md resize-none focus:outline-none focus:bg-surface-container-high transition-colors shadow-inner max-h-32" placeholder="Instruct Kara Swarm or enter code synthesis requirements (Cmd+Enter to trigger)..." rows="1"></textarea>
+</div>
+<!-- Primary Dispatch Button -->
+<button class="pb-1" id="omnibar-dispatch-btn">
+<div class="w-10 h-10 rounded-xl bg-primary hover:bg-primary-container text-on-primary flex items-center justify-center transition-all shadow-lg active:scale-95">
+<span class="material-symbols-outlined text-[20px]">arrow_upward</span>
+</div>
+</button>
+</div>
+<!-- Telemetry Status Microbar -->
+<div class="mt-2 pt-1 flex items-center justify-between text-outline font-label-telemetry text-label-telemetry">
+<div class="flex items-center gap-3">
+<span class="flex items-center gap-1 text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Grok L2 Stream Active
+            </span>
+<span class="hidden md:inline text-outline-variant">|</span>
+<span class="hidden md:flex items-center gap-1 text-on-surface-variant">
+              Claude 3.7 Verification Budget Active
+            </span>
+</div>
+<span class="text-outline">Press <kbd class="px-1.5 py-0.5 rounded bg-surface-container font-label-code text-on-surface">Tab</kbd> to autocomplete Swarm pipeline</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Reasoning chain accordion toggle
+  const toggleBtn = document.getElementById('toggle-reasoning-btn');
+  const drawer = document.getElementById('reasoning-drawer');
+  const chevron = document.getElementById('reasoning-chevron');
+  const stateLabel = document.getElementById('reasoning-state-label');
+
+  if (toggleBtn && drawer && chevron && stateLabel) {
+    toggleBtn.addEventListener('click', () => {
+      const isHidden = drawer.classList.contains('hidden');
+      if (isHidden) {
+        drawer.classList.remove('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+        stateLabel.textContent = 'Collapse';
+      } else {
+        drawer.classList.add('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+        stateLabel.textContent = 'Inspect 3,412 Tokens';
+      }
+    });
+  }
+
+  // Quick tab highlight interaction for inspector
+  const tabRust = document.getElementById('tab-rust');
+  const tabSchema = document.getElementById('tab-schema');
+  const tabPreview = document.getElementById('tab-preview');
+
+  function selectTab(activeTab) {
+    [tabRust, tabSchema, tabPreview].forEach(tab => {
+      if (tab === activeTab) {
+        tab.className = 'flex-1 py-1.5 px-3 rounded-lg bg-surface-container-high text-on-surface font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5';
+      } else {
+        tab.className = 'flex-1 py-1.5 px-3 rounded-lg text-on-surface-variant hover:text-on-surface transition-all flex items-center justify-center gap-1.5';
+      }
+    });
+  }
+
+  if (tabRust && tabSchema && tabPreview) {
+    tabRust.addEventListener('click', () => selectTab(tabRust));
+    tabSchema.addEventListener('click', () => selectTab(tabSchema));
+    tabPreview.addEventListener('click', () => selectTab(tabPreview));
+  }
+
+  // Model Swarm Selection Pills
+  const modes = [
+    document.getElementById('mode-swarm'),
+    document.getElementById('mode-claude'),
+    document.getElementById('mode-gemini'),
+    document.getElementById('mode-grok')
+  ];
+
+  modes.forEach(mode => {
+    if (mode) {
+      mode.addEventListener('click', () => {
+        modes.forEach(m => {
+          if (m === mode) {
+            m.className = 'px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface font-bold shadow-sm flex items-center gap-1.5 transition-all';
+          } else {
+            m.className = 'px-2 py-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1';
+          }
+        });
+      });
+    }
+  });
+
+  // Sandbox execute feedback
+  const runBtn = document.getElementById('run-sandbox-btn');
+  if (runBtn) {
+    runBtn.addEventListener('click', () => {
+      runBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span> Compiled & Fired';
+      setTimeout(() => {
+        runBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span> In Flight (0.8ms)';
+        setTimeout(() => {
+          runBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">play_arrow</span> Execute Kernel';
+        }, 2000);
+      }, 700);
+    });
+  }
+</script></main></div></body></html>
