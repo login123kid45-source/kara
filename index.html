@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
+      try {
+        sessionStorage.removeItem('warmup_start_time');
+        sessionStorage.removeItem('warmup_last_reload_time');
+        sessionStorage.removeItem('warmup_failed_sent');
+        if ('caches' in window) {
+          caches.delete('kara-critical-assets-v1').catch(function () {});
+          caches.delete('kara-critical-assets-v2').catch(function () {});
+        }
+      } catch (e) {}
       window.addEventListener('unhandledrejection', function (event) {
         var msg = event && event.reason && (event.reason.message || String(event.reason));
         if (typeof msg === 'string' && msg.indexOf('WebSocket closed without opened') !== -1) {

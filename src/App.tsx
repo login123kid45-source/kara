@@ -2675,8 +2675,8 @@ export default function App() {
       return bytes;
     };
 
-    // Trim leading/trailing dead air from a decoded AudioBuffer and apply a 6ms micro-fade
-    // so consecutive buffers butt-join on the Web Audio hardware timeline with zero audible gap or click
+    // Trim leading/trailing dead air from a decoded AudioBuffer, remove DC offset, and always apply an 8ms raised-cosine micro-fade
+    // so consecutive buffers butt-join on the Web Audio hardware timeline with zero audible gap, static, or click
     const trimAudioBufferForGaplessPlayback = (
       ctx: AudioContext,
       sourceBuffer: AudioBuffer
@@ -2701,23 +2701,37 @@ export default function App() {
           lastActive--;
         }
 
-        const leadPadFrames = Math.floor(sampleRate * 0.005); // 5ms lead-in
-        const tailPadFrames = Math.floor(sampleRate * 0.015); // 15ms natural tail
+        const leadPadFrames = Math.floor(sampleRate * 0.006); // 6ms lead-in
+        const tailPadFrames = Math.floor(sampleRate * 0.016); // 16ms natural tail
         const startFrame = Math.max(0, firstActive - leadPadFrames);
         const endFrame = Math.min(totalFrames, lastActive + 1 + tailPadFrames);
         const trimmedLength = endFrame - startFrame;
 
-        if (trimmedLength <= 0 || trimmedLength >= totalFrames - 32) {
+        if (trimmedLength <= 0) {
           return sourceBuffer;
         }
 
         const trimmedBuffer = ctx.createBuffer(numChannels, trimmedLength, sampleRate);
-        const fadeFrames = Math.min(Math.floor(trimmedLength * 0.1), Math.floor(sampleRate * 0.006));
+        const fadeFrames = Math.min(Math.floor(trimmedLength * 0.12), Math.floor(sampleRate * 0.008));
 
         for (let c = 0; c < numChannels; c++) {
           const srcData = sourceBuffer.getChannelData(c);
           const dstData = trimmedBuffer.getChannelData(c);
-          dstData.set(srcData.subarray(startFrame, endFrame));
+
+          // Compute and subtract DC offset while applying gentle anti-static smoothing
+          let dcSum = 0;
+          for (let i = startFrame; i < endFrame; i++) {
+            dcSum += srcData[i];
+          }
+          const dcMean = dcSum / trimmedLength;
+
+          let prevVal = 0;
+          for (let i = 0; i < trimmedLength; i++) {
+            const centered = srcData[startFrame + i] - dcMean;
+            const smoothed = 0.88 * centered + 0.12 * prevVal;
+            prevVal = smoothed;
+            dstData[i] = Math.max(-0.96, Math.min(0.96, smoothed));
+          }
 
           for (let i = 0; i < fadeFrames; i++) {
             const gain = 0.5 * (1 - Math.cos((Math.PI * i) / fadeFrames));
@@ -2919,7 +2933,7 @@ export default function App() {
         enqueueChunkPrefetchAndDecode(look);
       }
 
-      // Establish a shared master GainNode + AnalyserNode route for the entire gapless session
+      // Establish a shared master GainNode + Warm Anti-Static Filter + Soft Compressor + AnalyserNode route for the entire gapless session
       let masterSessionGain: GainNode | null = null;
       if (ctx) {
         if (ctx.state === 'suspended' || (ctx.state as string) === 'interrupted') {
@@ -2927,15 +2941,33 @@ export default function App() {
         }
         if (ctx.state === 'running') {
           masterSessionGain = ctx.createGain();
-          masterSessionGain.gain.setValueAtTime(1.0, ctx.currentTime);
+          masterSessionGain.gain.setValueAtTime(0.95, ctx.currentTime);
+
+          // Studio warmth low-pass filter to roll off any high-frequency digital hiss/static above 9.2kHz
+          const warmthFilter = ctx.createBiquadFilter();
+          warmthFilter.type = 'lowpass';
+          warmthFilter.frequency.setValueAtTime(9200, ctx.currentTime);
+          warmthFilter.Q.setValueAtTime(0.65, ctx.currentTime);
+
+          // Gentle studio vocal compressor to prevent inter-sample clipping static
+          const vocalCompressor = ctx.createDynamicsCompressor();
+          vocalCompressor.threshold.setValueAtTime(-12, ctx.currentTime);
+          vocalCompressor.knee.setValueAtTime(18, ctx.currentTime);
+          vocalCompressor.ratio.setValueAtTime(3.0, ctx.currentTime);
+          vocalCompressor.attack.setValueAtTime(0.003, ctx.currentTime);
+          vocalCompressor.release.setValueAtTime(0.15, ctx.currentTime);
+
+          masterSessionGain.connect(warmthFilter);
+          warmthFilter.connect(vocalCompressor);
+
           const analyserNode = ensureTtsAnalyserNode(ctx);
           if (analyserNode) {
-            masterSessionGain.connect(analyserNode);
+            vocalCompressor.connect(analyserNode);
             try {
               analyserNode.connect(ctx.destination);
             } catch {}
           } else {
-            masterSessionGain.connect(ctx.destination);
+            vocalCompressor.connect(ctx.destination);
           }
           ttsActiveGainRef.current = masterSessionGain;
         }
@@ -3043,6 +3075,8 @@ export default function App() {
             const chunkDurationSec = prepared.audioBuffer.duration / latestRate;
             const scheduledEnd = scheduledStart + chunkDurationSec;
 
+            chunkGain.gain.value = 0.0001;
+            chunkGain.gain.setValueAtTime(0.0001, now);
             chunkGain.gain.setValueAtTime(0.0001, scheduledStart);
             chunkGain.gain.linearRampToValueAtTime(1.0, scheduledStart + 0.008);
             if (chunkDurationSec > 0.04) {

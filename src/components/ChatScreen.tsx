@@ -7907,7 +7907,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setStreamingMsgId(null);
       setStreamedText(newestAssistant.content);
       scheduleThoughtAutoCollapse(newestAssistant.id, 1100);
-      if (soundEffectsEnabled) {
+      if (soundEffectsEnabled && !autoSpeakReplies && !isSpeakingId) {
         playKaraMessageSoundSequence(
           newestAssistant.content,
           newestAssistant.mode || activeMode,
@@ -7919,7 +7919,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     } else {
       lastSeenAssistantIdRef.current = newestAssistant.id;
     }
-  }, [messages, tokenStreaming, autoCollapseThoughtProcess, soundEffectsEnabled, activeMode, autoSwitchVocalFx]);
+  }, [messages, tokenStreaming, autoCollapseThoughtProcess, soundEffectsEnabled, autoSpeakReplies, isSpeakingId, activeMode, autoSwitchVocalFx]);
 
   const handleStopAllResponse = () => {
     triggerHaptic('tap');

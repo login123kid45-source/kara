@@ -16,21 +16,36 @@ if (typeof workbox === 'undefined') {
   }
 }
 
-const CRITICAL_ASSETS_CACHE = 'kara-critical-assets-v1';
+const CRITICAL_ASSETS_CACHE = 'kara-critical-assets-v3';
 const CORE_CHAT_CACHE = 'kara-core-chat-cache-v1';
 const SW_DB_NAME = 'kara_workbox_offline_db';
 const SW_OUTBOX_STORE = 'outbox_queue';
 const SW_CHAT_PAIRS_STORE = 'cached_chat_pairs';
 
 const PRECACHE_CRITICAL_URLS = [
-  '/',
-  '/index.html',
   '/icon.svg',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
   '/pwa-maskable-512x512.png',
   '/apple-touch-icon.png',
 ];
+
+function isInternalOrViteDevPath(url) {
+  const p = url.pathname || '';
+  const s = url.search || '';
+  return (
+    p.startsWith('/@') ||
+    p.startsWith('/src/') ||
+    p.startsWith('/node_modules/') ||
+    p.startsWith('/_') ||
+    p.startsWith('/__') ||
+    p.endsWith('.tsx') ||
+    p.endsWith('.ts') ||
+    s.includes('__aistudio') ||
+    s.includes('__session_index') ||
+    s.includes('__storage_access_granted')
+  );
+}
 
 // Configure Workbox strategies when Workbox is available
 if (typeof workbox !== 'undefined' && workbox) {
@@ -63,19 +78,18 @@ if (typeof workbox !== 'undefined' && workbox) {
       })
     );
 
-    // 3. Critical static assets (JS, CSS, images, icons, audio/font assets)
+    // 3. Critical static assets (icons, images, fonts — never Vite dev source files or warmup pages)
     registerRoute(
       ({ request, url }) =>
         url.origin === self.location.origin &&
-        (request.destination === 'script' ||
-          request.destination === 'style' ||
-          request.destination === 'image' ||
+        !isInternalOrViteDevPath(url) &&
+        (request.destination === 'image' ||
           request.destination === 'font' ||
-          /\.(js|css|png|svg|ico|woff2?|ttf)$/i.test(url.pathname)),
+          /\.(png|svg|ico|woff2?|ttf)$/i.test(url.pathname)),
       new StaleWhileRevalidate({
         cacheName: CRITICAL_ASSETS_CACHE,
         plugins: [
-          new CacheableResponsePlugin({ statuses: [0, 200] }),
+          new CacheableResponsePlugin({ statuses: [200] }),
           new ExpirationPlugin({ maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 30 }),
         ],
       })
@@ -91,7 +105,7 @@ if (typeof workbox !== 'undefined' && workbox) {
         cacheName: 'kara-api-get-cache-v1',
         networkTimeoutSeconds: 4,
         plugins: [
-          new CacheableResponsePlugin({ statuses: [0, 200] }),
+          new CacheableResponsePlugin({ statuses: [200] }),
           new ExpirationPlugin({ maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 7 }),
         ],
       })
@@ -289,7 +303,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate event: Clean up legacy v1 asset cache and claim clients immediately
+// Activate event: Clean up legacy v1/v2 asset caches and claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
@@ -297,7 +311,7 @@ self.addEventListener('activate', (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => k === 'kara-critical-assets-v1')
+            .filter((k) => k === 'kara-critical-assets-v1' || k === 'kara-critical-assets-v2')
             .map((k) => caches.delete(k))
         )
       )
@@ -309,6 +323,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Never intercept AI Studio auth bridge, internal routes, or navigation redirects
+  if (isInternalOrViteDevPath(url) || request.mode === 'navigate') {
+    return;
+  }
 
   // Handle POST /api/kara/chat
   if (request.method === 'POST' && url.origin === self.location.origin && url.pathname === '/api/kara/chat') {

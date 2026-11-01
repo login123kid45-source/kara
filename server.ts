@@ -5864,16 +5864,14 @@ Requirements:
         const chunkSize = buf.readUInt32LE(offset + 4);
         if (chunkId === 'data') {
           const dataStart = offset + 8;
-          // Streaming/neural WAV encoders frequently write 0, 0xFFFFFFFF, or a partial placeholder
-          // in the data chunkSize header. Always read to the end of the buffer unless chunkSize is
-          // a valid exact boundary near the end of the buffer.
-          const hasExactValidSize =
+          const hasValidSize =
             chunkSize > 0 &&
-            dataStart + chunkSize <= buf.length &&
-            dataStart + chunkSize >= buf.length - 64;
-          const dataEnd = hasExactValidSize ? dataStart + chunkSize : buf.length;
-          const pcm = buf.subarray(dataStart, dataEnd);
-          return pcm.length % 2 === 0 ? pcm : pcm.subarray(0, pcm.length - 1);
+            chunkSize < 0x7fffffff &&
+            dataStart + chunkSize <= buf.length;
+          const dataEnd = hasValidSize ? dataStart + chunkSize : buf.length;
+          const pcmSlice = buf.subarray(dataStart, dataEnd);
+          const evenLen = pcmSlice.length - (pcmSlice.length % 2);
+          return Buffer.from(pcmSlice.subarray(0, evenLen));
         }
         if (chunkSize === 0 || chunkSize >= 0x7fffffff) {
           break;
@@ -5881,20 +5879,20 @@ Requirements:
         offset += 8 + chunkSize + (chunkSize % 2);
       }
       const fallbackPcm = buf.subarray(44);
-      return fallbackPcm.length % 2 === 0
-        ? fallbackPcm
-        : fallbackPcm.subarray(0, fallbackPcm.length - 1);
+      const evenLen = fallbackPcm.length - (fallbackPcm.length % 2);
+      return Buffer.from(fallbackPcm.subarray(0, evenLen));
     }
-    return buf.length % 2 === 0 ? buf : buf.subarray(0, buf.length - 1);
+    const evenLen = buf.length - (buf.length % 2);
+    return Buffer.from(buf.subarray(0, evenLen));
   }
 
   // Trim excessive leading and trailing silence from 24kHz 16-bit Mono PCM so consecutive TTS chunks butt-join with zero gap
   function trimPcmSilenceForGapless(rawPcmBuffer: Buffer, sampleRate = 24000): Buffer {
     const evenLength = rawPcmBuffer.length - (rawPcmBuffer.length % 2);
-    if (evenLength < 64) return rawPcmBuffer.subarray(0, evenLength);
+    if (evenLength < 64) return Buffer.from(rawPcmBuffer.subarray(0, evenLength));
 
     const totalSamples = evenLength / 2;
-    const silenceThreshold = 175; // ~0.5% of full-scale Int16 (32768)
+    const silenceThreshold = 160; // ~0.5% of full-scale Int16 (32768)
     let firstActiveSample = 0;
     let lastActiveSample = totalSamples - 1;
 
@@ -5906,7 +5904,7 @@ Requirements:
     }
 
     if (firstActiveSample >= totalSamples) {
-      return rawPcmBuffer.subarray(0, Math.min(evenLength, 960));
+      return Buffer.alloc(Math.min(evenLength, 960));
     }
 
     while (
@@ -5916,35 +5914,62 @@ Requirements:
       lastActiveSample--;
     }
 
-    // Preserve a tiny 6ms lead-in and 18ms natural phoneme release tail
-    const leadPadSamples = Math.floor(sampleRate * 0.006);
-    const tailPadSamples = Math.floor(sampleRate * 0.018);
+    // Preserve an 8ms lead-in and 20ms natural phoneme release tail
+    const leadPadSamples = Math.floor(sampleRate * 0.008);
+    const tailPadSamples = Math.floor(sampleRate * 0.02);
     const startSample = Math.max(0, firstActiveSample - leadPadSamples);
     const endSample = Math.min(totalSamples, lastActiveSample + 1 + tailPadSamples);
 
-    return rawPcmBuffer.subarray(startSample * 2, endSample * 2);
+    return Buffer.from(rawPcmBuffer.subarray(startSample * 2, endSample * 2));
   }
 
-  // Apply a smooth 6ms fade-in and 8ms fade-out envelope to 24kHz 16-bit Mono PCM to prevent DC-offset clicks or boundary glitches
+  // Remove DC offset, apply a warm de-hiss anti-static smoothing filter, soft-limit peaks for resampler headroom,
+  // and apply raised-cosine 8ms fade-in / 10ms fade-out envelopes to eliminate all static, hiss, and boundary clicks
   function applyAntiClickPcmEnvelope(rawPcmBuffer: Buffer, sampleRate = 24000): Buffer {
     const trimmed = trimPcmSilenceForGapless(rawPcmBuffer, sampleRate);
     const evenLength = trimmed.length - (trimmed.length % 2);
-    if (evenLength < 32) return trimmed.subarray(0, evenLength);
+    if (evenLength < 32) return Buffer.from(trimmed.subarray(0, evenLength));
 
-    const out = Buffer.from(trimmed.subarray(0, evenLength));
+    const out = Buffer.alloc(evenLength);
     const totalSamples = evenLength / 2;
-    const fadeInSamples = Math.min(Math.floor(totalSamples * 0.12), Math.floor(sampleRate * 0.006));
-    const fadeOutSamples = Math.min(Math.floor(totalSamples * 0.12), Math.floor(sampleRate * 0.008));
+
+    // 1. Compute DC offset across chunk
+    let sum = 0;
+    for (let i = 0; i < totalSamples; i++) {
+      sum += trimmed.readInt16LE(i * 2);
+    }
+    const dcOffset = sum / totalSamples;
+
+    // 2. Remove DC offset, apply gentle 1-pole de-hiss filter, and enforce -0.8 dBFS headroom so 24k->48k resampling never clips
+    let prevFiltered = 0;
+    for (let i = 0; i < totalSamples; i++) {
+      const centered = trimmed.readInt16LE(i * 2) - dcOffset;
+      const filtered = 0.85 * centered + 0.15 * prevFiltered;
+      prevFiltered = filtered;
+      // Soft knee saturation above 26000 to prevent harsh digital clipping static
+      let sample = filtered * 0.92;
+      if (sample > 26000) {
+        sample = 26000 + Math.tanh((sample - 26000) / 6000) * 4500;
+      } else if (sample < -26000) {
+        sample = -26000 + Math.tanh((sample + 26000) / 6000) * 4500;
+      }
+      const clamped = Math.max(-30500, Math.min(30500, Math.round(sample)));
+      out.writeInt16LE(clamped, i * 2);
+    }
+
+    // 3. Apply smooth raised-cosine fade-in (8ms) and fade-out (10ms)
+    const fadeInSamples = Math.min(Math.floor(totalSamples * 0.15), Math.floor(sampleRate * 0.008));
+    const fadeOutSamples = Math.min(Math.floor(totalSamples * 0.15), Math.floor(sampleRate * 0.01));
 
     for (let i = 0; i < fadeInSamples; i++) {
-      const gain = i / fadeInSamples;
+      const gain = 0.5 * (1 - Math.cos((Math.PI * i) / fadeInSamples));
       const sample = out.readInt16LE(i * 2);
       out.writeInt16LE(Math.round(sample * gain), i * 2);
     }
 
     for (let i = 0; i < fadeOutSamples; i++) {
       const sampleIdx = totalSamples - 1 - i;
-      const gain = i / fadeOutSamples;
+      const gain = 0.5 * (1 - Math.cos((Math.PI * i) / fadeOutSamples));
       const sample = out.readInt16LE(sampleIdx * 2);
       out.writeInt16LE(Math.round(sample * gain), sampleIdx * 2);
     }
@@ -5953,8 +5978,10 @@ Requirements:
   }
 
   // Wrap raw 24kHz 16-bit Mono PCM into a browser-playable WAV buffer
-  function pcmToWavBuffer(rawPcmBuffer: Buffer, sampleRate = 24000): Buffer {
-    const smoothedPcm = applyAntiClickPcmEnvelope(rawPcmBuffer, sampleRate);
+  function pcmToWavBuffer(rawPcmBuffer: Buffer, sampleRate = 24000, alreadyCleaned = false): Buffer {
+    const smoothedPcm = alreadyCleaned
+      ? rawPcmBuffer.subarray(0, rawPcmBuffer.length - (rawPcmBuffer.length % 2))
+      : applyAntiClickPcmEnvelope(rawPcmBuffer, sampleRate);
     const numChannels = 1;
     const bitsPerSample = 16;
     const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
@@ -6210,7 +6237,7 @@ Requirements:
         return;
       }
 
-      const cacheKey = `singlevoice_v4_puretts:${selectedVoiceLabel}:${chosenVoiceName}:${effectiveTtsEngine}:${speechChunks.join(' ')}`;
+      const cacheKey = `singlevoice_v5_staticfree:${selectedVoiceLabel}:${chosenVoiceName}:${effectiveTtsEngine}:${speechChunks.join(' ')}`;
       const cachedWavBase64 = ttsAudioCache.get(cacheKey);
       if (cachedWavBase64) {
         res.json({
@@ -6304,16 +6331,17 @@ Requirements:
 
       for (let idx = 0; idx < speechChunks.length; idx++) {
         const chunkText = speechChunks[idx];
-        const chunkCacheKey = `subchunk_v4_puretts:${chosenVoiceName}:${effectiveTtsEngine}:${chunkText}`;
+        const chunkCacheKey = `subchunk_v5_staticfree:${chosenVoiceName}:${effectiveTtsEngine}:${chunkText}`;
         const cachedSubWav = ttsAudioCache.get(chunkCacheKey);
 
-        let chunkPcm: Buffer | null = null;
+        let cleanedChunkPcm: Buffer | null = null;
         if (cachedSubWav) {
-          chunkPcm = extractRawPcm(Buffer.from(cachedSubWav, 'base64'));
+          cleanedChunkPcm = extractRawPcm(Buffer.from(cachedSubWav, 'base64'));
         } else {
-          chunkPcm = await synthesizeWithDedicatedTtsModel(chunkText);
-          if (chunkPcm && chunkPcm.length > 0) {
-            const subWav = pcmToWavBuffer(chunkPcm, 24000).toString('base64');
+          const rawChunkPcm = await synthesizeWithDedicatedTtsModel(chunkText);
+          if (rawChunkPcm && rawChunkPcm.length > 0) {
+            cleanedChunkPcm = applyAntiClickPcmEnvelope(rawChunkPcm, 24000);
+            const subWav = pcmToWavBuffer(cleanedChunkPcm, 24000, true).toString('base64');
             if (ttsAudioCache.size >= MAX_TTS_CACHE_ITEMS) {
               const oldestKey = ttsAudioCache.keys().next().value;
               if (oldestKey) ttsAudioCache.delete(oldestKey);
@@ -6322,8 +6350,8 @@ Requirements:
           }
         }
 
-        if (chunkPcm && chunkPcm.length > 0) {
-          allPcmBuffers.push(applyAntiClickPcmEnvelope(chunkPcm, 24000));
+        if (cleanedChunkPcm && cleanedChunkPcm.length > 0) {
+          allPcmBuffers.push(cleanedChunkPcm);
           if (idx < speechChunks.length - 1) {
             allPcmBuffers.push(interChunkBreathSilence);
           }
@@ -6331,7 +6359,7 @@ Requirements:
       }
 
       if (allPcmBuffers.length === 0) {
-        res.status(503).json({
+        res.status(200).json({
           audioBase64: null,
           error: 'Human-like neural voice synthesis is momentarily busy—please tap play again in a moment.',
         });
@@ -6339,7 +6367,7 @@ Requirements:
       }
 
       const combinedPcm = Buffer.concat(allPcmBuffers);
-      const wavBuf = pcmToWavBuffer(combinedPcm, 24000);
+      const wavBuf = pcmToWavBuffer(combinedPcm, 24000, true);
       const wavBase64 = wavBuf.toString('base64');
 
       if (ttsAudioCache.size >= MAX_TTS_CACHE_ITEMS) {
@@ -6358,7 +6386,7 @@ Requirements:
         chunksCount: speechChunks.length,
       });
     } catch {
-      res.status(503).json({
+      res.status(200).json({
         audioBase64: null,
         error: 'Human-like neural voice unavailable right now.',
       });
@@ -7231,25 +7259,12 @@ Respond naturally, warmly, and conversationally with zero robotic phrasing. Keep
 
   // Mount Vite in development or static dist in production
   if (process.env.NODE_ENV !== 'production') {
-    let viteMiddleware: any = null;
-    const viteReadyPromise = (async () => {
-      const { createServer: createViteServer } = await import('vite');
-      const vite = await createViteServer({
-        server: { middlewareMode: true, hmr: false, watch: null },
-        appType: 'spa',
-      });
-      viteMiddleware = vite.middlewares;
-      return viteMiddleware;
-    })();
-
-    app.use(async (req, res, next) => {
-      try {
-        const mw = viteMiddleware || (await viteReadyPromise);
-        mw(req, res, next);
-      } catch (err) {
-        next(err);
-      }
+    const { createServer: createViteServer } = await import('vite');
+    const vite = await createViteServer({
+      server: { middlewareMode: true, hmr: false, watch: null },
+      appType: 'spa',
     });
+    app.use(vite.middlewares);
   } else {
     const distPath = path.join(__dirname, 'dist');
     app.use(express.static(distPath));
@@ -7260,6 +7275,7 @@ Respond naturally, warmly, and conversationally with zero robotic phrasing. Keep
 
   server.listen(PORT, HOST, () => {
     console.log(`KARA AI Server running at http://${HOST}:${PORT}`);
+    console.log(`  ➜  Local:   http://localhost:${PORT}/`);
   });
 }
 

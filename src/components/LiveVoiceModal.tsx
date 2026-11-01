@@ -79,6 +79,8 @@ export const LiveVoiceModal: React.FC<LiveVoiceModalProps> = ({
   const wsRef = useRef<WebSocket | null>(null);
   const inputCtxRef = useRef<AudioContext | null>(null);
   const outputCtxRef = useRef<AudioContext | null>(null);
+  const outputChainRef = useRef<AudioNode | null>(null);
+  const prevOutputSampleRef = useRef<number>(0);
   const nextStartTimeRef = useRef<number>(0);
   const activeSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const streamRef = useRef<MediaStream | null>(null);
@@ -98,6 +100,7 @@ export const LiveVoiceModal: React.FC<LiveVoiceModalProps> = ({
       } catch {}
     });
     activeSourcesRef.current.clear();
+    prevOutputSampleRef.current = 0;
     if (outputCtxRef.current) {
       nextStartTimeRef.current = outputCtxRef.current.currentTime;
     } else {
@@ -142,6 +145,24 @@ export const LiveVoiceModal: React.FC<LiveVoiceModalProps> = ({
         inputCtxRef.current = inputCtx;
         outputCtxRef.current = outputCtx;
         nextStartTimeRef.current = 0;
+        prevOutputSampleRef.current = 0;
+
+        // Warm anti-static low-pass filter + soft vocal compressor for crystal-clear Live Voice output
+        const warmthFilter = outputCtx.createBiquadFilter();
+        warmthFilter.type = 'lowpass';
+        warmthFilter.frequency.setValueAtTime(9200, outputCtx.currentTime);
+        warmthFilter.Q.setValueAtTime(0.65, outputCtx.currentTime);
+
+        const compressor = outputCtx.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-12, outputCtx.currentTime);
+        compressor.knee.setValueAtTime(18, outputCtx.currentTime);
+        compressor.ratio.setValueAtTime(3.0, outputCtx.currentTime);
+        compressor.attack.setValueAtTime(0.003, outputCtx.currentTime);
+        compressor.release.setValueAtTime(0.15, outputCtx.currentTime);
+
+        warmthFilter.connect(compressor);
+        compressor.connect(outputCtx.destination);
+        outputChainRef.current = warmthFilter;
 
         await inputCtx.resume().catch(() => {});
         await outputCtx.resume().catch(() => {});
@@ -235,8 +256,32 @@ export const LiveVoiceModal: React.FC<LiveVoiceModalProps> = ({
 
               const view = new DataView(bytes.buffer, bytes.byteOffset, sampleCount * 2);
               const float32 = new Float32Array(sampleCount);
+
+              // Remove DC offset and apply gentle de-hiss sample continuity across frames
+              let dcSum = 0;
               for (let i = 0; i < sampleCount; i++) {
-                float32[i] = view.getInt16(i * 2, true) / 32768.0;
+                dcSum += view.getInt16(i * 2, true) / 32768.0;
+              }
+              const dcMean = dcSum / sampleCount;
+
+              const now = ctx.currentTime;
+              const isFreshBurst = nextStartTimeRef.current <= now;
+              let prevSample = isFreshBurst ? 0 : prevOutputSampleRef.current;
+
+              for (let i = 0; i < sampleCount; i++) {
+                const raw = view.getInt16(i * 2, true) / 32768.0 - dcMean;
+                const smoothed = 0.86 * raw + 0.14 * prevSample;
+                prevSample = smoothed;
+                float32[i] = Math.max(-0.95, Math.min(0.95, smoothed * 0.94));
+              }
+              prevOutputSampleRef.current = prevSample;
+
+              // Apply a 4ms raised-cosine fade-in when starting a fresh speech burst
+              if (isFreshBurst) {
+                const fadeFrames = Math.min(Math.floor(sampleCount * 0.15), 96);
+                for (let i = 0; i < fadeFrames; i++) {
+                  float32[i] *= 0.5 * (1 - Math.cos((Math.PI * i) / fadeFrames));
+                }
               }
 
               const audioBuffer = ctx.createBuffer(1, float32.length, 24000);
@@ -244,7 +289,7 @@ export const LiveVoiceModal: React.FC<LiveVoiceModalProps> = ({
 
               const sourceNode = ctx.createBufferSource();
               sourceNode.buffer = audioBuffer;
-              sourceNode.connect(ctx.destination);
+              sourceNode.connect(outputChainRef.current || ctx.destination);
 
               activeSourcesRef.current.add(sourceNode);
               setIsKaraSpeaking(true);
@@ -256,7 +301,6 @@ export const LiveVoiceModal: React.FC<LiveVoiceModalProps> = ({
                 }
               };
 
-              const now = ctx.currentTime;
               // Add a 45ms jitter buffer when starting a new speech burst so consecutive
               // WebSocket frames concatenate seamlessly without underrun cutouts
               const startAt =
