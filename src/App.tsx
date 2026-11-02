@@ -1265,30 +1265,12 @@ export default function App() {
           currentCtx.state === 'suspended' ||
           (currentCtx.state as string) === 'interrupted'
         ) {
-          // Race resume() against a 250ms timeout in case background throttling wedges resume()
+          // Race resume() against a 250ms timeout; never .close() a non-closed AudioContext
+          // so user-gesture unlock state is preserved across the single AudioContext instance
           await Promise.race([
             currentCtx.resume().catch(() => {}),
             new Promise((resolve) => setTimeout(resolve, 250)),
           ]);
-
-          // Only re-initialize a fresh AudioContext if NO active TTS session or source is running
-          if (
-            allowReinitIfSuspended &&
-            (currentCtx.state === 'suspended' ||
-              (currentCtx.state as string) === 'interrupted') &&
-            ttsActiveSourcesRef.current.size === 0 &&
-            ttsAbortControllerRef.current === null
-          ) {
-            try {
-              currentCtx.close().catch(() => {});
-            } catch {}
-            const replacementCtx = createFreshContext();
-            ttsAudioCtxRef.current = replacementCtx;
-            await Promise.race([
-              replacementCtx.resume().catch(() => {}),
-              new Promise((resolve) => setTimeout(resolve, 250)),
-            ]);
-          }
         }
 
         return ttsAudioCtxRef.current;
@@ -2935,42 +2917,43 @@ export default function App() {
 
       // Establish a shared master GainNode + Warm Anti-Static Filter + Soft Compressor + AnalyserNode route for the entire gapless session
       let masterSessionGain: GainNode | null = null;
-      if (ctx) {
+      if (ctx && (ctx.state as string) !== 'closed') {
         if (ctx.state === 'suspended' || (ctx.state as string) === 'interrupted') {
-          await ctx.resume().catch(() => {});
+          await Promise.race([
+            ctx.resume().catch(() => {}),
+            new Promise((resolve) => setTimeout(resolve, 200)),
+          ]);
         }
-        if (ctx.state === 'running') {
-          masterSessionGain = ctx.createGain();
-          masterSessionGain.gain.setValueAtTime(0.95, ctx.currentTime);
+        masterSessionGain = ctx.createGain();
+        masterSessionGain.gain.setValueAtTime(0.95, ctx.currentTime);
 
-          // Studio warmth low-pass filter to roll off any high-frequency digital hiss/static above 9.2kHz
-          const warmthFilter = ctx.createBiquadFilter();
-          warmthFilter.type = 'lowpass';
-          warmthFilter.frequency.setValueAtTime(9200, ctx.currentTime);
-          warmthFilter.Q.setValueAtTime(0.65, ctx.currentTime);
+        // Studio warmth low-pass filter to roll off any high-frequency digital hiss/static above 9.2kHz
+        const warmthFilter = ctx.createBiquadFilter();
+        warmthFilter.type = 'lowpass';
+        warmthFilter.frequency.setValueAtTime(9200, ctx.currentTime);
+        warmthFilter.Q.setValueAtTime(0.65, ctx.currentTime);
 
-          // Gentle studio vocal compressor to prevent inter-sample clipping static
-          const vocalCompressor = ctx.createDynamicsCompressor();
-          vocalCompressor.threshold.setValueAtTime(-12, ctx.currentTime);
-          vocalCompressor.knee.setValueAtTime(18, ctx.currentTime);
-          vocalCompressor.ratio.setValueAtTime(3.0, ctx.currentTime);
-          vocalCompressor.attack.setValueAtTime(0.003, ctx.currentTime);
-          vocalCompressor.release.setValueAtTime(0.15, ctx.currentTime);
+        // Gentle studio vocal compressor to prevent inter-sample clipping static
+        const vocalCompressor = ctx.createDynamicsCompressor();
+        vocalCompressor.threshold.setValueAtTime(-12, ctx.currentTime);
+        vocalCompressor.knee.setValueAtTime(18, ctx.currentTime);
+        vocalCompressor.ratio.setValueAtTime(3.0, ctx.currentTime);
+        vocalCompressor.attack.setValueAtTime(0.003, ctx.currentTime);
+        vocalCompressor.release.setValueAtTime(0.15, ctx.currentTime);
 
-          masterSessionGain.connect(warmthFilter);
-          warmthFilter.connect(vocalCompressor);
+        masterSessionGain.connect(warmthFilter);
+        warmthFilter.connect(vocalCompressor);
 
-          const analyserNode = ensureTtsAnalyserNode(ctx);
-          if (analyserNode) {
-            vocalCompressor.connect(analyserNode);
-            try {
-              analyserNode.connect(ctx.destination);
-            } catch {}
-          } else {
-            vocalCompressor.connect(ctx.destination);
-          }
-          ttsActiveGainRef.current = masterSessionGain;
+        const analyserNode = ensureTtsAnalyserNode(ctx);
+        if (analyserNode) {
+          vocalCompressor.connect(analyserNode);
+          try {
+            analyserNode.connect(ctx.destination);
+          } catch {}
+        } else {
+          vocalCompressor.connect(ctx.destination);
         }
+        ttsActiveGainRef.current = masterSessionGain;
       }
 
       // Keep AudioContext awake throughout the entire gapless readback session
@@ -3194,7 +3177,7 @@ export default function App() {
               totalChunks,
               readingMode,
             });
-            // Never fall back to browser OS mechanical speechSynthesis; retry neural voice once more
+            // Retry neural voice once more; if offline/unreachable, fall back to browser speechSynthesis so Talkback never fails silently
             const lastChanceBase64 = await fetchChunkAudioBase64(speechChunks[i]);
             if (
               lastChanceBase64 &&
@@ -3202,6 +3185,24 @@ export default function App() {
               mySessionToken === ttsPlaybackTokenRef.current
             ) {
               await playFallbackHtmlAudio(lastChanceBase64);
+            } else if (
+              !ttsController.signal.aborted &&
+              mySessionToken === ttsPlaybackTokenRef.current &&
+              typeof window !== 'undefined' &&
+              'speechSynthesis' in window
+            ) {
+              await new Promise<void>((resolve) => {
+                try {
+                  window.speechSynthesis.cancel();
+                  const utter = new SpeechSynthesisUtterance(speechChunks[i]);
+                  utter.rate = Math.max(0.7, Math.min(1.6, settings.speechRate));
+                  utter.onend = () => resolve();
+                  utter.onerror = () => resolve();
+                  window.speechSynthesis.speak(utter);
+                } catch {
+                  resolve();
+                }
+              });
             }
           }
         }
@@ -4987,10 +4988,16 @@ export default function App() {
         // Wait 120ms for any final SpeechRecognition result event to flush
         await new Promise((r) => setTimeout(r, 120));
 
-        // If live browser SpeechRecognition already captured the transcript, keep it in the input field!
+        // If live browser SpeechRecognition already captured the transcript, send or populate it!
         if (liveDictationTextRef.current.trim()) {
-          setVoiceDraftTranscript(liveDictationTextRef.current.trim());
+          const capturedDictation = liveDictationTextRef.current.trim();
           setIsTranscribing(false);
+          if (settings.autoSpeakReplies) {
+            setVoiceDraftTranscript('');
+            void handleSendMessage(capturedDictation);
+          } else {
+            setVoiceDraftTranscript(capturedDictation);
+          }
           return;
         }
 
@@ -5030,7 +5037,12 @@ export default function App() {
           const cleanTranscript = data?.transcript ? String(data.transcript).trim() : '';
           setIsTranscribing(false);
           if (cleanTranscript) {
-            setVoiceDraftTranscript(cleanTranscript);
+            if (settings.autoSpeakReplies) {
+              setVoiceDraftTranscript('');
+              void handleSendMessage(cleanTranscript);
+            } else {
+              setVoiceDraftTranscript(cleanTranscript);
+            }
           }
         } catch (err) {
           console.warn('Transcription warning:', err);
@@ -5629,9 +5641,30 @@ export default function App() {
               onGenerateNanoBananaInChat={handleGenerateNanoBananaInChat}
               onSelectRelationshipStage={handleSelectRelationshipStage}
               onSelectVoiceProfile={handleSelectVoiceProfile}
-              onToggleAutoSpeak={() =>
-                handleUpdateSettings({ autoSpeakReplies: !settings.autoSpeakReplies })
-              }
+              onToggleAutoSpeak={() => {
+                const nextAutoSpeak = !settings.autoSpeakReplies;
+                handleUpdateSettings({ autoSpeakReplies: nextAutoSpeak });
+                if (nextAutoSpeak) {
+                  void ensureAndResumeTtsAudioContext(false);
+                  const latestAssistant = [...currentSessionMessages]
+                    .reverse()
+                    .find((m) => m.role === 'assistant' && m.content?.trim());
+                  if (latestAssistant && !isSpeakingId) {
+                    const spoken = buildFullSpokenMessageText(latestAssistant);
+                    if (spoken) {
+                      void handleSpeakText(
+                        spoken,
+                        latestAssistant.id,
+                        latestAssistant.mode || profile.preferredMode,
+                        selectedVoiceProfile.gender,
+                        'full'
+                      );
+                    }
+                  }
+                } else {
+                  handleStopSpeaking();
+                }
+              }}
               onToggleTokenStreaming={() =>
                 handleUpdateSettings({ tokenStreaming: !settings.tokenStreaming })
               }

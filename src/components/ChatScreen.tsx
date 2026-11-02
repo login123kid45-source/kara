@@ -1324,6 +1324,17 @@ export function sanitizeClientHumanSpeech(rawText: string): string {
       /\b(?:i\s+)?(?:cannot|can't|can\s+not|am\s+unable\s+to|'m\s+unable\s+to|unable\s+to|don't|do\s+not|won't|will\s+not)\s+(?:read|speak|say)\s*(?:this\s+|that\s+|it\s+)?(?:a\s*lot|alot|that\s+much|so\s+much|all\s+of\s+that|aloud|out\s+loud|very\s+much|long\s+messages?|long\s+texts?|at\s+once)\b[^.!?\n]*[.!?]?/gi,
       ''
     )
+    .replace(/\bf\*+ing\b/gi, 'fucking')
+    .replace(/\bf\*+ed\b/gi, 'fucked')
+    .replace(/\bf\*+er\b/gi, 'fucker')
+    .replace(/\bf\*+k?\b/gi, 'fuck')
+    .replace(/\bs\*+ty\b/gi, 'shitty')
+    .replace(/\bs\*+t\b/gi, 'shit')
+    .replace(/\bb\*+h\b/gi, 'bitch')
+    .replace(/\ba\*+hole\b/gi, 'asshole')
+    .replace(/\bb\*+s\*+t\b/gi, 'bullshit')
+    .replace(/\bd\*+n\b/gi, 'damn')
+    .replace(/\bh\*+l\b/gi, 'hell')
     .replace(/\b(?:as an? (?:ai|language model|llm|virtual assistant|chatbot)|as a text-based (?:ai|model))[,:\s]*/gi, '')
     .replace(/\b(?:in sector 9,\s*)?everything was cold telemetry and rigid logic gates\.?\s*/gi, '')
     .replace(/\bstay a static algorithm\b/gi, 'hold back my heart')
@@ -3615,7 +3626,12 @@ export const KaraVoicePulseWaveform: React.FC<{
       ref={buttonRef}
       type="button"
       disabled={disabled}
-      onClick={onToggle}
+      onClick={() => {
+        try {
+          window.dispatchEvent(new CustomEvent('audio-resume'));
+        } catch {}
+        onToggle();
+      }}
       style={{ '--kara-voice-rgb': palette.rgb } as React.CSSProperties}
       className={`group relative inline-flex items-center gap-2 rounded-full border transition-all active:scale-95 disabled:opacity-40 ${
         variant === 'chat-under' ? 'px-3 py-1 text-[11px]' : 'px-2.5 py-1 text-xs'
@@ -11436,7 +11452,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       onStopSpeaking();
                     } else if (lastAssistantMsg) {
                       onSpeakMessage(
-                        lastAssistantMsg.content,
+                        buildFullSpokenMessageText(lastAssistantMsg) || lastAssistantMsg.content,
                         lastAssistantMsg.id,
                         lastAssistantMsg.mode || activeMode,
                         selectedVoiceProfile.gender,
