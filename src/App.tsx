@@ -67,6 +67,7 @@ import {
   VoiceGender,
   SpeakingProgressState,
   EnhancedChatMessage,
+  KaraDynamicEmotion,
   ChatAttachmentPayload,
   ChatSessionSummary,
   CalendarAgendaEvent,
@@ -93,6 +94,7 @@ import {
 } from './components/SettingsModal';
 import { karaRoomDb } from './lib/karaRoomDb';
 import { triggerHaptic } from './lib/haptics';
+import { playSoapDisciplineSoundEffect } from './lib/soundEffects';
 import { AuthModal } from './components/AuthModal';
 import { LiveVoiceModal } from './components/LiveVoiceModal';
 import { MultimodalStudio } from './components/MultimodalStudio';
@@ -760,6 +762,8 @@ export default function App() {
           showPredictiveComposerBar: true,
           vocalSoundEffectsEnabled: true,
           autoSwitchVocalFx: true,
+          parentSoapDiscipline:
+            parsed.parentSoapDiscipline !== undefined ? parsed.parentSoapDiscipline : true,
           ...parsed,
           darkMode: Boolean(parsed.darkMode),
           voiceWaveformStyle: parsed.voiceWaveformStyle || 'dynamic',
@@ -803,6 +807,7 @@ export default function App() {
       showPredictiveComposerBar: true,
       vocalSoundEffectsEnabled: true,
       autoSwitchVocalFx: true,
+      parentSoapDiscipline: true,
       adultRpEnabled: false,
       adultRpScenarioId: ADULT_RP_SCENARIO_PRESETS[0].id,
       adultRpScenarioTitle: ADULT_RP_SCENARIO_PRESETS[0].title,
@@ -1152,6 +1157,7 @@ export default function App() {
   const [voiceDraftTranscript, setVoiceDraftTranscript] = useState('');
   const [isSpeakingId, setIsSpeakingId] = useState<string | null>(null);
   const [speakingProgress, setSpeakingProgress] = useState<SpeakingProgressState | null>(null);
+  const [isSpeakingPaused, setIsSpeakingPaused] = useState<boolean>(false);
   const [ttsAnalyser, setTtsAnalyser] = useState<AnalyserNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const speechRecognitionRef = useRef<any>(null);
@@ -2415,8 +2421,40 @@ export default function App() {
     if (!options?.preserveReadbackState) {
       activeReadbackSessionRef.current = null;
       setIsSpeakingId(null);
+      setIsSpeakingPaused(false);
       setSpeakingProgress(null);
     }
+  };
+
+  const handlePauseSpeaking = () => {
+    if (!activeReadbackSessionRef.current && !isSpeakingId) return;
+    triggerHaptic('tap', settings.hapticsEnabled);
+    // Stop ongoing audio nodes immediately while preserving activeReadbackSessionRef and speech progress
+    handleStopSpeaking({ preserveReadbackState: true });
+    setIsSpeakingPaused(true);
+    setSpeakingProgress((prev) => (prev ? { ...prev, isPaused: true } : null));
+  };
+
+  const handleResumeSpeaking = () => {
+    const session = activeReadbackSessionRef.current;
+    if (!session) return;
+    triggerHaptic('tap', settings.hapticsEnabled);
+    setIsSpeakingPaused(false);
+    setSpeakingProgress((prev) => (prev ? { ...prev, isPaused: false } : null));
+    const startChunk = Math.max(0, session.currentChunkIdx);
+    void handleSpeakText(
+      session.fullText,
+      session.msgId,
+      session.mode,
+      session.voiceGender,
+      session.readingMode,
+      {
+        startChunkIdx: startChunk,
+        isVoiceSwitchHandoff: true,
+        voiceNameOverride: session.voiceName,
+        ttsEngineOverride: session.ttsEngine,
+      }
+    );
   };
 
   const handleStopKaraResponse = () => {
@@ -2438,7 +2476,16 @@ export default function App() {
   // Helper to split short-form and multi-paragraph long-form messages into natural sentence blocks
   // Uses a smaller first chunk (~180 chars) for instant time-to-first-audio and ~320-char subsequent chunks for gapless lookahead streaming
   const splitClientSpeechChunks = (rawText: string, maxLen = 320): string[] => {
-    const cleaned = rawText
+    const sanitized = sanitizeClientHumanSpeech(rawText)
+      .replace(
+        /\b(?:i\s+)?(?:cannot|can't|can\s+not|am\s+unable\s+to|unable\s+to)\s+read\s+that\s+sexual\s+aloud\b[^.!?\n]*[.!?]?/gi,
+        ''
+      )
+      .replace(
+        /\b(?:i\s+)?(?:cannot|can't|can\s+not|am\s+unable\s+to|unable\s+to)\s+read\s+that\s+aloud\b[^.!?\n]*[.!?]?/gi,
+        ''
+      );
+    const cleaned = sanitized
       .replace(/\*+([^*]+)\*+/g, '. $1. ')
       .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
       .replace(/https?:\/\/[^\s)]+/g, ' shared link ')
@@ -2522,6 +2569,7 @@ export default function App() {
       startChunkIdx?: number;
       isVoiceSwitchHandoff?: boolean;
       ttsEngineOverride?: TtsEngineType;
+      karaEmotionOverride?: KaraDynamicEmotion;
     }
   ) => {
     const prevReadback = activeReadbackSessionRef.current;
@@ -2570,6 +2618,7 @@ export default function App() {
     }
 
     setIsSpeakingId(msgId);
+    setIsSpeakingPaused(false);
 
     const ttsController = new AbortController();
     ttsAbortControllerRef.current = ttsController;
@@ -2580,6 +2629,9 @@ export default function App() {
     const targetTtsEngine: TtsEngineType =
       handoffOptions?.ttsEngineOverride || settings.ttsEngine;
     const effectiveMode: KaraMode = modeOverride || profile.preferredMode;
+
+    const targetMsg = allMessagesRef.current.find((m) => m.id === msgId);
+    const activeKaraEmotion = handoffOptions?.karaEmotionOverride || targetMsg?.karaEmotion;
 
     // When switching voices during active readback, play a crisp, pleasant "ding" chime so the transition is clean and unmistakable
     if (isSwitchingVoiceMidReadback) {
@@ -2618,6 +2670,7 @@ export default function App() {
               voiceGender: targetGender,
               voiceName: targetVoiceName,
               ttsEngine: targetTtsEngine,
+              karaEmotion: activeKaraEmotion,
             }),
           });
           if (res.ok) {
@@ -2873,6 +2926,7 @@ export default function App() {
         currentChunk: safeStartChunk + 1,
         totalChunks,
         readingMode,
+        isPaused: false,
       });
 
       // Pre-decoded chunk payload cache for gapless scheduling
@@ -3177,32 +3231,19 @@ export default function App() {
               totalChunks,
               readingMode,
             });
-            // Retry neural voice once more; if offline/unreachable, fall back to browser speechSynthesis so Talkback never fails silently
-            const lastChanceBase64 = await fetchChunkAudioBase64(speechChunks[i]);
+            // Retry neural 24kHz voice synthesis; NEVER fall back to robotic browser speechSynthesis
+            let lastChanceBase64 = await fetchChunkAudioBase64(speechChunks[i]);
+            if (!lastChanceBase64 && !ttsController.signal.aborted) {
+              // Quick backoff retry for neural audio
+              await new Promise((r) => setTimeout(r, 200));
+              lastChanceBase64 = await fetchChunkAudioBase64(speechChunks[i]);
+            }
             if (
               lastChanceBase64 &&
               !ttsController.signal.aborted &&
               mySessionToken === ttsPlaybackTokenRef.current
             ) {
               await playFallbackHtmlAudio(lastChanceBase64);
-            } else if (
-              !ttsController.signal.aborted &&
-              mySessionToken === ttsPlaybackTokenRef.current &&
-              typeof window !== 'undefined' &&
-              'speechSynthesis' in window
-            ) {
-              await new Promise<void>((resolve) => {
-                try {
-                  window.speechSynthesis.cancel();
-                  const utter = new SpeechSynthesisUtterance(speechChunks[i]);
-                  utter.rate = Math.max(0.7, Math.min(1.6, settings.speechRate));
-                  utter.onend = () => resolve();
-                  utter.onerror = () => resolve();
-                  window.speechSynthesis.speak(utter);
-                } catch {
-                  resolve();
-                }
-              });
             }
           }
         }
@@ -3223,6 +3264,7 @@ export default function App() {
       ) {
         activeReadbackSessionRef.current = null;
         setIsSpeakingId(null);
+        setIsSpeakingPaused(false);
         setSpeakingProgress(null);
       }
     } catch {
@@ -3232,6 +3274,7 @@ export default function App() {
       ) {
         activeReadbackSessionRef.current = null;
         setIsSpeakingId(null);
+        setIsSpeakingPaused(false);
         setSpeakingProgress(null);
       }
     }
@@ -3512,6 +3555,7 @@ export default function App() {
           sharedLinks: attachments?.links || [],
           activeGem: activeGemObj,
           enabledSkills: settings.enabledSkills || DEFAULT_ENABLED_SKILLS,
+          parentSoapDiscipline: settings.parentSoapDiscipline !== false,
           responseStylePreset,
           funMode,
           adultRpContext: effectiveAdultRpContext,
@@ -3557,6 +3601,9 @@ export default function App() {
 
       if (data.soapTriggered) {
         triggerHaptic('soap', settings.hapticsEnabled);
+        if (settings.vocalSoundEffectsEnabled !== false) {
+          playSoapDisciplineSoundEffect();
+        }
       }
 
       // Automatically remember and sync user's introduced name permanently in Kara's brain
@@ -5119,7 +5166,7 @@ export default function App() {
       data-kara-mode-morphing={isModeMorphing ? 'true' : 'false'}
       data-mxchat-bubble={settings.mxchatBubbleStyle || 'rounded'}
       data-mxchat-font={settings.mxchatFontScale || 'default'}
-      className="min-h-screen flex flex-col kara-app-shell relative isolate overflow-x-hidden"
+      className="min-h-screen min-h-[100dvh] flex flex-col kara-app-shell relative isolate overflow-x-hidden"
     >
       {/* DYNAMIC MODE-RESPONSIVE MORPHING RADIAL GRADIENT BACKGROUND LAYER */}
       <div
@@ -5213,7 +5260,7 @@ export default function App() {
       </div>
 
       {/* GEMINI × GROK HYBRID TOP CONSOLE BAR */}
-      <header className="flex items-center justify-between gap-4 px-4 md:px-6 py-1.5 border-b kara-app-topbar backdrop-blur-xl sticky top-0 z-30">
+      <header className="flex items-center justify-between gap-2 sm:gap-4 px-2.5 sm:px-4 md:px-6 py-1.5 pt-[max(0.375rem,env(safe-area-inset-top))] border-b kara-app-topbar backdrop-blur-xl sticky top-0 z-30">
         {/* Left: Wordmark, Gemini × Grok Hybrid Badge & Optional Return to Chat */}
         <div className="flex items-center gap-3 min-w-0">
           <a
@@ -5409,7 +5456,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setActiveView(activeView === 'memories' ? 'chat' : 'memories')}
-            className={`px-3.5 py-1.5 text-xs font-medium border rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`px-2.5 sm:px-3.5 py-1.5 text-xs font-medium border rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
               activeView === 'memories'
                 ? 'bg-fuchsia-500/20 border-fuchsia-400/50 text-fuchsia-200 shadow-sm'
                 : 'kara-chat-control-btn text-slate-200 hover:text-white'
@@ -5417,7 +5464,8 @@ export default function App() {
             title="Open Memory Insights Dashboard & Shared Memory Bank (Bonds, Milestones & Kara + User Memories)"
           >
             <Brain className="w-3.5 h-3.5 text-fuchsia-400" />
-            <span>Memory Insights</span>
+            <span className="hidden sm:inline">Memory Insights</span>
+            <span className="sm:hidden">Memories</span>
             <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-md bg-white/10 text-sky-300 tabular-nums">
               {visibleMemories.length}
             </span>
@@ -5426,11 +5474,11 @@ export default function App() {
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
-            className="px-3.5 py-1.5 text-xs font-medium kara-chat-control-btn border rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
+            className="px-2.5 sm:px-3.5 py-1.5 text-xs font-medium kara-chat-control-btn border rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
             title="Open Settings: Email & Comms Hub, Connected Email Accounts, Active Persona, Gemini × Grok Themes, Voice, Agenda, Set Alarm & Memory Vault"
           >
             <Settings className="w-3.5 h-3.5 text-[#4C8DF6]" />
-            <span>Settings</span>
+            <span className="hidden sm:inline">Settings</span>
           </button>
         </div>
       </header>
@@ -5668,6 +5716,7 @@ export default function App() {
               onToggleTokenStreaming={() =>
                 handleUpdateSettings({ tokenStreaming: !settings.tokenStreaming })
               }
+              onHardResetKara={handleHardReset}
               onToggleDeeperSearch={() =>
                 handleUpdateSettings({ deeperSearch: !settings.deeperSearch })
               }
@@ -5686,6 +5735,9 @@ export default function App() {
               onRetryMessage={handleRetryMessage}
               onDeleteMessage={handleDeleteSingleMessage}
               onSpeakMessage={handleSpeakText}
+              isSpeakingPaused={isSpeakingPaused}
+              onPauseSpeaking={handlePauseSpeaking}
+              onResumeSpeaking={handleResumeSpeaking}
               onStopSpeaking={handleStopSpeaking}
               onStopResponse={handleStopKaraResponse}
               onToggleMicRecording={handleToggleMicRecording}
@@ -5731,6 +5783,17 @@ export default function App() {
               durationBadgeThresholdSec={settings.durationBadgeThresholdSec ?? 3}
               vocalSoundEffectsEnabled={settings.vocalSoundEffectsEnabled !== false}
               autoSwitchVocalFx={settings.autoSwitchVocalFx !== false}
+              parentSoapDiscipline={settings.parentSoapDiscipline !== false}
+              onToggleParentSoapDiscipline={() => {
+                setSettings((prev) => {
+                  const nextVal = prev.parentSoapDiscipline === false;
+                  const updated = { ...prev, parentSoapDiscipline: nextVal };
+                  try {
+                    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              }}
               isKaraBrainOpen={isKaraBrainOpen}
               onToggleKaraBrain={(open) =>
                 setIsKaraBrainOpen((prev) => (open !== undefined ? open : !prev))

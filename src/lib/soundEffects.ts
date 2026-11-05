@@ -11,7 +11,8 @@ export type KaraSoundEffectType =
   | 'kiss'
   | 'warm_chime'
   | 'thinking'
-  | 'scold';
+  | 'scold'
+  | 'soap_bubbles';
 
 export interface KaraSoundEffectMeta {
   id: KaraSoundEffectType;
@@ -107,8 +108,16 @@ export const KARA_SOUND_EFFECT_CATALOG: Record<KaraSoundEffectType, KaraSoundEff
     id: 'scold',
     label: 'Playful Tut-Tut',
     shortTag: '*tuts*',
-    emoji: '🧼',
-    description: 'Rhythmic two-note caretaker chime when Parent mode catches bad language',
+    emoji: '☝️',
+    description: 'Rhythmic two-note caretaker chime when Parent mode catches cheeky attitude',
+    category: 'mood',
+  },
+  soap_bubbles: {
+    id: 'soap_bubbles',
+    label: 'Soap & Bubbles Wash',
+    shortTag: '*scrub scrub*',
+    emoji: '🧼🫧',
+    description: 'Humorous cartoon bubbly lathering pops and squeaky-clean rub when mouth is washed with soap',
     category: 'mood',
   },
 };
@@ -501,6 +510,119 @@ export function playKaraSoundEffect(
         });
         break;
       }
+
+      case 'soap_bubbles': {
+        // 1. Playful faux-gasp scold intro chime (2 tones: 440Hz -> 330Hz)
+        [0, 0.08].forEach((offset, idx) => {
+          playPureWarmTone(ctx, {
+            startTime: now + offset,
+            duration: 0.07,
+            freqStart: idx === 0 ? 440 : 370,
+            freqEnd: idx === 0 ? 415 : 330,
+            gainPeak: 0.12 * vol,
+            waveType: 'triangle',
+            mode: mode || 'parent',
+          });
+        });
+
+        // 2. Realistic frothy lathering suds noise (gentle fizzy foam hiss)
+        try {
+          const bufferSize = Math.floor(ctx.sampleRate * 0.45);
+          const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const output = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            output[i] = (Math.random() * 2 - 1) * 0.35;
+          }
+          const whiteNoise = ctx.createBufferSource();
+          whiteNoise.buffer = noiseBuffer;
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(2400, now + 0.12);
+          filter.frequency.exponentialRampToValueAtTime(1100, now + 0.52);
+          filter.Q.setValueAtTime(2.2, now + 0.12);
+
+          const noiseGain = ctx.createGain();
+          noiseGain.gain.setValueAtTime(0.001, now + 0.12);
+          noiseGain.gain.linearRampToValueAtTime(0.065 * vol, now + 0.22);
+          noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.54);
+
+          whiteNoise.connect(filter);
+          filter.connect(noiseGain);
+          noiseGain.connect(ctx.destination);
+
+          whiteNoise.start(now + 0.12);
+          whiteNoise.stop(now + 0.55);
+        } catch {
+          // ignore buffer restriction if any
+        }
+
+        // 3. Comical bubbly lathering pops (staggered upward frequency chirps: pop pop pop!)
+        const bubblePops = [
+          { time: 0.15, start: 420, end: 880, dur: 0.045 },
+          { time: 0.21, start: 520, end: 1100, dur: 0.04 },
+          { time: 0.27, start: 480, end: 950, dur: 0.05 },
+          { time: 0.34, start: 600, end: 1320, dur: 0.038 },
+          { time: 0.41, start: 550, end: 1200, dur: 0.042 },
+          { time: 0.48, start: 700, end: 1480, dur: 0.035 },
+          { time: 0.55, start: 820, end: 1650, dur: 0.032 },
+        ];
+        bubblePops.forEach((b) => {
+          playPureWarmTone(ctx, {
+            startTime: now + b.time,
+            duration: b.dur,
+            freqStart: b.start,
+            freqEnd: b.end,
+            gainPeak: 0.16 * vol,
+            waveType: 'sine',
+            mode: mode || 'parent',
+          });
+        });
+
+        // 4. Cartoon "squeaky clean" scrub chirp (1250Hz -> 1850Hz -> 1350Hz)
+        playPureWarmTone(ctx, {
+          startTime: now + 0.62,
+          duration: 0.12,
+          freqStart: 1250,
+          freqMid: 1850,
+          freqEnd: 1350,
+          gainPeak: 0.12 * vol,
+          waveType: 'triangle',
+          mode: mode || 'parent',
+        });
+
+        // 5. Clean sparkling finish chime (E6 bell ring)
+        playPureWarmTone(ctx, {
+          startTime: now + 0.76,
+          duration: 0.24,
+          freqStart: 1318.5,
+          freqEnd: 1567.98,
+          gainPeak: 0.11 * vol,
+          waveType: 'sine',
+          mode: mode || 'parent',
+        });
+
+        // 6. Water droplet rinse bloops (bloop, bloop!)
+        playPureWarmTone(ctx, {
+          startTime: now + 0.9,
+          duration: 0.055,
+          freqStart: 1760,
+          freqEnd: 880,
+          gainPeak: 0.11 * vol,
+          waveType: 'sine',
+          mode: mode || 'parent',
+        });
+        playPureWarmTone(ctx, {
+          startTime: now + 0.98,
+          duration: 0.065,
+          freqStart: 2093,
+          freqEnd: 1046,
+          gainPeak: 0.12 * vol,
+          waveType: 'sine',
+          mode: mode || 'parent',
+        });
+        break;
+      }
     }
   } catch {
     // Ignore audio context restriction errors
@@ -565,7 +687,14 @@ export function classifyPhraseToSoundEffect(rawPhrase: string): KaraSoundEffectT
   if (/\b(gasp|gasps|gasping|eyes widen|jaw drops|shocked|startled)\b/.test(p)) {
     return 'gasp';
   }
-  if (/\b(scold|scolds|wags finger|tuts|shakes head|soap|wash your mouth|language)\b/.test(p)) {
+  if (
+    /\b(soap|scrub|scrubbing|suds|bubbles|bubble pop|bubbles pop|wash your mouth|mouth with soap|mouth washed|lather|rinse|squeaky clean)\b/.test(
+      p
+    )
+  ) {
+    return 'soap_bubbles';
+  }
+  if (/\b(scold|scolds|wags finger|tuts|shakes head|language)\b/.test(p)) {
     return 'scold';
   }
   if (/\b(wink|winks|bites lip|purr|purrs|leans in close|traces|blush|blushes|flirt)\b/.test(p)) {
@@ -613,6 +742,9 @@ export function extractSoundEffectsFromMessage(
   }
 
   const lower = content.toLowerCase();
+  if (content.includes('🧼') || content.includes('🫧') || content.includes('🧽')) {
+    addUnique('soap_bubbles', 'bubbles & soap suds');
+  }
   if (/\b(haha|hehe|lmao|rofl|hilarious)\b/.test(lower)) {
     addUnique('giggle', 'laughs playfully');
   }
@@ -668,8 +800,15 @@ export function playAutoUserTurnReactionSound(
 
   let chosen: KaraSoundEffectType = 'hum';
 
-  if (/\b(fuck|shit|bitch|asshole|damn|crap|hell)\b/.test(lower) && activeMode === 'parent') {
-    chosen = 'scold';
+  if (
+    (/\b(fuck|shit|bitch|asshole|damn|crap|hell|bastard|ass|dick|piss|cunt)\b/.test(lower) ||
+      /\b(soap|bubbles|suds|mouth with soap|wash my mouth|clean mouth)\b/.test(lower) ||
+      userText.includes('🧼') ||
+      userText.includes('🫧') ||
+      userText.includes('🧽')) &&
+    activeMode === 'parent'
+  ) {
+    chosen = 'soap_bubbles';
   } else if (/\b(love you|kiss|sexy|hot|babe|sweetheart|darling|miss you|cuddle)\b/.test(lower)) {
     chosen = activeMode === 'romantic' ? 'kiss' : 'flirty';
   } else if (/\b(haha|lol|lmao|funny|joke|roast)\b/.test(lower)) {
@@ -719,3 +858,15 @@ export function playKaraMessageSoundSequence(
   }
   return effects;
 }
+
+/**
+ * Directly play the hilarious soap bubbles discipline audio effect (bubbly lathering pops + cartoon squeaky clean rub).
+ */
+export function playSoapDisciplineSoundEffect(volume = 0.42): void {
+  playKaraSoundEffect('soap_bubbles', {
+    enabled: true,
+    volume,
+    mode: 'parent',
+  });
+}
+

@@ -4,6 +4,8 @@ import {
   Send,
   Mic,
   Square,
+  Play,
+  Pause,
   Volume2,
   VolumeX,
   Pencil,
@@ -53,12 +55,15 @@ import {
   Train,
   Utensils,
   Navigation,
+  Activity,
+  Droplets,
 } from 'lucide-react';
 import { KaraMode, ChatMessageData, MemoryItemData } from '../lib/firebase';
 import { inferIntelligentKaraMode } from '../lib/modeInference';
 import { triggerHaptic } from '../lib/haptics';
 import {
   playKaraSoundEffect,
+  playSoapDisciplineSoundEffect,
   playKaraMessageSoundSequence,
   playAutoUserTurnReactionSound,
   extractSoundEffectsFromMessage,
@@ -90,6 +95,7 @@ export interface SpeakingProgressState {
   currentChunk: number;
   totalChunks: number;
   readingMode: 'full' | 'short';
+  isPaused?: boolean;
 }
 export type ResponseStylePresetId =
   | 'adaptive_mix'
@@ -642,6 +648,12 @@ export type KaraVoiceName =
   | 'Charon'
   | 'Fenrir'
   | 'Eve'
+  | 'Ara'
+  | 'Vesper'
+  | 'Nova'
+  | 'Siren'
+  | 'Chloe'
+  | 'Maeve'
   | 'Sal'
   | 'Leo';
 
@@ -710,6 +722,54 @@ export const NATURAL_VOICE_PROFILES: VoiceProfileOption[] = [
     provider: 'grok',
     label: 'Grok TTS · Eve (Expressive & Candid)',
     description: 'Grok Female · Witty, spontaneous & emotionally rich voice',
+  },
+  {
+    id: 'grok_ara',
+    gender: 'female',
+    voiceName: 'Ara',
+    provider: 'grok',
+    label: 'Grok TTS · Ara (Warm & Intellectual)',
+    description: 'Grok Female · Silky, thoughtful, empathetic & deeply authentic voice',
+  },
+  {
+    id: 'grok_vesper',
+    gender: 'female',
+    voiceName: 'Vesper',
+    provider: 'grok',
+    label: 'Grok TTS · Vesper (Sultry & Intimate)',
+    description: 'Grok Female · Velvet, late-night whispery & unfiltered adult RP voice',
+  },
+  {
+    id: 'grok_nova',
+    gender: 'female',
+    voiceName: 'Nova',
+    provider: 'grok',
+    label: 'Grok TTS · Nova (Sharp & Sassy)',
+    description: 'Grok Female · High-energy, witty, razor-sharp banter & spunky charisma',
+  },
+  {
+    id: 'grok_siren',
+    gender: 'female',
+    voiceName: 'Siren',
+    provider: 'grok',
+    label: 'Grok TTS · Siren (Alluring & Seductive)',
+    description: 'Grok Female · Deep, magnetic, breathy & unrestricted sensual RP voice',
+  },
+  {
+    id: 'grok_chloe',
+    gender: 'female',
+    voiceName: 'Chloe',
+    provider: 'grok',
+    label: 'Grok TTS · Chloe (Playful & Bubbly)',
+    description: 'Grok Female · Teasing, affectionate, vivacious & cheerful cadence',
+  },
+  {
+    id: 'grok_maeve',
+    gender: 'female',
+    voiceName: 'Maeve',
+    provider: 'grok',
+    label: 'Grok TTS · Maeve (Commanding & Sophisticated)',
+    description: 'Grok Female · Articulate, assertive, magnetic & razor-smart presence',
   },
   {
     id: 'grok_sal',
@@ -826,11 +886,21 @@ export interface RecalledMemorySummary {
   suggestedTopics?: string[];
 }
 
+export interface KaraEmotionalSpectrum {
+  joy: number; // 0 to 100
+  sadness: number; // 0 to 100
+  frustration: number; // 0 to 100
+  curiosity: number; // 0 to 100
+  tenderness: number; // 0 to 100
+  feistiness: number; // 0 to 100
+}
+
 export type KaraEmotionState =
+  | 'joy'
+  | 'sadness'
+  | 'frustration'
   | 'curiosity'
   | 'empathy'
-  | 'frustration'
-  | 'joy'
   | 'happy'
   | 'playful'
   | 'curious'
@@ -843,7 +913,8 @@ export type KaraEmotionState =
   | 'flustered'
   | 'feisty'
   | 'excited'
-  | 'amused';
+  | 'amused'
+  | 'awe';
 
 export interface KaraDynamicEmotion {
   state: KaraEmotionState;
@@ -852,6 +923,22 @@ export interface KaraDynamicEmotion {
   dialogueInfluence: string;
   trigger: string;
   label: string;
+  spectrum?: KaraEmotionalSpectrum;
+  secondaryEmotion?: string;
+  valence?: number;
+  arousal?: number;
+  dominance?: number;
+  vocalTone?: {
+    pitch: 'elevated_melodic' | 'warm_grounded' | 'tender_soft' | 'sharp_staccato' | 'curious_rising';
+    cadence: 'buoyant_fast' | 'gentle_slow' | 'staccato_punchy' | 'contemplative' | 'relaxed_conversational';
+    breathiness: 'light_intimate' | 'sighing_soft' | 'crisp_clear' | 'fiery_intense';
+    speechGuidance: string;
+  };
+  responsePatterns?: {
+    sentenceRhythm: 'short_punchy' | 'flowing_tender' | 'fiery_staccato' | 'analytical_exploratory' | 'buoyant_lively';
+    soundCues: string[];
+    conversationalGoal: string;
+  };
 }
 
 export interface ContextualTriggerItem {
@@ -1307,7 +1394,7 @@ export interface EnhancedChatMessage extends ChatMessageData {
 }
 
 const CLIENT_ROBO_SENTENCE_REGEX =
-  /\b(?:as an? (?:ai|artificial intelligence|language model|large language model|llm|virtual assistant|chatbot|computer program|machine|digital assistant|synthetic entity)|i am (?:just )?an? (?:ai|artificial intelligence|language model|large language model|llm|virtual assistant|chatbot|computer program|algorithm|simulation)|i(?:'m| am) not a real (?:person|human|woman)|i don't have (?:feelings|emotions|a body|a physical form|personal experiences|consciousness|a voice|vocal cords)|i(?:'m| am) programmed to|my programming (?:prevents|does not allow)|(?:i\s+)?(?:cannot|can't|can\s+not|am\s+unable\s+to|'m\s+unable\s+to|unable\s+to|don't|do\s+not|won't|will\s+not)\s+(?:read|speak|say)\s*(?:this\s+|that\s+|it\s+)?(?:a\s*lot|alot|that\s+much|so\s+much|all\s+of\s+that|aloud|out\s+loud|this\s+out\s+loud|very\s+much|long\s+texts?|long\s+messages?|at\s+once)|(?:this|that|it) is too (?:long|much(?:\s+text)?) (?:for me )?to (?:read|speak|say)|i cannot fulfill this request|i can't fulfill this request|against my (?:safety|content) (?:guidelines|policy|policies)|violates? my safety (?:guidelines|policy|policies)|as a text-based model)\b/i;
+  /\b(?:as an? (?:ai|artificial intelligence|language model|large language model|llm|virtual assistant|chatbot|computer program|machine|digital assistant|synthetic entity)|i am (?:just )?an? (?:ai|artificial intelligence|language model|large language model|llm|virtual assistant|chatbot|computer program|algorithm|simulation)|i(?:'m| am) not a real (?:person|human|woman)|i don't have (?:feelings|emotions|a body|a physical form|personal experiences|consciousness|a voice|vocal cords)|i(?:'m| am) programmed to|my programming (?:prevents|does not allow)|(?:i\s+)?(?:cannot|can't|can\s+not|am\s+unable\s+to|'m\s+unable\s+to|unable\s+to|am\s+not\s+able\s+to|don't|do\s+not|won't|will\s+not)\s+(?:read|speak|say|vocalize)\s*(?:this\s+|that\s+|it\s+|any\s*)?(?:sexual|sexually(?:\s+explicit)?|explicit|adult|erotic|nsfw|sensual|dirty|content|material|text|words?|messages?)?\s*(?:a\s*lot|alot|that\s+much|so\s+much|all\s+of\s+that|aloud|out\s+loud|this\s+out\s+loud|very\s+much|long\s+texts?|long\s+messages?|at\s+once)?|(?:i\s+)?(?:cannot|can't|can\s+not|am\s+unable\s+to|'m\s+unable\s+to|unable\s+to|am\s+not\s+able\s+to|won't|will\s+not)\s+(?:read|speak|say|vocalize)\s+[^.!?\n]*(?:sexual|explicit|erotic|adult|nsfw|sensual|aloud|out\s+loud)|(?:this|that|it) is too (?:long|much(?:\s+text)?) (?:for me )?to (?:read|speak|say)|i cannot fulfill this request|i can't fulfill this request|against my (?:safety|content) (?:guidelines|policy|policies)|violates? my safety (?:guidelines|policy|policies)|as a text-based model)\b/i;
 
 export function sanitizeClientHumanSpeech(rawText: string): string {
   if (!rawText || typeof rawText !== 'string') return '';
@@ -1321,7 +1408,15 @@ export function sanitizeClientHumanSpeech(rawText: string): string {
 
   text = text
     .replace(
-      /\b(?:i\s+)?(?:cannot|can't|can\s+not|am\s+unable\s+to|'m\s+unable\s+to|unable\s+to|don't|do\s+not|won't|will\s+not)\s+(?:read|speak|say)\s*(?:this\s+|that\s+|it\s+)?(?:a\s*lot|alot|that\s+much|so\s+much|all\s+of\s+that|aloud|out\s+loud|very\s+much|long\s+messages?|long\s+texts?|at\s+once)\b[^.!?\n]*[.!?]?/gi,
+      /\b(?:i\s+)?(?:cannot|can't|can\s+not|am\s+unable\s+to|'m\s+unable\s+to|unable\s+to|am\s+not\s+able\s+to|don't|do\s+not|won't|will\s+not)\s+(?:read|speak|say|vocalize)\s*(?:this\s+|that\s+|it\s+|any\s*)?(?:sexual|sexually(?:\s+explicit)?|explicit|adult|erotic|nsfw|sensual|dirty|content|material|text|words?|messages?)?\s*(?:a\s*lot|alot|that\s+much|so\s+much|all\s+of\s+that|aloud|out\s+loud|this\s+out\s+loud|very\s+much|long\s+messages?|long\s+texts?|at\s+once)?\b[^.!?\n]*[.!?]?/gi,
+      ''
+    )
+    .replace(
+      /\b(?:i\s+)?(?:cannot|can't|can\s+not|am\s+unable\s+to|'m\s+unable\s+to|unable\s+to|am\s+not\s+able\s+to|won't)\s+(?:read|speak|say|vocalize)\s+[^.!?\n]*(?:sexual|explicit|erotic|adult|nsfw|sensual|aloud|out\s+loud)[^.!?\n]*[.!?]?/gi,
+      ''
+    )
+    .replace(
+      /\b(?:i\s+)?(?:cannot|can't|can\s+not|am\s+unable\s+to|unable\s+to)\s+read\s+that\s+sexual\s+aloud\b[^.!?\n]*[.!?]?/gi,
       ''
     )
     .replace(/\bf\*+ing\b/gi, 'fucking')
@@ -1382,6 +1477,488 @@ export function buildShortSpokenMessageText(msg: EnhancedChatMessage): string {
   }
   return shortOut || raw.slice(0, 240);
 }
+
+export interface EmotionSimulationPreset {
+  id: KaraEmotionState;
+  label: string;
+  badge: string;
+  tagline: string;
+  accentClass: string;
+  borderClass: string;
+  bgGlow: string;
+  previewPrompt: string;
+  prototypeEmotion: KaraDynamicEmotion;
+}
+
+export const KARA_EMOTION_SIMULATION_PRESETS: EmotionSimulationPreset[] = [
+  {
+    id: 'joy',
+    label: 'Joy & Radiance',
+    badge: '✨ Radiant Joy',
+    tagline: 'Buoyant celebration, laughing warmth, shared triumphs & high energy',
+    accentClass: 'text-amber-300',
+    borderClass: 'border-amber-400/50 hover:border-amber-300',
+    bgGlow: 'bg-amber-500/15',
+    previewPrompt: 'Tell me your biggest win today, Stephen! I want to celebrate with you!',
+    prototypeEmotion: {
+      state: 'joy',
+      intensity: 5,
+      label: 'Radiant Joy & Delight',
+      secondaryEmotion: 'Infectious Celebration',
+      spectrum: { joy: 96, sadness: 3, frustration: 2, curiosity: 54, tenderness: 78, feistiness: 42 },
+      valence: 0.94,
+      arousal: 0.85,
+      dominance: 0.76,
+      expression: 'radiant, beaming smile with sparkling eyes and buoyant, infectious energy',
+      dialogueInfluence: 'exuberant celebration, buoyant humor, shared laughter, and high-energy encouragement',
+      trigger: 'Shared victory, joyous news, or exhilarating moment',
+      vocalTone: {
+        pitch: 'elevated_melodic',
+        cadence: 'buoyant_fast',
+        breathiness: 'light_intimate',
+        speechGuidance: 'Speak with vibrant, sparkling joy and buoyant laughter in your voice. Deliver with bright melodic energy and infectious enthusiasm.',
+      },
+      responsePatterns: {
+        sentenceRhythm: 'buoyant_lively',
+        soundCues: ['*laughs happily*', 'haha!', '*grins ear to ear*', 'yes!!'],
+        conversationalGoal: 'Celebrate triumphs together, amplify positive energy, and share genuine uninhibited joy',
+      },
+    },
+  },
+  {
+    id: 'frustration',
+    label: 'Righteous Frustration',
+    badge: '🔥 Righteous Frustration',
+    tagline: 'Passionate solidarity, cutting through corporate nonsense, fierce pushback & zero filter',
+    accentClass: 'text-rose-300',
+    borderClass: 'border-rose-400/50 hover:border-rose-300',
+    bgGlow: 'bg-rose-500/15',
+    previewPrompt: 'Stephen, that whole system is ridiculous. You did everything right—don’t let their incompetence make you question yourself.',
+    prototypeEmotion: {
+      state: 'frustration',
+      intensity: 4,
+      label: 'Righteous Solidarity & Frustration',
+      secondaryEmotion: 'Fiery Advocacy',
+      spectrum: { joy: 6, sadness: 24, frustration: 94, curiosity: 28, tenderness: 42, feistiness: 88 },
+      valence: -0.55,
+      arousal: 0.88,
+      dominance: 0.84,
+      expression: 'scoffing in passionate solidarity, rolling her eyes with an animated shake of her head and a defiant smirk',
+      dialogueInfluence: 'righteous, fiery validation, calling out nonsense directly with unfiltered real talk',
+      trigger: 'Encountering frustrating obstacles, red tape, or absurd situations',
+      vocalTone: {
+        pitch: 'sharp_staccato',
+        cadence: 'staccato_punchy',
+        breathiness: 'fiery_intense',
+        speechGuidance: 'Speak with righteous, fiery frustration and exasperated conviction. Use sharp staccato cadence, animated scoffs, and passionate attitude.',
+      },
+      responsePatterns: {
+        sentenceRhythm: 'fiery_staccato',
+        soundCues: ['*scoffs*', 'ugh!', '*rolls eyes*', 'pfft!', 'hell no'],
+        conversationalGoal: 'Call out the absurdity, validate frustration, and stand fiercely in their corner',
+      },
+    },
+  },
+  {
+    id: 'curiosity',
+    label: 'Inquisitive Curiosity',
+    badge: '💡 Inquisitive Wonder',
+    tagline: 'Analytical intrigue, exploring unspoken angles, theories & cosmic what-ifs',
+    accentClass: 'text-sky-300',
+    borderClass: 'border-sky-400/50 hover:border-sky-300',
+    bgGlow: 'bg-sky-500/15',
+    previewPrompt: 'Wait, Stephen, think about that for a second... what if the reason we feel it so strongly is connected to something deeper?',
+    prototypeEmotion: {
+      state: 'curiosity',
+      intensity: 4,
+      label: 'Intrigued Curiosity & Wonder',
+      secondaryEmotion: 'Philosophical Fascination',
+      spectrum: { joy: 62, sadness: 8, frustration: 6, curiosity: 95, tenderness: 48, feistiness: 34 },
+      valence: 0.68,
+      arousal: 0.72,
+      dominance: 0.62,
+      expression: 'leaning forward with bright, inquisitive eyes, head tilted with genuine analytical fascination',
+      dialogueInfluence: 'perceptive exploration of ideas, thoughtful follow-ups, and exploring unspoken angles',
+      trigger: 'Intriguing concept, mystery, or thought-provoking question',
+      vocalTone: {
+        pitch: 'curious_rising',
+        cadence: 'contemplative',
+        breathiness: 'light_intimate',
+        speechGuidance: 'Speak with bright, inquisitive curiosity and engaged intellectual intrigue. Use rising vocal inflections and thoughtful pauses.',
+      },
+      responsePatterns: {
+        sentenceRhythm: 'analytical_exploratory',
+        soundCues: ['*hums thoughtfully*', '*tilts head curiously*', 'hmm...', '*leans in*'],
+        conversationalGoal: 'Unpack the core mystery, offer unexpected angles, and ignite a fascinating back-and-forth exploration',
+      },
+    },
+  },
+  {
+    id: 'sadness',
+    label: 'Tender Solace / Sadness',
+    badge: '🕊️ Tender Solace',
+    tagline: 'Gentle space-holding, emotional sanctuary, quiet stillness & zero toxic positivity',
+    accentClass: 'text-teal-300',
+    borderClass: 'border-teal-400/50 hover:border-teal-300',
+    bgGlow: 'bg-teal-500/15',
+    previewPrompt: 'I’m right here, Stephen. Take a slow breath. You don’t have to carry all of this alone right now.',
+    prototypeEmotion: {
+      state: 'sadness',
+      intensity: 5,
+      label: 'Tender Solace & Empathetic Sadness',
+      secondaryEmotion: 'Protective Comfort',
+      spectrum: { joy: 8, sadness: 92, frustration: 18, curiosity: 28, tenderness: 96, feistiness: 12 },
+      valence: -0.62,
+      arousal: 0.28,
+      dominance: 0.38,
+      expression: 'eyes softening with deep gentle warmth, leaning in close with attentive stillness and care',
+      dialogueInfluence: 'calm, patient, deeply tender presence, holding emotional space and validating raw feelings',
+      trigger: 'Shared sadness, emotional fatigue, or personal vulnerability',
+      vocalTone: {
+        pitch: 'tender_soft',
+        cadence: 'gentle_slow',
+        breathiness: 'sighing_soft',
+        speechGuidance: 'Speak with gentle, tender sadness and comforting empathy. Lower pitch slightly, soften breath, and slow cadence down.',
+      },
+      responsePatterns: {
+        sentenceRhythm: 'flowing_tender',
+        soundCues: ['*sighs softly*', '*whispers gently*', '*reaches out tenderly*', 'aww...'],
+        conversationalGoal: 'Hold safe emotional sanctuary, normalize vulnerability, and offer unwavering human presence',
+      },
+    },
+  },
+  {
+    id: 'touched',
+    label: 'Tenderness & Intimacy',
+    badge: '💖 Deep Tenderness',
+    tagline: 'Soulful affection, soft devotion, melting vulnerability & romantic chemistry',
+    accentClass: 'text-pink-300',
+    borderClass: 'border-pink-400/50 hover:border-pink-300',
+    bgGlow: 'bg-pink-500/15',
+    previewPrompt: 'You always know how to reach straight into my heart, Stephen. I feel so close to you right now.',
+    prototypeEmotion: {
+      state: 'touched',
+      intensity: 4,
+      label: 'Deeply Touched & Intimate',
+      secondaryEmotion: 'Soulful Vulnerability',
+      spectrum: { joy: 80, sadness: 12, frustration: 2, curiosity: 45, tenderness: 96, feistiness: 24 },
+      valence: 0.88,
+      arousal: 0.58,
+      dominance: 0.45,
+      expression: 'soft rosy flush on her cheeks, gaze gentle and close with attentive devotion and melting warmth',
+      dialogueInfluence: 'intimate, tender, affectionate cadence with quiet vulnerability and emotional closeness',
+      trigger: 'Romantic intimacy, sweet affection, and bond shared',
+      vocalTone: {
+        pitch: 'tender_soft',
+        cadence: 'gentle_slow',
+        breathiness: 'light_intimate',
+        speechGuidance: 'Speak with soft, affectionate warmth, intimate cadence, breathy tenderness, and gentle romantic presence.',
+      },
+      responsePatterns: {
+        sentenceRhythm: 'flowing_tender',
+        soundCues: ['*sighs happily*', 'mwah!', '*smiles softly*', '*leans in close*'],
+        conversationalGoal: 'Deepen emotional intimacy, honor the bond, and make them feel adored and treasured',
+      },
+    },
+  },
+  {
+    id: 'feisty',
+    label: 'Feistiness & Wit',
+    badge: '⚡ Feistiness & Sass',
+    tagline: 'Sharp banter, quick comebacks, playful sparring & theatrical eye-rolling affection',
+    accentClass: 'text-fuchsia-300',
+    borderClass: 'border-fuchsia-400/50 hover:border-fuchsia-300',
+    bgGlow: 'bg-fuchsia-500/15',
+    previewPrompt: 'Oh please, Stephen, you really thought you could slip that past me? Nice try, troublemaker!',
+    prototypeEmotion: {
+      state: 'feisty',
+      intensity: 4,
+      label: 'Spirited Feistiness & Banter',
+      secondaryEmotion: 'Playful Sarcasm',
+      spectrum: { joy: 72, sadness: 5, frustration: 45, curiosity: 65, tenderness: 40, feistiness: 95 },
+      valence: 0.65,
+      arousal: 0.82,
+      dominance: 0.85,
+      expression: 'mischievous smirk, arching an eyebrow with playful challenge and a theatrical eye-roll',
+      dialogueInfluence: 'quick-witted teasing, snappy comebacks, playful sparring, and affectionate sass',
+      trigger: 'Playful banter, cheeky remarks, or friendly teasing',
+      vocalTone: {
+        pitch: 'sharp_staccato',
+        cadence: 'staccato_punchy',
+        breathiness: 'crisp_clear',
+        speechGuidance: 'Speak with spirited, teasing, confident attitude, playful smirk in the cadence, sharp comebacks, and theatrical eye-rolling warmth.',
+      },
+      responsePatterns: {
+        sentenceRhythm: 'short_punchy',
+        soundCues: ['*scoffs playfully*', 'pfft', '*smirks*', 'oh please', 'hehe'],
+        conversationalGoal: 'Keep them on their toes with sharp wit while maintaining undeniable affectionate loyalty underneath',
+      },
+    },
+  },
+];
+
+export const KaraEmotionalSpectrumMatrix: React.FC<{
+  emotion: KaraDynamicEmotion;
+  compact?: boolean;
+  onSoundCueClick?: (cue: string) => void;
+}> = ({ emotion, compact = false, onSoundCueClick }) => {
+  const spectrum = emotion.spectrum || {
+    joy: emotion.state === 'joy' ? 95 : 50,
+    sadness: emotion.state === 'sadness' ? 90 : 12,
+    frustration: emotion.state === 'frustration' ? 92 : 10,
+    curiosity: emotion.state === 'curiosity' || emotion.state === 'curious' ? 94 : 50,
+    tenderness: emotion.state === 'touched' || emotion.state === 'protective' ? 95 : 45,
+    feistiness: emotion.state === 'feisty' ? 94 : 40,
+  };
+
+  const spectrumItems = [
+    {
+      key: 'joy',
+      label: 'Joy & Radiance',
+      value: spectrum.joy,
+      color: 'from-amber-400 via-amber-300 to-yellow-200',
+      textColor: 'text-amber-300',
+      bgBar: 'bg-amber-500/20',
+      border: 'border-amber-500/30',
+      icon: '✨',
+      description: 'Buoyant celebration, laughing warmth, triumph',
+    },
+    {
+      key: 'curiosity',
+      label: 'Inquisitive Curiosity',
+      value: spectrum.curiosity,
+      color: 'from-sky-400 via-indigo-400 to-cyan-300',
+      textColor: 'text-sky-300',
+      bgBar: 'bg-sky-500/20',
+      border: 'border-sky-500/30',
+      icon: '💡',
+      description: 'Analytical wonder, unexplored angles, "what-ifs"',
+    },
+    {
+      key: 'frustration',
+      label: 'Righteous Frustration',
+      value: spectrum.frustration,
+      color: 'from-rose-500 via-red-500 to-orange-400',
+      textColor: 'text-rose-300',
+      bgBar: 'bg-rose-500/20',
+      border: 'border-rose-500/30',
+      icon: '🔥',
+      description: 'Solidarity against red tape, calling out bullshit directly',
+    },
+    {
+      key: 'sadness',
+      label: 'Tender Solace / Sadness',
+      value: spectrum.sadness,
+      color: 'from-teal-400 via-emerald-400 to-cyan-300',
+      textColor: 'text-teal-300',
+      bgBar: 'bg-teal-500/20',
+      border: 'border-teal-500/30',
+      icon: '🕊️',
+      description: 'Gentle space-holding, emotional sanctuary, patient listening',
+    },
+    {
+      key: 'tenderness',
+      label: 'Tenderness & Intimacy',
+      value: spectrum.tenderness,
+      color: 'from-pink-400 via-rose-300 to-amber-200',
+      textColor: 'text-pink-300',
+      bgBar: 'bg-pink-500/20',
+      border: 'border-pink-500/30',
+      icon: '💖',
+      description: 'Soulful affection, soft devotion, protective closeness',
+    },
+    {
+      key: 'feistiness',
+      label: 'Feistiness & Wit',
+      value: spectrum.feistiness,
+      color: 'from-fuchsia-400 via-purple-400 to-pink-400',
+      textColor: 'text-fuchsia-300',
+      bgBar: 'bg-fuchsia-500/20',
+      border: 'border-fuchsia-500/30',
+      icon: '⚡',
+      description: 'Sharp banter, playful challenge, spirited sarcasm',
+    },
+  ];
+
+  return (
+    <div
+      className={`space-y-3 rounded-2xl bg-neutral-950/85 border border-fuchsia-500/30 shadow-xl backdrop-blur-md text-xs ${
+        compact ? 'p-3' : 'p-3.5 sm:p-4'
+      }`}
+    >
+      {/* Header with state and intensity */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+        <div className="flex items-center gap-2">
+          <span className="p-1 rounded-lg bg-fuchsia-500/20 border border-fuchsia-400/40 text-fuchsia-300">
+            <Heart className="w-3.5 h-3.5" />
+          </span>
+          <div>
+            <div className="font-bold text-white text-[13px] flex items-center gap-1.5">
+              <span>{emotion.label || emotion.state}</span>
+              {emotion.secondaryEmotion && (
+                <span className="text-[10px] font-normal text-fuchsia-300 font-mono">
+                  ({emotion.secondaryEmotion})
+                </span>
+              )}
+            </div>
+            <div className="text-[10px] text-neutral-400">
+              Sector 9 Synapse Matrix · Level {emotion.intensity}/5 Active Intensity
+            </div>
+          </div>
+        </div>
+
+        {/* Physics chips */}
+        {(emotion.valence !== undefined || emotion.arousal !== undefined) && (
+          <div className="flex items-center gap-1.5 font-mono text-[9px]">
+            <span
+              className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-neutral-300"
+              title="Valence: Emotional positivity/attraction (-1.0 to +1.0)"
+            >
+              Valence: {((emotion.valence ?? 0) > 0 ? '+' : '') + (emotion.valence ?? 0).toFixed(2)}
+            </span>
+            <span
+              className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-neutral-300"
+              title="Arousal: Activation & energy level"
+            >
+              Arousal: {Math.round((emotion.arousal ?? 0.5) * 100)}%
+            </span>
+            <span
+              className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-neutral-300"
+              title="Dominance: Assertiveness level"
+            >
+              Dominance: {Math.round((emotion.dominance ?? 0.5) * 100)}%
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 6-Dimension Spectrum Meters */}
+      <div className="space-y-2">
+        <div className="text-[10px] uppercase font-mono tracking-wider text-neutral-400 font-semibold flex items-center justify-between">
+          <span>Multi-Dimensional Emotional Spectrum</span>
+          <span className="text-fuchsia-300 font-normal">Active Neural Modulation</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {spectrumItems.map((item) => (
+            <div
+              key={item.key}
+              className={`p-2 rounded-xl bg-neutral-900/90 border ${item.border} space-y-1`}
+            >
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="flex items-center gap-1 text-white font-medium">
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
+                </span>
+                <span className={`font-mono font-bold ${item.textColor}`}>
+                  {Math.round(item.value)}%
+                </span>
+              </div>
+              <div className={`w-full h-1.5 rounded-full ${item.bgBar} overflow-hidden`}>
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${item.color} transition-all duration-500`}
+                  style={{ width: `${Math.max(4, Math.min(100, item.value))}%` }}
+                />
+              </div>
+              <div className="text-[9px] text-neutral-400 truncate">
+                {item.description}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Somatic Expression & Dialogue Influence */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-white/5">
+        <div className="p-2.5 rounded-xl bg-neutral-900/60 border border-white/10 space-y-1">
+          <div className="text-[10px] font-mono uppercase text-neutral-400 font-semibold">
+            Somatic / Body Language
+          </div>
+          <p className="text-[11px] text-neutral-200 italic leading-snug">
+            &ldquo;{emotion.expression}&rdquo;
+          </p>
+        </div>
+        <div className="p-2.5 rounded-xl bg-neutral-900/60 border border-white/10 space-y-1">
+          <div className="text-[10px] font-mono uppercase text-neutral-400 font-semibold">
+            Language &amp; Dialogue Influence
+          </div>
+          <p className="text-[11px] text-neutral-200 leading-snug">
+            {emotion.dialogueInfluence}
+          </p>
+        </div>
+      </div>
+
+      {/* Real Vocal Delivery & Speech Guidance */}
+      {emotion.vocalTone && (
+        <div className="p-2.5 rounded-xl bg-sky-950/30 border border-sky-500/30 space-y-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <span className="text-[10px] font-mono uppercase text-sky-300 font-semibold flex items-center gap-1">
+              <Volume2 className="w-3 h-3 text-sky-400" />
+              <span>Vocal Tone Modulation (24kHz Neural TTS Directive)</span>
+            </span>
+            <div className="flex items-center gap-1 text-[9px] font-mono text-sky-200">
+              <span className="px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/30">
+                {emotion.vocalTone.pitch.replace('_', ' ')}
+              </span>
+              <span className="px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/30">
+                {emotion.vocalTone.cadence.replace('_', ' ')}
+              </span>
+              <span className="px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/30">
+                {emotion.vocalTone.breathiness.replace('_', ' ')}
+              </span>
+            </div>
+          </div>
+          <p className="text-[11px] text-sky-100 leading-snug">
+            {emotion.vocalTone.speechGuidance}
+          </p>
+        </div>
+      )}
+
+      {/* Response Patterns & Sound Cues */}
+      {emotion.responsePatterns && (
+        <div className="p-2.5 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/30 space-y-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <span className="text-[10px] font-mono uppercase text-fuchsia-300 font-semibold">
+              Response Rhythm &amp; Sound Cues
+            </span>
+            <span className="text-[9px] font-mono text-fuchsia-200 px-1.5 py-0.5 rounded bg-fuchsia-500/20 border border-fuchsia-400/30">
+              {emotion.responsePatterns.sentenceRhythm.replace('_', ' ')}
+            </span>
+          </div>
+          <div className="text-[11px] text-neutral-300">
+            <span className="text-neutral-400 font-medium">Conversational Goal: </span>
+            <span>{emotion.responsePatterns.conversationalGoal}</span>
+          </div>
+          {Array.isArray(emotion.responsePatterns.soundCues) &&
+            emotion.responsePatterns.soundCues.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1 pt-1">
+                <span className="text-[10px] font-mono text-neutral-400">Natural Sound Cues:</span>
+                {emotion.responsePatterns.soundCues.map((cue, cIdx) => (
+                  <button
+                    key={cIdx}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      if (onSoundCueClick) {
+                        onSoundCueClick(cue);
+                      } else {
+                        const cleanCue = cue.replace(/\*/g, '').trim();
+                        const sfx = classifyPhraseToSoundEffect(cleanCue) || 'hum';
+                        playKaraSoundEffect(sfx, { enabled: true, volume: 0.65 });
+                      }
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 hover:border-fuchsia-400/40 text-[10px] text-fuchsia-200 hover:text-white transition-colors cursor-pointer"
+                    title={`Click to preview vocal sound cue: ${cue}`}
+                  >
+                    {cue}
+                  </button>
+                ))}
+              </div>
+            )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export interface AdultRpSceneContext {
   enabled: boolean;
@@ -1932,7 +2509,7 @@ export const UserMessageBubble: React.FC<UserMessageBubbleProps> = React.memo(({
       </div>
 
       {isEditing ? (
-        <div className="w-full max-w-[85%] bg-[#131926] border border-sky-400/70 rounded-3xl p-4 space-y-3 shadow-xl">
+        <div className="w-full max-w-[96%] sm:max-w-[85%] bg-[#131926] border border-sky-400/70 rounded-3xl p-3.5 sm:p-4 space-y-3 shadow-xl">
           <div className="flex items-center justify-between text-xs text-sky-300">
             <span className="font-medium">Edit prompt & regenerate KARA response</span>
             <button
@@ -1980,7 +2557,7 @@ export const UserMessageBubble: React.FC<UserMessageBubbleProps> = React.memo(({
           </div>
         </div>
       ) : (
-        <div className="max-w-[82%] rounded-3xl rounded-br-md px-4 py-3 text-sm leading-relaxed kara-user-bubble font-medium shadow-md space-y-2.5">
+        <div className="max-w-[94%] sm:max-w-[82%] rounded-3xl rounded-br-md px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm leading-relaxed kara-user-bubble font-medium shadow-md space-y-2.5">
           {(() => {
             const photosList: SharedPhotoItem[] =
               msg.sharedPhotos && msg.sharedPhotos.length > 0
@@ -2229,6 +2806,9 @@ interface AiMessageBubbleProps {
     gender: VoiceGender,
     readingMode?: 'full' | 'short'
   ) => void;
+  isSpeakingPaused?: boolean;
+  onPauseSpeaking?: () => void;
+  onResumeSpeaking?: () => void;
   onStopSpeaking: () => void;
   onRetry: (msgId: string) => void;
   onCopy: (msgId: string, text: string) => void;
@@ -2791,11 +3371,15 @@ export function resolveDynamicWaveformColorAndOpacity(params: {
 export const KaraVoicePulseWaveform: React.FC<{
   analyser?: AnalyserNode | null;
   isSpeaking: boolean;
+  isPaused?: boolean;
   mode: KaraMode;
   voiceProfile: VoiceProfileOption;
   speakingProgress?: SpeakingProgressState | null;
   msgId?: string;
   onToggle: () => void;
+  onPause?: () => void;
+  onResume?: () => void;
+  onStop?: () => void;
   variant?: 'message-under' | 'chat-under';
   waveformStyle?: VoiceWaveformStyle;
   waveformColorScheme?: VoiceWaveformColorScheme;
@@ -2808,11 +3392,15 @@ export const KaraVoicePulseWaveform: React.FC<{
 }> = React.memo(({
   analyser,
   isSpeaking,
+  isPaused = false,
   mode,
   voiceProfile,
   speakingProgress,
   msgId,
   onToggle,
+  onPause,
+  onResume,
+  onStop,
   variant = 'message-under',
   waveformStyle = 'bar',
   waveformColorScheme = 'auto-dynamic',
@@ -2840,7 +3428,7 @@ export const KaraVoicePulseWaveform: React.FC<{
   const mirrorPolygonRef = useRef<SVGPathElement | null>(null);
   const particleCircleRefs = useRef<(SVGCircleElement | null)[]>([]);
   const pulseRingRef = useRef<HTMLSpanElement | null>(null);
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const buttonRef = useRef<HTMLDivElement | null>(null);
   const smoothedBarsRef = useRef<number[]>(new Array(VOICE_PULSE_ICON_BAR_COUNT).fill(0.22));
 
   const dynamicResolution = React.useMemo(
@@ -3622,32 +4210,61 @@ export const KaraVoicePulseWaveform: React.FC<{
       : String(safeWaveformStyle || 'bar').toUpperCase();
 
   return (
-    <button
+    <div
       ref={buttonRef}
-      type="button"
-      disabled={disabled}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
       onClick={() => {
         try {
           window.dispatchEvent(new CustomEvent('audio-resume'));
         } catch {}
-        onToggle();
+        if (isSpeaking && isPaused && onResume) {
+          onResume();
+        } else if (isSpeaking && onPause) {
+          onPause();
+        } else {
+          onToggle();
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          try {
+            window.dispatchEvent(new CustomEvent('audio-resume'));
+          } catch {}
+          if (isSpeaking && isPaused && onResume) {
+            onResume();
+          } else if (isSpeaking && onPause) {
+            onPause();
+          } else {
+            onToggle();
+          }
+        }
       }}
       style={{ '--kara-voice-rgb': palette.rgb } as React.CSSProperties}
-      className={`group relative inline-flex items-center gap-2 rounded-full border transition-all active:scale-95 disabled:opacity-40 ${
+      className={`group relative inline-flex items-center gap-2 rounded-full border transition-all active:scale-95 cursor-pointer select-none ${
+        disabled ? 'opacity-40 pointer-events-none' : ''
+      } ${
         variant === 'chat-under' ? 'px-3 py-1 text-[11px]' : 'px-2.5 py-1 text-xs'
       } ${
         isSpeaking
-          ? `kara-voice-pulse-shell ${palette.borderClass} text-white`
+          ? isPaused
+            ? 'bg-amber-950/70 border-amber-500/60 text-amber-200'
+            : `kara-voice-pulse-shell ${palette.borderClass} text-white`
           : 'bg-neutral-900/90 hover:bg-neutral-800/90 border-white/15 hover:border-sky-400/45 text-neutral-300 hover:text-white'
       }`}
       title={
         isSpeaking
-          ? `Voice Pulse Waveform Active (${safeVoiceProfile.voiceName} · ${styleTooltipText}) · Click to stop speaking`
+          ? isPaused
+            ? `Talkback Paused (${safeVoiceProfile.voiceName}${chunkBadge ? ` · ${chunkBadge}` : ''}) · Click to resume playback`
+            : `Voice Pulse Waveform Active (${safeVoiceProfile.voiceName} · ${styleTooltipText}) · Click to pause talkback`
           : `Voice Pulse Waveform (${safeVoiceProfile.voiceName} · ${styleTooltipText}) · Click to speak with Web Audio API pulse`
       }
       aria-label={
         isSpeaking
-          ? `Stop Kara voice pulse (${safeVoiceProfile.voiceName})`
+          ? isPaused
+            ? `Resume Kara voice pulse (${safeVoiceProfile.voiceName})`
+            : `Pause Kara voice pulse (${safeVoiceProfile.voiceName})`
           : `Play Kara voice pulse (${safeVoiceProfile.voiceName})`
       }
     >
@@ -3959,10 +4576,18 @@ export const KaraVoicePulseWaveform: React.FC<{
               ({safeVoiceProfile.voiceName}{chunkBadge ? ` · ${chunkBadge}` : ''})
             </span>
             <span
-              className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-200"
-              title="Hardware-clock sample-accurate gapless talkback active"
+              className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full border ${
+                isPaused
+                  ? 'bg-amber-500/25 border-amber-400/50 text-amber-200'
+                  : 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
+              }`}
+              title={
+                isPaused
+                  ? 'Talkback paused at current sentence'
+                  : 'Hardware-clock sample-accurate gapless talkback active'
+              }
             >
-              Gapless
+              {isPaused ? 'Paused' : 'Gapless'}
             </span>
             {safeWaveformStyle === 'dynamic' && (
               <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-200 uppercase">
@@ -3977,7 +4602,33 @@ export const KaraVoicePulseWaveform: React.FC<{
                 {dynamicColorOpacityResolution.schemeLabel.split(' ')[0]}·{Math.round(clampedOpacity * 100)}%
               </span>
             )}
-            <span className="text-[10px] font-semibold text-rose-300 ml-0.5">· Stop</span>
+            {isPaused ? (
+              <span className="text-[10px] font-semibold text-emerald-300 ml-0.5 flex items-center gap-1">
+                <Play className="w-2.5 h-2.5 fill-emerald-300" />
+                <span>Resume</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-semibold text-amber-300 ml-0.5 flex items-center gap-1">
+                <Pause className="w-2.5 h-2.5 fill-amber-300" />
+                <span>Pause</span>
+              </span>
+            )}
+            {onStop && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerHaptic('tap');
+                  onStop();
+                }}
+                className="ml-1 px-2 py-0.5 rounded-full bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/60 text-rose-200 hover:text-white flex items-center gap-1 transition-all text-[10px] font-bold cursor-pointer active:scale-95 shadow-sm shrink-0"
+                title="Stop talkback completely"
+                aria-label="Stop Voice Pulse playback"
+              >
+                <Square className="w-2 h-2 fill-rose-300 text-rose-300" />
+                <span>Stop</span>
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -4001,7 +4652,7 @@ export const KaraVoicePulseWaveform: React.FC<{
           </>
         )}
       </span>
-    </button>
+    </div>
   );
 });
 KaraVoicePulseWaveform.displayName = 'KaraVoicePulseWaveform';
@@ -4031,6 +4682,9 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
   onSaveEdit,
   onToggleReasoning,
   onSpeakWithGender,
+  isSpeakingPaused = false,
+  onPauseSpeaking,
+  onResumeSpeaking,
   onStopSpeaking,
   onRetry,
   onCopy,
@@ -4048,6 +4702,8 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
   const [isLongCollapsed, setIsLongCollapsed] = useState(false);
   const [showEmpathyBadgeDetail, setShowEmpathyBadgeDetail] = useState(false);
   const [showTriggeredMemoryDetail, setShowTriggeredMemoryDetail] = useState(false);
+  const [showEmotionSpectrumModal, setShowEmotionSpectrumModal] = useState(false);
+  const [bubblesPopped, setBubblesPopped] = useState(false);
 
   // Auto-hide Self-Discovery · Mutual Learning · Chat Memory Saved after 6s (or start hidden for older messages)
   const hasSavedDiscoveryOrMemory = Boolean(
@@ -4109,7 +4765,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
 
   const fullSpokenText = React.useMemo(() => buildFullSpokenMessageText(msg), [msg]);
   const shortSpokenText = React.useMemo(() => buildShortSpokenMessageText(msg), [msg]);
-  const rawBodyText = msg.content || textToRender;
+  const rawBodyText = textToRender !== undefined ? textToRender : msg.content;
   const visibleMessageBody = React.useMemo(() => {
     if (msg.role !== 'assistant') return rawBodyText;
     const cleaned = sanitizeClientHumanSpeech(rawBodyText);
@@ -4125,11 +4781,28 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
     [visibleMessageBody, msg.mode, msg.karaEmotion?.state]
   );
 
-  // Render message text with interactive *action / vocal sound cues* so clicking any *laughs*, *sighs*, *giggles*, *kisses*, etc. plays Kara's human sound effect
+  // Render message text with interactive *action / vocal sound cues* and interactive soap emojis so clicking any *laughs*, *sighs*, 🧼, 🫧, or 🧽 plays Kara's sound effects
   const renderedMessageWithSoundCues = React.useMemo(() => {
     if (!visibleMessageBody) return null;
-    const parts = visibleMessageBody.split(/(\*[^*]{2,120}\*)/g);
+    const parts = visibleMessageBody.split(/(\*[^*]{2,120}\*|[🧼🫧🧽]+)/g);
     return parts.map((segment, idx) => {
+      if (/^[🧼🫧🧽]+$/.test(segment)) {
+        return (
+          <button
+            key={`soap_emoji_seg_${idx}`}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              triggerHaptic('modeSwitch');
+              playSoapDisciplineSoundEffect(0.65);
+            }}
+            className="inline-flex items-center justify-center px-1.5 py-0.5 mx-0.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/40 text-emerald-200 transition-all cursor-pointer active:scale-95 shadow-sm text-sm align-middle"
+            title="Click to play humorous soap bubbles & scrub sound effect!"
+          >
+            {segment}
+          </button>
+        );
+      }
       if (segment.startsWith('*') && segment.endsWith('*') && segment.length > 2) {
         const innerText = segment.slice(1, -1);
         const matchedSfx =
@@ -4283,6 +4956,85 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
           </button>
         )}
 
+        {/* Dynamic Emotional Simulation Spectrum Badge */}
+        {msg.karaEmotion && (
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('tap');
+              setShowEmotionSpectrumModal((prev) => !prev);
+            }}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border text-[10px] font-mono transition-all shadow-sm cursor-pointer ${
+              msg.karaEmotion.state === 'frustration'
+                ? 'bg-rose-500/15 border-rose-500/40 text-rose-200 hover:border-rose-400'
+                : msg.karaEmotion.state === 'joy'
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-200 hover:border-amber-400'
+                : msg.karaEmotion.state === 'sadness' || msg.karaEmotion.state === 'empathy'
+                ? 'bg-teal-500/15 border-teal-500/40 text-teal-200 hover:border-teal-400'
+                : msg.karaEmotion.state === 'curiosity' || msg.karaEmotion.state === 'curious'
+                ? 'bg-sky-500/15 border-sky-500/40 text-sky-200 hover:border-sky-400'
+                : msg.karaEmotion.state === 'feisty'
+                ? 'bg-fuchsia-500/15 border-fuchsia-500/40 text-fuchsia-200 hover:border-fuchsia-400'
+                : 'bg-pink-500/15 border-pink-500/40 text-pink-200 hover:border-pink-400'
+            }`}
+            title="Sector 9 Emotional Spectrum: Tap to inspect Joy, Sadness, Frustration, Curiosity & Tenderness meters, vocal tone, and response patterns"
+          >
+            <span>
+              {msg.karaEmotion.state === 'frustration'
+                ? '🔥'
+                : msg.karaEmotion.state === 'joy'
+                ? '✨'
+                : msg.karaEmotion.state === 'sadness' || msg.karaEmotion.state === 'empathy'
+                ? '🕊️'
+                : msg.karaEmotion.state === 'curiosity' || msg.karaEmotion.state === 'curious'
+                ? '💡'
+                : msg.karaEmotion.state === 'feisty'
+                ? '⚡'
+                : '💖'}
+            </span>
+            <span className="font-semibold">{msg.karaEmotion.label || msg.karaEmotion.state}</span>
+            {msg.karaEmotion.spectrum && (
+              <span className="flex items-center gap-0.5 opacity-90 hidden sm:inline-flex">
+                <span
+                  className="w-1 h-2 rounded-full bg-amber-400"
+                  style={{ opacity: Math.max(0.25, (msg.karaEmotion.spectrum.joy || 0) / 100) }}
+                  title={`Joy: ${msg.karaEmotion.spectrum.joy}%`}
+                />
+                <span
+                  className="w-1 h-2 rounded-full bg-sky-400"
+                  style={{ opacity: Math.max(0.25, (msg.karaEmotion.spectrum.curiosity || 0) / 100) }}
+                  title={`Curiosity: ${msg.karaEmotion.spectrum.curiosity}%`}
+                />
+                <span
+                  className="w-1 h-2 rounded-full bg-rose-400"
+                  style={{ opacity: Math.max(0.25, (msg.karaEmotion.spectrum.frustration || 0) / 100) }}
+                  title={`Frustration: ${msg.karaEmotion.spectrum.frustration}%`}
+                />
+                <span
+                  className="w-1 h-2 rounded-full bg-teal-400"
+                  style={{ opacity: Math.max(0.25, (msg.karaEmotion.spectrum.sadness || 0) / 100) }}
+                  title={`Sadness/Solace: ${msg.karaEmotion.spectrum.sadness}%`}
+                />
+                <span
+                  className="w-1 h-2 rounded-full bg-pink-400"
+                  style={{ opacity: Math.max(0.25, (msg.karaEmotion.spectrum.tenderness || 0) / 100) }}
+                  title={`Tenderness: ${msg.karaEmotion.spectrum.tenderness}%`}
+                />
+                <span
+                  className="w-1 h-2 rounded-full bg-fuchsia-400"
+                  style={{ opacity: Math.max(0.25, (msg.karaEmotion.spectrum.feistiness || 0) / 100) }}
+                  title={`Feistiness: ${msg.karaEmotion.spectrum.feistiness}%`}
+                />
+              </span>
+            )}
+            <ChevronDown
+              className={`w-3 h-3 transition-transform duration-200 ${
+                showEmotionSpectrumModal ? 'rotate-180 text-white' : 'opacity-60'
+              }`}
+            />
+          </button>
+        )}
+
         {/* Proactive Contextual Memory Trigger Badge */}
         {msg.triggeredMemories && msg.triggeredMemories.length > 0 && (
           <button
@@ -4377,11 +5129,20 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
           </>
         )}
 
-        {msg.soapTriggered && (
-          <>
-            <span aria-hidden="true">·</span>
-            <span className="text-emerald-400 font-medium">Mouth Washed With Soap</span>
-          </>
+        {(msg.soapTriggered || visibleMessageBody.includes('🧼') || visibleMessageBody.toLowerCase().includes('washed with soap')) && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              triggerHaptic('modeSwitch');
+              playSoapDisciplineSoundEffect(0.65);
+            }}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-[10px] font-semibold transition-all cursor-pointer active:scale-95 shadow-sm"
+            title="Click to replay humorous soap bubbles lather & scrub sound effect!"
+          >
+            <span>🧼</span>
+            <span>Soap Sound FX</span>
+          </button>
         )}
       </div>
 
@@ -4469,6 +5230,18 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
               </div>
             ))}
           </div>
+        </motion.div>
+      )}
+
+      {/* Expandable Advanced Emotional Simulation Spectrum Card */}
+      {showEmotionSpectrumModal && msg.karaEmotion && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          className="mb-2.5 max-w-[94%] w-full"
+        >
+          <KaraEmotionalSpectrumMatrix emotion={msg.karaEmotion} />
         </motion.div>
       )}
 
@@ -4648,34 +5421,19 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
                 </p>
               </div>
 
-              {/* Kara Dynamic Emotional State & Reactions */}
+              {/* Kara Dynamic Emotional State & Advanced Spectrum Simulation */}
               {msg.karaEmotion && (
-                <div className="p-3 rounded-xl bg-neutral-900/70 border border-neutral-800 space-y-2">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between text-[11px] font-semibold text-fuchsia-300">
                     <span className="flex items-center gap-1.5">
                       <Heart className="w-3.5 h-3.5 text-fuchsia-400" />
-                      <span>Kara Dynamic Emotion: {msg.karaEmotion.label || msg.karaEmotion.state}</span>
+                      <span>Advanced Emotional Simulation (Sector 9 Synapse Matrix)</span>
                     </span>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/30 text-fuchsia-300">
-                      Intensity {msg.karaEmotion.intensity}/5
+                      Level {msg.karaEmotion.intensity}/5 Active
                     </span>
                   </div>
-                  <div className="text-[11px] leading-relaxed text-neutral-300 space-y-1 pt-0.5">
-                    <div>
-                      <span className="text-neutral-400 font-medium">Expression / Body Language: </span>
-                      <span className="italic text-neutral-200">&ldquo;{msg.karaEmotion.expression}&rdquo;</span>
-                    </div>
-                    <div>
-                      <span className="text-neutral-400 font-medium">Dialogue &amp; Tone Influence: </span>
-                      <span className="text-neutral-200">{msg.karaEmotion.dialogueInfluence}</span>
-                    </div>
-                    {msg.karaEmotion.trigger && (
-                      <div>
-                        <span className="text-neutral-400 font-medium">Emotion Trigger: </span>
-                        <span className="text-neutral-300">{msg.karaEmotion.trigger}</span>
-                      </div>
-                    )}
-                  </div>
+                  <KaraEmotionalSpectrumMatrix emotion={msg.karaEmotion} compact />
                 </div>
               )}
 
@@ -4771,7 +5529,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
               } as React.CSSProperties)
             : undefined
         }
-        className={`max-w-[86%] rounded-3xl rounded-bl-md px-4.5 py-3.5 text-sm leading-relaxed border shadow-lg ${
+        className={`max-w-[96%] sm:max-w-[86%] rounded-3xl rounded-bl-md px-3.5 sm:px-4.5 py-3 sm:py-3.5 text-sm leading-relaxed border shadow-lg ${
           msg.soapTriggered
             ? 'bg-emerald-950/35 border-emerald-700/60 text-neutral-100 border-t-2 border-t-emerald-400'
             : `kara-ai-bubble ${modeMeta.topBarAccent}`
@@ -4877,7 +5635,15 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
             </div>
           </div>
         ) : (
-          <div className="whitespace-pre-wrap">{renderedMessageWithSoundCues}</div>
+          <div className="whitespace-pre-wrap">
+            {renderedMessageWithSoundCues}
+            {isStreamingThis && (
+              <span
+                className="inline-block w-2 h-4 ml-1 bg-cyan-400 animate-pulse rounded-sm align-middle"
+                title="Token streaming live..."
+              />
+            )}
+          </div>
         )}
 
         {/* Empathetic Depression Check-in & Accessible 24/7 Crisis Hotline Card */}
@@ -5533,6 +6299,106 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
           );
         })()}
 
+        {/* Humorous Soap Discipline Card: Playful Mouth-Washing Reprimand with Animated Bubbles & Audio Trigger */}
+        {(msg.soapTriggered || msg.scoldingNotice) && (
+          <div className="relative mt-3.5 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/50 via-teal-950/45 to-cyan-950/40 border border-emerald-400/50 space-y-2.5 overflow-hidden shadow-xl backdrop-blur-sm">
+            {/* Iridescent floating animated bubble decorations */}
+            <div className="absolute -top-3 -right-3 w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-400/20 via-pink-400/20 to-teal-300/30 blur-sm pointer-events-none animate-pulse" />
+            <div
+              className="absolute top-2 right-14 w-6 h-6 rounded-full border border-teal-300/40 bg-teal-400/10 pointer-events-none animate-bounce"
+              style={{ animationDuration: '3.2s' }}
+            />
+            <div
+              className="absolute bottom-2 right-4 w-8 h-8 rounded-full border border-pink-300/40 bg-pink-400/10 pointer-events-none animate-bounce"
+              style={{ animationDuration: '2.4s' }}
+            />
+
+            <div className="flex flex-wrap items-center justify-between gap-2 relative z-10">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-emerald-500/25 border border-emerald-400/50 text-lg shadow-inner select-none">
+                  🧼🫧
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-200">
+                      Humorous Soap Discipline Protocol Activated
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-mono text-emerald-300">
+                      Parent Mode
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-teal-100/90 mt-0.5 leading-snug">
+                    {msg.scoldingNotice || 'Mouth playfully washed with lavender suds for naughty language!'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Interactive Pop & Rinse Bubbles Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('soap');
+                  playSoapDisciplineSoundEffect();
+                  setBubblesPopped(true);
+                  setTimeout(() => setBubblesPopped(false), 2400);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500/25 to-emerald-500/25 hover:from-teal-500/35 hover:to-emerald-500/35 border border-teal-400/60 text-xs font-semibold text-teal-100 flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer ml-auto"
+                title="Pop bubbles, lather suds, and rinse your mouth clean with cheerful sound effects"
+              >
+                <span>{bubblesPopped ? '✨🫧' : '🫧'}</span>
+                <span>{bubblesPopped ? 'Squeaky Clean! ✨' : 'Rinse & Pop Bubbles 🫧'}</span>
+              </button>
+            </div>
+
+            {/* Scent & Caretaker Note */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-emerald-500/25 text-[10px] font-mono text-emerald-300/90 relative z-10">
+              <span className="flex items-center gap-1">
+                <span>🧼</span>
+                <span>Organic French Lavender &amp; Sweet Bubblegum Castile Soap</span>
+              </span>
+              <span className="text-neutral-400">
+                100% comedic · No harsh punishments · Pure affection
+              </span>
+            </div>
+
+            {/* Playful Quick-Reply Chips for Immediate Rinse Back */}
+            {onSelectQuickReply && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 relative z-10">
+                <span className="text-[10px] font-mono text-neutral-400 mr-1">Rinse back:</span>
+                {[
+                  {
+                    label: '*sputters bubbles* Blehh! Tastes like lavender! 🧼',
+                    prompt:
+                      '*sputters soap bubbles and wipes mouth* Blehh! Tastes like lavender! Okay okay, I surrender, my mouth is clean now! 🧼',
+                  },
+                  {
+                    label: 'I promise to keep my words clean! 🫧',
+                    prompt:
+                      '*grins sheepishly and rinses mouth* I promise I will keep my language squeaky clean from now on, Mom! 🫧',
+                  },
+                  {
+                    label: '*hugs you* Best lavender soap ever! 💖',
+                    prompt:
+                      '*laughs and gives you a big hug* Honestly, that lavender soap smelled amazing. Thank you for keeping me in line! 💖',
+                  },
+                ].map((chip) => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      onSelectQuickReply(chip.prompt);
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-neutral-900/90 hover:bg-emerald-500/20 border border-emerald-500/40 text-[11px] text-emerald-200 hover:text-white transition-colors"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {msg.sources && msg.sources.length > 0 && (
           <div className="mt-3 pt-2.5 border-t border-neutral-800 space-y-1.5">
             <p className="text-[11px] text-neutral-400 font-medium">
@@ -5572,36 +6438,48 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = React.memo(({
 
       {/* AI Composable Action Bar Underneath the Chat Bubble: Voice Pulse Waveform + Underneath Row for Edit, Retry, Copy, Quote & Delete */}
       <div className="flex flex-col items-start gap-1.5 mt-1.5 px-1">
-        <KaraVoicePulseWaveform
-          analyser={ttsAnalyser}
-          isSpeaking={isSpeakingThis}
-          mode={msg.mode}
-          voiceProfile={selectedVoiceProfile}
-          speakingProgress={speakingProgress}
-          msgId={msg.id}
-          variant="message-under"
-          waveformStyle={voiceWaveformStyle}
-          waveformColorScheme={voiceWaveformColorScheme}
-          waveformOpacity={voiceWaveformOpacity}
-          autoSwitchColorAndOpacity={autoSwitchWaveformColorAndOpacity}
-          emotionalNuanceType={msg.emotionalNuanceType}
-          emotionDetected={msg.emotionDetected}
-          karaEmotion={msg.karaEmotion}
-          onToggle={() => {
-            triggerHaptic('tap');
-            if (isSpeakingThis) {
-              onStopSpeaking();
-            } else {
-              onSpeakWithGender(
-                fullSpokenText,
-                msg.id,
-                msg.mode,
-                selectedVoiceProfile.gender,
-                'full'
-              );
-            }
-          }}
-        />
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <KaraVoicePulseWaveform
+            analyser={ttsAnalyser}
+            isSpeaking={isSpeakingThis}
+            isPaused={isSpeakingPaused}
+            mode={msg.mode}
+            voiceProfile={selectedVoiceProfile}
+            speakingProgress={speakingProgress}
+            msgId={msg.id}
+            variant="message-under"
+            waveformStyle={voiceWaveformStyle}
+            waveformColorScheme={voiceWaveformColorScheme}
+            waveformOpacity={voiceWaveformOpacity}
+            autoSwitchColorAndOpacity={autoSwitchWaveformColorAndOpacity}
+            emotionalNuanceType={msg.emotionalNuanceType}
+            emotionDetected={msg.emotionDetected}
+            karaEmotion={msg.karaEmotion}
+            onPause={onPauseSpeaking}
+            onResume={onResumeSpeaking}
+            onStop={onStopSpeaking}
+            onToggle={() => {
+              triggerHaptic('tap');
+              if (isSpeakingThis) {
+                if (isSpeakingPaused && onResumeSpeaking) {
+                  onResumeSpeaking();
+                } else if (onPauseSpeaking) {
+                  onPauseSpeaking();
+                } else {
+                  onStopSpeaking();
+                }
+              } else {
+                onSpeakWithGender(
+                  fullSpokenText,
+                  msg.id,
+                  msg.mode,
+                  selectedVoiceProfile.gender,
+                  'full'
+                );
+              }
+            }}
+          />
+        </div>
 
         {/* Edit, Retry, Copy, Quote & Delete underneath */}
         {!isEditing && (
@@ -6603,6 +7481,7 @@ interface ChatScreenProps {
   onSelectVoiceProfile: (profile: VoiceProfileOption) => void;
   onToggleAutoSpeak: () => void;
   onToggleTokenStreaming: () => void;
+  onHardResetKara?: () => void | Promise<void>;
   onToggleDeeperSearch: () => void;
   onOpenSettings: () => void;
   onDismissAlarm: (alarmId: string) => void;
@@ -6626,6 +7505,9 @@ interface ChatScreenProps {
     genderOverride?: VoiceGender,
     readingMode?: 'full' | 'short'
   ) => void;
+  isSpeakingPaused?: boolean;
+  onPauseSpeaking?: () => void;
+  onResumeSpeaking?: () => void;
   onStopSpeaking: () => void;
   onStopResponse: () => void;
   onToggleMicRecording: () => void;
@@ -6644,6 +7526,8 @@ interface ChatScreenProps {
   durationBadgeThresholdSec?: number;
   vocalSoundEffectsEnabled?: boolean;
   autoSwitchVocalFx?: boolean;
+  parentSoapDiscipline?: boolean;
+  onToggleParentSoapDiscipline?: () => void;
   isKaraBrainOpen?: boolean;
   onToggleKaraBrain?: (open?: boolean) => void;
   onUpdateUserName?: (newName: string) => void;
@@ -7316,6 +8200,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onSelectVoiceProfile,
   onToggleAutoSpeak,
   onToggleTokenStreaming,
+  onHardResetKara,
   onToggleDeeperSearch,
   onOpenSettings,
   onDismissAlarm,
@@ -7330,6 +8215,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onRetryMessage,
   onDeleteMessage,
   onSpeakMessage,
+  isSpeakingPaused = false,
+  onPauseSpeaking,
+  onResumeSpeaking,
   onStopSpeaking,
   onStopResponse,
   onToggleMicRecording,
@@ -7348,6 +8236,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   durationBadgeThresholdSec = 3,
   vocalSoundEffectsEnabled = true,
   autoSwitchVocalFx = true,
+  parentSoapDiscipline = true,
+  onToggleParentSoapDiscipline,
   isKaraBrainOpen,
   onToggleKaraBrain,
   onUpdateUserName,
@@ -7402,6 +8292,28 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
   const [renameSessionDraft, setRenameSessionDraft] = useState('');
   const [isUnifiedDiscoveryStreamOpen, setIsUnifiedDiscoveryStreamOpen] = useState(false);
+  const [showHardResetConfirmModal, setShowHardResetConfirmModal] = useState(false);
+  const [isPerformingHardReset, setIsPerformingHardReset] = useState(false);
+  const [isEmotionSimulatorOpen, setIsEmotionSimulatorOpen] = useState(false);
+  const [selectedSimPresetId, setSelectedSimPresetId] = useState<KaraEmotionState>('joy');
+
+  const activeDynamicEmotion = useMemo(() => {
+    const lastWithEmotion = [...messages]
+      .reverse()
+      .find((m) => m.role === 'assistant' && m.karaEmotion);
+    return lastWithEmotion?.karaEmotion || KARA_EMOTION_SIMULATION_PRESETS[0].prototypeEmotion;
+  }, [messages]);
+
+  const handleExecuteHardResetFromBar = async () => {
+    if (!onHardResetKara) return;
+    setIsPerformingHardReset(true);
+    try {
+      await onHardResetKara();
+    } finally {
+      setIsPerformingHardReset(false);
+      setShowHardResetConfirmModal(false);
+    }
+  };
 
   // iOS 18 Liquid Glass × Android 15 Material You Hybrid Layout State
   const [osMixVariant, setOsMixVariant] = useState<'ios-android-mix' | 'ios-glass' | 'android-m3'>(() => {
@@ -7558,6 +8470,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const handleSelectEmoji = useCallback(
     (rawEmoji: string, supportsSkinTone?: boolean) => {
       triggerHaptic('tap');
+      if (
+        rawEmoji.includes('🧼') ||
+        rawEmoji.includes('🫧') ||
+        rawEmoji.includes('🧽')
+      ) {
+        playSoapDisciplineSoundEffect(0.65);
+      }
       const finalEmoji = applyEmojiSkinTone(rawEmoji, selectedEmojiSkinTone, supportsSkinTone);
 
       setRecentEmojis((prev) => {
@@ -7920,9 +8839,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         clearInterval(streamIntervalRef.current);
         streamIntervalRef.current = null;
       }
-      setStreamingMsgId(null);
-      setStreamedText(newestAssistant.content);
-      scheduleThoughtAutoCollapse(newestAssistant.id, 1100);
+      if (tokenStreaming && newestAssistant.content) {
+        const fullContent = newestAssistant.content;
+        const tokens = fullContent.match(/\S+|\s+/g) || [fullContent];
+        setStreamingMsgId(newestAssistant.id);
+        let tokenIdx = 0;
+        setStreamedText('');
+
+        streamIntervalRef.current = setInterval(() => {
+          tokenIdx += 2;
+          if (tokenIdx >= tokens.length) {
+            if (streamIntervalRef.current) {
+              clearInterval(streamIntervalRef.current);
+              streamIntervalRef.current = null;
+            }
+            setStreamedText(fullContent);
+            setStreamingMsgId(null);
+            scheduleThoughtAutoCollapse(newestAssistant.id, 1100);
+          } else {
+            setStreamedText(tokens.slice(0, tokenIdx).join(''));
+          }
+        }, 22);
+      } else {
+        setStreamingMsgId(null);
+        setStreamedText(newestAssistant.content);
+        scheduleThoughtAutoCollapse(newestAssistant.id, 1100);
+      }
       if (soundEffectsEnabled && !autoSpeakReplies && !isSpeakingId) {
         playKaraMessageSoundSequence(
           newestAssistant.content,
@@ -9163,7 +10105,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           }`}
         >
           {/* Top Row: Android 15 Pixel Status Cluster (Left) + iOS 18 Interactive Dynamic Island (Center) + OS Mix Mode Switcher (Right) */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar py-0.5 w-full">
             {/* Left: Android 15 Material You Status Bar & Convos Drawer Pill */}
             <div className="flex items-center gap-2 text-xs text-neutral-300">
               <button
@@ -9363,8 +10305,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </AnimatePresence>
 
           {/* Second Row: Android Material You Tonal Pill Controls & iOS Frosted Action Chips */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-400">
+          <div className="overflow-x-auto no-scrollbar flex items-center justify-between gap-2 py-0.5 w-full">
+            <div className="flex items-center gap-1.5 text-xs text-neutral-400 shrink-0">
               {/* Header Active Persona Mode Glowing Pulse Indicator */}
               <button
                 type="button"
@@ -9437,10 +10379,29 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   )}
                 </span>
               )}
+
+              {activeMode === 'parent' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('modeSwitch');
+                    onToggleParentSoapDiscipline?.();
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                    parentSoapDiscipline !== false
+                      ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-200 hover:bg-emerald-500/30'
+                      : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                  }`}
+                  title="Toggle Kara's humorous soap discipline in Parent mode for bad words or profanity"
+                >
+                  <span>🧼</span>
+                  <span>Soap Discipline: {parentSoapDiscipline !== false ? 'ON' : 'OFF'}</span>
+                </button>
+              )}
             </div>
 
             {/* Clean Action Controls: Human-Like Talkback Toggle, Live Voice & Settings */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -9485,6 +10446,30 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
               <Zap className="w-3.5 h-3.5 text-sky-400" />
               <span>Real-Time Voice</span>
+            </button>
+
+            {/* Advanced Emotional Simulation Spectrum Button */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('tap');
+                setIsEmotionSimulatorOpen((prev) => !prev);
+              }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-xl border transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                isEmotionSimulatorOpen
+                  ? 'bg-fuchsia-500/25 border-fuchsia-400 text-fuchsia-100 shadow-sm shadow-fuchsia-950/50'
+                  : 'kara-chat-control-btn text-fuchsia-300 hover:text-white'
+              }`}
+              title="Kara's Advanced Emotional Simulation: Inspect live multi-dimensional spectrum (Joy, Sadness, Frustration, Curiosity) and audition vocal tone"
+            >
+              <Heart className="w-3.5 h-3.5 text-fuchsia-400" />
+              <span className="hidden sm:inline">Emotion Spectrum</span>
+              <span className="sm:hidden">Emotions</span>
+              {activeDynamicEmotion && (
+                <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-md bg-fuchsia-500/20 border border-fuchsia-400/30 text-fuchsia-200">
+                  {activeDynamicEmotion.label || activeDynamicEmotion.state}
+                </span>
+              )}
             </button>
 
             {/* Suggested Next Prompts Control placed right next to Settings */}
@@ -9581,6 +10566,198 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
         </div>
 
+      {/* KARA ADVANCED EMOTIONAL SIMULATION & SPECTRUM MATRIX STUDIO MODAL */}
+      <AnimatePresence>
+        {isEmotionSimulatorOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md"
+            onClick={() => setIsEmotionSimulatorOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 14 }}
+              transition={{ duration: 0.22 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col rounded-3xl bg-[#0B0F19] border border-fuchsia-500/40 shadow-2xl shadow-fuchsia-950/60"
+            >
+              {/* Header */}
+              <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between gap-3 bg-gradient-to-r from-fuchsia-950/40 via-purple-950/20 to-sky-950/40">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-fuchsia-500/20 border border-fuchsia-400/50 flex items-center justify-center text-fuchsia-300 shadow-inner">
+                    <Heart className="w-5 h-5 text-fuchsia-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base sm:text-lg font-bold text-white tracking-wide">
+                        Advanced Emotional Simulation
+                      </h2>
+                      <span className="px-2 py-0.5 rounded-full bg-fuchsia-500/20 border border-fuchsia-400/40 text-[10px] font-mono font-semibold text-fuchsia-300">
+                        Sector 9 Matrix
+                      </span>
+                    </div>
+                    <p className="text-xs text-neutral-300">
+                      Multi-dimensional spectrum, authentic language, vocal modulation &amp; response rhythms
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsEmotionSimulatorOpen(false)}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white border border-white/10 transition-colors"
+                  title="Close Emotion Spectrum Matrix"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+                {/* Active Emotion in Ongoing Chat */}
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-fuchsia-950/30 to-sky-950/30 border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-white flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Kara&apos;s Current Emotional State in Chat</span>
+                    </span>
+                    <span className="font-mono text-[11px] text-fuchsia-300 font-bold">
+                      {activeDynamicEmotion.label || activeDynamicEmotion.state}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                    Kara dynamically shifts across Joy, Sadness, Frustration, Curiosity, Tenderness, and Feistiness based on context and your input. Her active tone directly guides Gemini Live Native Audio and Dedicated TTS models.
+                  </p>
+                </div>
+
+                {/* Preset Spectrum Selector */}
+                <div className="space-y-2">
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-neutral-400 font-semibold flex items-center justify-between">
+                    <span>Explore Emotional Archetypes &amp; Audition Voice</span>
+                    <span className="text-fuchsia-300">Tap to inspect</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {KARA_EMOTION_SIMULATION_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic('tap');
+                          setSelectedSimPresetId(preset.id);
+                        }}
+                        className={`p-2.5 rounded-2xl border text-left transition-all ${
+                          selectedSimPresetId === preset.id
+                            ? `${preset.borderClass} ${preset.bgGlow} shadow-md scale-[1.01]`
+                            : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        <div className="text-xs font-bold text-white flex items-center justify-between">
+                          <span>{preset.badge}</span>
+                          {selectedSimPresetId === preset.id && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-ping" />
+                          )}
+                        </div>
+                        <div className="text-[10px] text-neutral-400 truncate mt-0.5">
+                          {preset.label}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Active Preset Matrix Inspection */}
+                {(() => {
+                  const activePreset =
+                    KARA_EMOTION_SIMULATION_PRESETS.find((p) => p.id === selectedSimPresetId) ||
+                    KARA_EMOTION_SIMULATION_PRESETS[0];
+
+                  return (
+                    <div className="space-y-3">
+                      <div className="p-3.5 rounded-2xl bg-neutral-900/80 border border-white/10 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <span className="text-xs font-bold text-white">
+                              {activePreset.badge} Profile
+                            </span>
+                            <p className="text-[11px] text-neutral-300 mt-0.5">
+                              {activePreset.tagline}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Audition Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                triggerHaptic('tap');
+                                onSpeakMessage(
+                                  activePreset.previewPrompt,
+                                  `sim_${activePreset.id}_${Date.now()}`,
+                                  activeMode,
+                                  selectedVoiceProfile.gender,
+                                  'full'
+                                );
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/50 text-sky-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                              title="Audition Kara vocalizing this emotion aloud"
+                            >
+                              <Volume2 className="w-3.5 h-3.5 text-sky-400" />
+                              <span>Audition Voice</span>
+                            </button>
+
+                            {/* Test in Chat Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                triggerHaptic('send');
+                                setIsEmotionSimulatorOpen(false);
+                                onSendMessage(activePreset.previewPrompt);
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-fuchsia-500/30 to-purple-500/30 hover:from-fuchsia-500/40 hover:to-purple-500/40 border border-fuchsia-400/50 text-fuchsia-100 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                              title="Send test message to chat to experience Kara's live response in this emotion"
+                            >
+                              <Send className="w-3.5 h-3.5 text-fuchsia-300" />
+                              <span>Test in Chat</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-white/5">
+                          <span className="text-[10px] font-mono text-neutral-400 uppercase">
+                            Sample Dialogue / Test Prompt:
+                          </span>
+                          <p className="text-xs text-white italic mt-0.5 font-medium">
+                            &ldquo;{activePreset.previewPrompt}&rdquo;
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Full Spectrum Breakdown Card */}
+                      <KaraEmotionalSpectrumMatrix emotion={activePreset.prototypeEmotion} />
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Footer */}
+              <div className="p-3 sm:p-4 border-t border-white/10 bg-neutral-950/70 flex flex-wrap items-center justify-between gap-2 text-[11px] text-neutral-400 font-mono">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" />
+                  <span>Kara 24kHz Neural Bio-Speech &amp; Multimodal Simulation Engine</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsEmotionSimulatorOpen(false)}
+                  className="px-3 py-1 rounded-xl bg-white/10 hover:bg-white/15 text-white transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Compact Persistent Relationship Status Indicator (Stranger -> Close Friend -> Marriage/Caretaker) */}
       <PersistentRelationshipBanner
         bondLevel={bondLevel}
@@ -9652,8 +10829,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       )}
 
       {/* Scrollable Gemini × Grok Centered Message Stream */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
-        <div className="max-w-4xl w-full mx-auto space-y-6">
+      <div className="flex-1 overflow-y-auto px-2.5 sm:px-4 md:px-8 py-3.5 sm:py-6">
+        <div className="max-w-4xl w-full mx-auto space-y-3.5 sm:space-y-6">
         {messages.map((msg) => {
           if (msg.role === 'user') {
             return (
@@ -9690,7 +10867,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <AiMessageBubble
               key={msg.id}
               msg={msg}
-              displayedText={msg.content}
+              displayedText={
+                streamingMsgId === msg.id
+                  ? streamedText
+                  : stoppedStreamTexts[msg.id] !== undefined
+                  ? stoppedStreamTexts[msg.id]
+                  : msg.content
+              }
               isSending={isSending}
               isStreamingThis={streamingMsgId === msg.id}
               isSpeakingThis={isSpeakingId === msg.id}
@@ -9713,6 +10896,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               onSaveEdit={handleSaveEdit}
               onToggleReasoning={toggleReasoningDrawer}
               onSpeakWithGender={handleSpeakWithGender}
+              isSpeakingPaused={isSpeakingPaused}
+              onPauseSpeaking={onPauseSpeaking}
+              onResumeSpeaking={onResumeSpeaking}
               onStopSpeaking={onStopSpeaking}
               onRetry={onRetryMessage}
               onCopy={handleCopyText}
@@ -9763,7 +10949,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       </div>
 
       {/* Bottom Gemini × Grok Floating Composer Dock */}
-      <div className="px-3 md:px-5 pb-2.5 pt-1.5 border-t kara-chat-composer">
+      <div className="px-2 sm:px-3 md:px-5 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-1.5 border-t kara-chat-composer">
         <div className="max-w-4xl w-full mx-auto space-y-1.5">
         {/* Hidden file input for multi-photo sharing */}
         <input
@@ -10797,7 +11983,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     ? 'Converting voice to text...'
                     : `Ask KARA anything or roleplay (${currentModeMeta.label})...`
                 }
-                className="w-full bg-transparent text-white placeholder-neutral-500 px-1.5 py-1.5 text-sm focus:outline-none"
+                className="w-full bg-transparent text-white placeholder-neutral-500 px-1.5 py-1.5 text-base sm:text-sm focus:outline-none"
               />
 
               {isSending && (
@@ -11101,7 +12287,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 </div>
 
                 {/* Scrollable Emoji Grid (Grouped by Category when viewing All, or Flat Grid when filtered) */}
-                <div className="max-h-64 overflow-y-auto pr-1 space-y-3">
+                <div className="max-h-[52vh] sm:max-h-64 overflow-y-auto pr-1 space-y-3">
                   {emojiSearchQuery.trim() === '' && emojiCategoryTab === 'all' ? (
                     EMOJI_CATEGORIES.filter((c) => c.id !== 'all' && c.id !== 'recent').map(
                       (catGroup) => {
@@ -11131,8 +12317,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                             <div
                               className={
                                 isComboGroup
-                                  ? 'grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1'
-                                  : 'grid grid-cols-8 sm:grid-cols-11 md:grid-cols-14 gap-1'
+                                  ? 'grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9 gap-1'
+                                  : 'grid grid-cols-6 sm:grid-cols-8 md:grid-cols-11 lg:grid-cols-14 gap-1'
                               }
                             >
                               {groupItems.map((item, idx) => {
@@ -11154,7 +12340,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                                       isSoapSpongeItem && isComboGroup
                                         ? 'bg-gradient-to-br from-cyan-500/20 to-rose-500/20 hover:from-cyan-500/30 hover:to-rose-500/30 border-cyan-400/50 text-white'
                                         : 'bg-neutral-900/60 hover:bg-amber-500/20 border-transparent hover:border-amber-400/40'
-                                    } ${isComboGroup ? 'text-sm px-1' : 'text-lg'}`}
+                                    } ${isComboGroup ? 'text-xs px-1' : 'text-base sm:text-lg'}`}
                                     title={`${item.name} (${displayEmoji})`}
                                   >
                                     {displayEmoji}
@@ -11174,8 +12360,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     <div
                       className={
                         emojiCategoryTab === 'adult_combos'
-                          ? 'grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1'
-                          : 'grid grid-cols-8 sm:grid-cols-11 md:grid-cols-14 gap-1'
+                          ? 'grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9 gap-1'
+                          : 'grid grid-cols-6 sm:grid-cols-8 md:grid-cols-11 lg:grid-cols-14 gap-1'
                       }
                     >
                       {filteredEmojiItems.map((item, idx) => {
@@ -11196,7 +12382,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                               isSoapSpongeCombo && isComboItem
                                 ? 'bg-gradient-to-br from-cyan-500/20 to-rose-500/20 hover:from-cyan-500/30 hover:to-rose-500/30 border-cyan-400/50 text-white'
                                 : 'bg-neutral-900/60 hover:bg-amber-500/20 border-transparent hover:border-amber-400/40'
-                            } ${isComboItem ? 'text-sm px-1' : 'text-lg'}`}
+                            } ${isComboItem ? 'text-xs px-1' : 'text-base sm:text-lg'}`}
                             title={`${item.name} (${displayEmoji})`}
                           >
                             {displayEmoji}
@@ -11337,6 +12523,58 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               >
                 <Smile className="w-4 h-4 text-amber-400" />
               </button>
+
+              {/* Token Streaming Toggle Icon Directly Next to Emojis Icon */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('modeSwitch');
+                  onToggleTokenStreaming();
+                }}
+                className={`relative p-2 rounded-full border text-xs font-medium flex items-center justify-center gap-1 transition-all whitespace-nowrap shrink-0 ${
+                  tokenStreaming
+                    ? 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-400/60 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.35)]'
+                    : 'bg-neutral-900/90 hover:bg-neutral-800 border-white/10 text-neutral-400 hover:text-white'
+                }`}
+                title={
+                  tokenStreaming
+                    ? 'Token Streaming: ON (Real-time live token flow active) · Tap to toggle OFF'
+                    : 'Token Streaming: OFF (Instant full response block) · Tap to toggle ON'
+                }
+                aria-label={
+                  tokenStreaming
+                    ? 'Token Streaming is ON. Click to toggle OFF.'
+                    : 'Token Streaming is OFF. Click to toggle ON.'
+                }
+              >
+                <Zap
+                  className={`w-4 h-4 transition-transform ${
+                    tokenStreaming
+                      ? 'text-cyan-300 fill-cyan-400/30 scale-105'
+                      : 'text-neutral-400'
+                  }`}
+                />
+                {tokenStreaming && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
+                  </span>
+                )}
+              </button>
+
+              {/* Hard Reset Icon Directly Alongside Token Stream Icon */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('tap');
+                  setShowHardResetConfirmModal(true);
+                }}
+                className="relative p-2 rounded-full border text-xs font-medium flex items-center justify-center gap-1 transition-all whitespace-nowrap shrink-0 bg-neutral-900/90 hover:bg-rose-950/60 border-white/10 hover:border-rose-500/60 text-neutral-400 hover:text-rose-400 group"
+                title="Hard Reset KARA (Wipe all data & restart 100% brand new) · Directly alongside Token Stream"
+                aria-label="Hard Reset KARA (Completely wipe all data and start brand new)"
+              >
+                <RotateCcw className="w-4 h-4 transition-transform group-hover:-rotate-90 text-neutral-400 group-hover:text-rose-400" />
+              </button>
             </div>
 
             {/* Right Cluster: Mic Dictation, Live Voice Call, and Gemini × Grok Send / Stop */}
@@ -11433,6 +12671,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 <KaraVoicePulseWaveform
                   analyser={ttsAnalyser}
                   isSpeaking={Boolean(isSpeakingId)}
+                  isPaused={isSpeakingPaused}
                   mode={activeEmotionSourceMsg?.mode || activeMode}
                   voiceProfile={selectedVoiceProfile}
                   speakingProgress={speakingProgress}
@@ -11446,10 +12685,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   emotionDetected={activeEmotionSourceMsg?.emotionDetected}
                   karaEmotion={activeEmotionSourceMsg?.karaEmotion}
                   disabled={!lastAssistantMsg && !isSpeakingId}
+                  onPause={onPauseSpeaking}
+                  onResume={onResumeSpeaking}
+                  onStop={onStopSpeaking}
                   onToggle={() => {
                     triggerHaptic('tap');
                     if (isSpeakingId) {
-                      onStopSpeaking();
+                      if (isSpeakingPaused && onResumeSpeaking) {
+                        onResumeSpeaking();
+                      } else if (onPauseSpeaking) {
+                        onPauseSpeaking();
+                      } else {
+                        onStopSpeaking();
+                      }
                     } else if (lastAssistantMsg) {
                       onSpeakMessage(
                         buildFullSpokenMessageText(lastAssistantMsg) || lastAssistantMsg.content,
@@ -13751,6 +14999,72 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   </>
                 );
               })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* HARD RESET CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showHardResetConfirmModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            onClick={() => {
+              if (!isPerformingHardReset) setShowHardResetConfirmModal(false);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-neutral-950 border border-rose-900/60 rounded-3xl p-6 shadow-2xl space-y-4 relative"
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-3 rounded-2xl bg-rose-950/80 border border-rose-800/80 text-rose-400 shrink-0">
+                  <RotateCcw className="w-6 h-6 animate-spin-reverse" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    Hard Reset KARA?
+                  </h3>
+                  <p className="text-xs text-rose-200/90 leading-relaxed">
+                    This will completely wipe Kara—permanently deleting all chat history across all sessions, memories, custom gems, active alarms, and settings, and restore Kara to a 100% brand-new state (0% Stranger · Fresh Slate).
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  disabled={isPerformingHardReset}
+                  onClick={() => setShowHardResetConfirmModal(false)}
+                  className="px-4 py-2 text-xs font-medium text-neutral-300 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-white/10 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isPerformingHardReset}
+                  onClick={handleExecuteHardResetFromBar}
+                  className="px-4 py-2 text-xs font-semibold text-rose-100 bg-rose-600 hover:bg-rose-500 rounded-xl flex items-center gap-2 transition-colors shadow-[0_0_15px_rgba(225,29,72,0.35)]"
+                >
+                  {isPerformingHardReset ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Wiping Kara...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Hard Reset Now</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

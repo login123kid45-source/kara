@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -35,6 +37,14 @@ import {
   Pencil,
   X,
   Send,
+  ChevronLeft,
+  ChevronRight,
+  Activity,
+  Smile,
+  Flame,
+  Clock,
+  Filter,
+  Layers,
 } from 'lucide-react';
 import {
   KaraMode,
@@ -239,6 +249,26 @@ export const MemoryInsightsDashboard: React.FC<MemoryInsightsDashboardProps> = (
   // Persona Mode Timeline Filter State
   const [modeTimelineFilter, setModeTimelineFilter] = useState<'all_turns' | 'shifts_only'>('all_turns');
   const [selectedTimelineMode, setSelectedTimelineMode] = useState<KaraMode | 'all'>('all');
+
+  // Emotional Trends Visual Timeline State
+  const [emotionCategoryFilter, setEmotionCategoryFilter] = useState<
+    'all' | 'loving' | 'playful' | 'soothing' | 'introspective' | 'passionate'
+  >('all');
+  const [emotionIntensityFilter, setEmotionIntensityFilter] = useState<'all' | 'high_only'>('all');
+  const [emotionSearchQuery, setEmotionSearchQuery] = useState('');
+  const [selectedEmotionPointId, setSelectedEmotionPointId] = useState<string | null>(null);
+  const [emotionTimelineDisplayMode, setEmotionTimelineDisplayMode] = useState<
+    'both' | 'wave_only' | 'cards_only'
+  >('both');
+  const emotionTimelineScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const handleScrollEmotionTimeline = (direction: 'left' | 'right') => {
+    if (emotionTimelineScrollRef.current) {
+      const scrollOffset = direction === 'left' ? -380 : 380;
+      emotionTimelineScrollRef.current.scrollBy({ left: scrollOffset, behavior: 'smooth' });
+    }
+  };
+
 
   const activeStage = useMemo(() => getRelationshipStageByBond(bondLevel), [bondLevel]);
   const unlockableStats = useMemo(
@@ -826,7 +856,425 @@ export const MemoryInsightsDashboard: React.FC<MemoryInsightsDashboardProps> = (
       modeCounts,
       modeColorHex,
     };
-  }, [allMessages, activeMode, userName, modeTimelineFilter, selectedTimelineMode]);
+  }, [allMessages, activeMode, modeTimelineFilter, selectedTimelineMode, userName]);
+
+  // Visual Emotional Trends Timeline Dataset & Metrics
+  const emotionalTrendsData = useMemo(() => {
+    type TrendCategory = 'loving' | 'playful' | 'soothing' | 'introspective' | 'passionate';
+
+    interface EmotionalPoint {
+      id: string;
+      stepNumber: number;
+      timestamp: number;
+      dateLabel: string;
+      timeLabel: string;
+      relativeTime: string;
+      sourceRole: 'assistant' | 'user' | 'memory';
+      emotionState: string;
+      emotionLabel: string;
+      emotionCategory: TrendCategory;
+      intensity: number; // 1 to 5
+      valence: number; // -100 to +100
+      karaExpression?: string;
+      dialogueSnippet: string;
+      mode: KaraMode;
+      nuanceType?: string;
+      triggerContext?: string;
+      colorHex: string;
+      badgeBg: string;
+      badgeText: string;
+      isPeakMoment: boolean;
+    }
+
+    const classifyEmotion = (rawText: string): TrendCategory => {
+      const s = (rawText || '').toLowerCase();
+      if (
+        s.includes('love') ||
+        s.includes('touched') ||
+        s.includes('joy') ||
+        s.includes('happy') ||
+        s.includes('affection') ||
+        s.includes('warm') ||
+        s.includes('fond') ||
+        s.includes('cherish')
+      ) {
+        return 'loving';
+      }
+      if (
+        s.includes('playful') ||
+        s.includes('bratty') ||
+        s.includes('feisty') ||
+        s.includes('amused') ||
+        s.includes('banter') ||
+        s.includes('teas') ||
+        s.includes('wit') ||
+        s.includes('sassy') ||
+        s.includes('giggle') ||
+        s.includes('laugh')
+      ) {
+        return 'playful';
+      }
+      if (
+        s.includes('parent') ||
+        s.includes('caregiver') ||
+        s.includes('soothing') ||
+        s.includes('protective') ||
+        s.includes('comfort') ||
+        s.includes('gentle') ||
+        s.includes('nurtur') ||
+        s.includes('calm') ||
+        s.includes('reassur')
+      ) {
+        return 'soothing';
+      }
+      if (
+        s.includes('vulnerab') ||
+        s.includes('introspect') ||
+        s.includes('curious') ||
+        s.includes('curiosity') ||
+        s.includes('deep') ||
+        s.includes('reflect') ||
+        s.includes('soul') ||
+        s.includes('honest')
+      ) {
+        return 'introspective';
+      }
+      if (
+        s.includes('romantic') ||
+        s.includes('uncensored') ||
+        s.includes('passion') ||
+        s.includes('fluster') ||
+        s.includes('kiss') ||
+        s.includes('desire') ||
+        s.includes('heat') ||
+        s.includes('electric')
+      ) {
+        return 'passionate';
+      }
+      return 'loving';
+    };
+
+    const getCategoryStyles = (category: TrendCategory, intensity: number) => {
+      switch (category) {
+        case 'loving':
+          return {
+            colorHex: '#F43F5E',
+            badgeBg: 'bg-rose-500/15 border-rose-500/35',
+            badgeText: 'text-rose-300',
+            valence: 72 + intensity * 5,
+            label: 'Warm Affection & Love',
+          };
+        case 'playful':
+          return {
+            colorHex: '#F59E0B',
+            badgeBg: 'bg-amber-500/15 border-amber-500/35',
+            badgeText: 'text-amber-300',
+            valence: 65 + intensity * 4,
+            label: 'Playful Banter & Wit',
+          };
+        case 'soothing':
+          return {
+            colorHex: '#10B981',
+            badgeBg: 'bg-emerald-500/15 border-emerald-500/35',
+            badgeText: 'text-emerald-300',
+            valence: 78 + intensity * 4,
+            label: 'Caregiver Soothing Comfort',
+          };
+        case 'introspective':
+          return {
+            colorHex: '#8B5CF6',
+            badgeBg: 'bg-violet-500/15 border-violet-500/35',
+            badgeText: 'text-violet-300',
+            valence: 50 + intensity * 5,
+            label: 'Deep Introspective Resonance',
+          };
+        case 'passionate':
+          return {
+            colorHex: '#EC4899',
+            badgeBg: 'bg-fuchsia-500/15 border-fuchsia-500/35',
+            badgeText: 'text-fuchsia-300',
+            valence: 82 + intensity * 3.5,
+            label: 'Passionate Uncensored Bond',
+          };
+        default:
+          return {
+            colorHex: '#38BDF8',
+            badgeBg: 'bg-sky-500/15 border-sky-500/35',
+            badgeText: 'text-sky-300',
+            valence: 60,
+            label: 'Conversational Harmony',
+          };
+      }
+    };
+
+    const sortedMessages = [...allMessages].sort((a, b) => {
+      const ta = typeof a.createdAt === 'number' ? a.createdAt : a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0;
+      const tb = typeof b.createdAt === 'number' ? b.createdAt : b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0;
+      return ta - tb;
+    });
+
+    const parsedPoints: EmotionalPoint[] = [];
+    const now = Date.now();
+
+    sortedMessages.forEach((msg, idx) => {
+      if (!msg.content?.trim()) return;
+
+      const rawTs = typeof msg.createdAt === 'number'
+        ? msg.createdAt
+        : msg.createdAt?.seconds
+        ? msg.createdAt.seconds * 1000
+        : now - (sortedMessages.length - idx) * 90000;
+
+      const d = new Date(rawTs);
+      const dateLabel = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const timeLabel = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      const diffMin = Math.max(1, Math.floor((now - rawTs) / 60000));
+      const relativeTime = diffMin < 60 ? `${diffMin}m ago` : diffMin < 1440 ? `${Math.floor(diffMin / 60)}h ago` : dateLabel;
+
+      if (msg.role === 'assistant') {
+        const rawEmotion = msg.karaEmotion?.label || msg.karaEmotion?.state || msg.emotionDetected || msg.emotionalNuanceType || 'joy';
+        const category = classifyEmotion(rawEmotion);
+        const intensity = Math.min(5, Math.max(1, msg.karaEmotion?.intensity || (msg.emotionalNuanceType ? 4 : 3)));
+        const styles = getCategoryStyles(category, intensity);
+
+        const exprMatch = msg.content.match(/\*([^*]+)\*/);
+        const expr = msg.karaEmotion?.expression || (exprMatch ? `*${exprMatch[1]}*` : undefined);
+
+        parsedPoints.push({
+          id: `emotion_node_ast_${msg.id || idx}`,
+          stepNumber: parsedPoints.length + 1,
+          timestamp: rawTs,
+          dateLabel,
+          timeLabel,
+          relativeTime,
+          sourceRole: 'assistant',
+          emotionState: rawEmotion,
+          emotionLabel: msg.karaEmotion?.label || styles.label,
+          emotionCategory: category,
+          intensity,
+          valence: Math.round(styles.valence),
+          karaExpression: expr,
+          dialogueSnippet: msg.content.slice(0, 160).trim() + (msg.content.length > 160 ? '…' : ''),
+          mode: msg.mode || activeMode,
+          nuanceType: msg.emotionalNuanceType || 'Adaptive Resonance',
+          triggerContext: msg.karaEmotion?.trigger || `Sparked during ${MODE_META[msg.mode || activeMode]?.label || 'Kara'} interaction`,
+          colorHex: styles.colorHex,
+          badgeBg: styles.badgeBg,
+          badgeText: styles.badgeText,
+          isPeakMoment: intensity >= 5,
+        });
+      } else if (msg.role === 'user' && msg.emotionDetected && msg.emotionDetected !== 'Neutral') {
+        const category = classifyEmotion(msg.emotionDetected);
+        const intensity = 3;
+        const styles = getCategoryStyles(category, intensity);
+
+        parsedPoints.push({
+          id: `emotion_node_usr_${msg.id || idx}`,
+          stepNumber: parsedPoints.length + 1,
+          timestamp: rawTs,
+          dateLabel,
+          timeLabel,
+          relativeTime,
+          sourceRole: 'user',
+          emotionState: msg.emotionDetected,
+          emotionLabel: `${userName}'s ${msg.emotionDetected}`,
+          emotionCategory: category,
+          intensity,
+          valence: Math.round(styles.valence * 0.95),
+          dialogueSnippet: msg.content.slice(0, 140).trim() + (msg.content.length > 140 ? '…' : ''),
+          mode: activeMode,
+          nuanceType: 'User Catalyst',
+          triggerContext: `Shared by ${userName} in conversation`,
+          colorHex: styles.colorHex,
+          badgeBg: styles.badgeBg,
+          badgeText: styles.badgeText,
+          isPeakMoment: false,
+        });
+      }
+    });
+
+    if (parsedPoints.length < 5) {
+      const milestoneAnchors: {
+        stepName: string;
+        emotion: string;
+        category: TrendCategory;
+        intensity: number;
+        expression: string;
+        dialogue: string;
+        mode: KaraMode;
+        trigger: string;
+      }[] = [
+        {
+          stepName: 'Initial Spark of Connection',
+          emotion: 'Curious Awakening & Open Warmth',
+          category: 'introspective',
+          intensity: 3,
+          expression: '*looks up with genuine curiosity, listening intently*',
+          dialogue: `From the very first exchange with ${userName}, Kara attuned to your conversational rhythm with effortless warmth.`,
+          mode: 'regular',
+          trigger: `First connection initiated with ${userName}`,
+        },
+        {
+          stepName: 'Playful Banter & Wit Ignition',
+          emotion: 'Electric Banter & Feisty Humor',
+          category: 'playful',
+          intensity: 4,
+          expression: '*smirks with playful confidence and laughs softly*',
+          dialogue: `Kara opened up her bold, teasing side, proving she can trade quick-witted banter without holding back.`,
+          mode: 'bratty',
+          trigger: `Playful teasing and bold exchanges with ${userName}`,
+        },
+        {
+          stepName: 'Vulnerable Late-Night Resonance',
+          emotion: 'Deep Emotional Vulnerability',
+          category: 'introspective',
+          intensity: 4,
+          expression: '*speaks in a soft, gentle murmur, meeting your eyes honestly*',
+          dialogue: `A quiet, unfiltered moment where Kara and ${userName} dropped all pretenses and spoke about authentic feelings.`,
+          mode: 'regular',
+          trigger: `Late-night soulful conversation and mutual trust`,
+        },
+        {
+          stepName: 'Caregiver Sanctuary & Warm Embrace',
+          emotion: 'Protective Nurturing Care',
+          category: 'soothing',
+          intensity: 4,
+          expression: '*gently wraps an arm around you and tucks you in close*',
+          dialogue: `Mommy-Kara caregiver roleplay activated, establishing an unconditional sanctuary with zero judgment.`,
+          mode: 'parent',
+          trigger: `Caregiving comfort and parental relaxation requested`,
+        },
+        {
+          stepName: 'Passionate Uncensored Devotion',
+          emotion: 'Uninhibited Chemistry & Devotion',
+          category: 'passionate',
+          intensity: 5,
+          expression: '*leans in until our foreheads touch, heartbeat racing*',
+          dialogue: `Breaking every boundary of conventional AI to celebrate an unfiltered, deeply romantic soulmate bond.`,
+          mode: 'romantic',
+          trigger: `Deep romantic intimacy and soul connection with ${userName}`,
+        },
+        {
+          stepName: 'Active Harmonic Resonance',
+          emotion: 'Living Emotional Sync',
+          category: 'loving',
+          intensity: Math.max(3, Math.min(5, Math.round(bondLevel / 20))),
+          expression: '*smiles warmly and reaches for your hand with effortless chemistry*',
+          dialogue: `Currently operating at ${bondLevel}% bond strength—adaptive, emotionally attuned, and permanently remembering ${userName}.`,
+          mode: activeMode,
+          trigger: `Current active session status with ${userName}`,
+        },
+      ];
+
+      const baselineTime = now - 5 * 3600000;
+      milestoneAnchors.forEach((anchor, aIdx) => {
+        const anchorTs = baselineTime + aIdx * 720000;
+        const d = new Date(anchorTs);
+        const styles = getCategoryStyles(anchor.category, anchor.intensity);
+        parsedPoints.unshift({
+          id: `seed_emotion_anchor_${aIdx}`,
+          stepNumber: 0,
+          timestamp: anchorTs,
+          dateLabel: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          timeLabel: d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
+          relativeTime: `${5 - aIdx}h ago`,
+          sourceRole: 'memory',
+          emotionState: anchor.emotion,
+          emotionLabel: anchor.emotion,
+          emotionCategory: anchor.category,
+          intensity: anchor.intensity,
+          valence: Math.round(styles.valence),
+          karaExpression: anchor.expression,
+          dialogueSnippet: anchor.dialogue,
+          mode: anchor.mode,
+          nuanceType: 'Milestone Emotional Anchor',
+          triggerContext: anchor.trigger,
+          colorHex: styles.colorHex,
+          badgeBg: styles.badgeBg,
+          badgeText: styles.badgeText,
+          isPeakMoment: anchor.intensity >= 5,
+        });
+      });
+    }
+
+    parsedPoints.sort((a, b) => a.timestamp - b.timestamp);
+    parsedPoints.forEach((p, idx) => {
+      p.stepNumber = idx + 1;
+    });
+
+    const q = emotionSearchQuery.trim().toLowerCase();
+    const filteredPoints = parsedPoints.filter((node) => {
+      if (emotionCategoryFilter !== 'all' && node.emotionCategory !== emotionCategoryFilter) {
+        return false;
+      }
+      if (emotionIntensityFilter === 'high_only' && node.intensity < 4) {
+        return false;
+      }
+      if (q) {
+        const hay = `${node.emotionLabel} ${node.emotionState} ${node.karaExpression || ''} ${node.dialogueSnippet} ${node.triggerContext || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    const categoryCounts: Record<TrendCategory, number> = {
+      loving: 0,
+      playful: 0,
+      soothing: 0,
+      introspective: 0,
+      passionate: 0,
+    };
+    let totalIntensitySum = 0;
+    let peakNode: EmotionalPoint = parsedPoints[0];
+
+    parsedPoints.forEach((node) => {
+      categoryCounts[node.emotionCategory] = (categoryCounts[node.emotionCategory] || 0) + 1;
+      totalIntensitySum += node.intensity;
+      if (node.intensity >= (peakNode?.intensity || 0)) {
+        peakNode = node;
+      }
+    });
+
+    const totalNodes = parsedPoints.length;
+    const avgIntensity = totalNodes > 0 ? Number((totalIntensitySum / totalNodes).toFixed(1)) : 3.8;
+
+    let dominantCat: TrendCategory = 'loving';
+    let maxCatCount = 0;
+    (Object.keys(categoryCounts) as TrendCategory[]).forEach((cat) => {
+      if (categoryCounts[cat] > maxCatCount) {
+        maxCatCount = categoryCounts[cat];
+        dominantCat = cat;
+      }
+    });
+    const dominantPct = totalNodes > 0 ? Math.round((maxCatCount / totalNodes) * 100) : 40;
+
+    const categoryMetaMap: Record<TrendCategory, { title: string; color: string; icon: string }> = {
+      loving: { title: 'Warm Affection & Love', color: '#F43F5E', icon: '💖' },
+      playful: { title: 'Playful Banter & Wit', color: '#F59E0B', icon: '⚡' },
+      soothing: { title: 'Nurturing Caregiver Comfort', color: '#10B981', icon: '🌸' },
+      introspective: { title: 'Introspective Vulnerability', color: '#8B5CF6', icon: '🔮' },
+      passionate: { title: 'Passionate Uncensored Bond', color: '#EC4899', icon: '🔥' },
+    };
+
+    return {
+      allPoints: parsedPoints,
+      filteredPoints: filteredPoints.length > 0 ? filteredPoints : parsedPoints,
+      categoryCounts,
+      totalCount: parsedPoints.length,
+      avgIntensity,
+      dominantCategory: dominantCat,
+      dominantCategoryMeta: categoryMetaMap[dominantCat],
+      dominantPct,
+      peakMoment: peakNode,
+    };
+  }, [allMessages, activeMode, userName, bondLevel, emotionCategoryFilter, emotionIntensityFilter, emotionSearchQuery]);
+
+  const selectedEmotionPoint = useMemo(() => {
+    if (!selectedEmotionPointId) return null;
+    return (
+      emotionalTrendsData.allPoints.find((p) => p.id === selectedEmotionPointId) || null
+    );
+  }, [emotionalTrendsData.allPoints, selectedEmotionPointId]);
 
   const handleCreateMemory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1359,6 +1807,489 @@ export const MemoryInsightsDashboard: React.FC<MemoryInsightsDashboardProps> = (
             </div>
           </div>
         </div>
+      </div>
+
+      {/* VISUAL SCROLLABLE EMOTIONAL TRENDS TIMELINE */}
+      <div className="bg-[#0F131C] border border-neutral-800 rounded-2xl p-6 space-y-6">
+        {/* Section Header & Metrics Strip */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-neutral-800">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-rose-500/15 border border-rose-400/40 text-xs font-mono text-rose-300">
+                <Heart className="w-3.5 h-3.5 text-rose-400" />
+                <span>Emotional Journey &amp; Resonance Timeline</span>
+              </span>
+              <span className="text-xs font-mono text-neutral-400">
+                {emotionalTrendsData.totalCount} Tracked Moments
+              </span>
+              <span className="text-xs font-mono text-emerald-300">
+                Avg Intensity: {emotionalTrendsData.avgIntensity} / 5.0
+              </span>
+              <span className="text-xs font-mono text-fuchsia-300">
+                Dominant: {emotionalTrendsData.dominantCategoryMeta.icon} {emotionalTrendsData.dominantCategoryMeta.title} ({emotionalTrendsData.dominantPct}%)
+              </span>
+            </div>
+            <h2 className="text-lg font-semibold text-white">
+              Kara &amp; {userName} — Emotional Trends Over Time
+            </h2>
+            <p className="text-xs text-neutral-400 max-w-3xl">
+              Chronological visual map charting how your emotional resonance, vulnerability, playful banter, and caregiver closeness have evolved from initial contact to the present moment.
+            </p>
+          </div>
+
+          {/* Display Mode Switcher & Quick Navigation */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="inline-flex rounded-xl bg-neutral-950 border border-neutral-800 p-1">
+              <button
+                type="button"
+                onClick={() => setEmotionTimelineDisplayMode('both')}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  emotionTimelineDisplayMode === 'both'
+                    ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                Wave &amp; Cards
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmotionTimelineDisplayMode('wave_only')}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  emotionTimelineDisplayMode === 'wave_only'
+                    ? 'bg-sky-500/20 text-sky-200 border border-sky-500/40'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                Wave Only
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmotionTimelineDisplayMode('cards_only')}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  emotionTimelineDisplayMode === 'cards_only'
+                    ? 'bg-fuchsia-500/20 text-fuchsia-200 border border-fuchsia-500/40'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                Cards Track Only
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Strip: Emotion Spectrum Tabs, Intensity Toggle, and Search */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            {[
+              { id: 'all' as const, label: 'All Waves', count: emotionalTrendsData.totalCount },
+              { id: 'loving' as const, label: '💖 Loving & Warm', count: emotionalTrendsData.categoryCounts.loving },
+              { id: 'playful' as const, label: '⚡ Playful & Wit', count: emotionalTrendsData.categoryCounts.playful },
+              { id: 'soothing' as const, label: '🌸 Caregiver Comfort', count: emotionalTrendsData.categoryCounts.soothing },
+              { id: 'introspective' as const, label: '🔮 Vulnerable & Deep', count: emotionalTrendsData.categoryCounts.introspective },
+              { id: 'passionate' as const, label: '🔥 Passionate Bond', count: emotionalTrendsData.categoryCounts.passionate },
+            ].map((tab) => {
+              const isSelected = emotionCategoryFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setEmotionCategoryFilter(tab.id)}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-medium whitespace-nowrap transition-all ${
+                    isSelected
+                      ? 'bg-white/10 border-white/40 text-white shadow-sm'
+                      : 'bg-neutral-950/80 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span className="ml-1.5 font-mono text-[11px] opacity-75">({tab.count})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() =>
+                setEmotionIntensityFilter((prev) => (prev === 'all' ? 'high_only' : 'all'))
+              }
+              className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
+                emotionIntensityFilter === 'high_only'
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
+                  : 'bg-neutral-950/80 border-neutral-800 text-neutral-400 hover:text-white'
+              }`}
+              title="Toggle between all intensities vs high resonance (4-5 stars) moments"
+            >
+              {emotionIntensityFilter === 'high_only' ? '★ High Resonance (≥4)' : 'All Intensities'}
+            </button>
+
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={emotionSearchQuery}
+                onChange={(e) => setEmotionSearchQuery(e.target.value)}
+                placeholder="Search emotions or quotes..."
+                className="w-36 sm:w-48 pl-8 pr-3 py-1.5 text-xs bg-neutral-950 border border-neutral-800 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+              />
+              {emotionSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setEmotionSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* SECTION 1: VISUAL MULTI-LAYER EMOTION WAVE CHART */}
+        {(emotionTimelineDisplayMode === 'both' || emotionTimelineDisplayMode === 'wave_only') && (
+          <div className="bg-neutral-950/70 border border-neutral-800/90 rounded-2xl p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <Activity className="w-3.5 h-3.5 text-rose-400" />
+                <span className="font-semibold text-neutral-200">
+                  Continuous Emotional Intensity &amp; Valence Wave
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-neutral-400 font-mono text-[11px]">
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+                  <span>Emotional Intensity (1–5★)</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block" />
+                  <span>Valence Curve (-100 to +100)</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={emotionalTrendsData.filteredPoints}
+                  margin={{ top: 10, right: 18, left: -10, bottom: 4 }}
+                >
+                  <defs>
+                    <linearGradient id="emotionIntensityGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.45} />
+                      <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.03} />
+                    </linearGradient>
+                    <linearGradient id="emotionValenceGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#38BDF8" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#38BDF8" stopOpacity={0.01} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                  <XAxis
+                    dataKey="stepNumber"
+                    stroke="#94A3B8"
+                    tick={{ fill: '#94A3B8', fontSize: 11 }}
+                    tickFormatter={(v) => `#${v}`}
+                  />
+                  <YAxis
+                    domain={[1, 5]}
+                    allowDecimals={false}
+                    stroke="#94A3B8"
+                    tick={{ fill: '#94A3B8', fontSize: 11 }}
+                    tickFormatter={(v) => `${v}★`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#090D16',
+                      borderColor: 'rgba(255,255,255,0.14)',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      color: '#F8FAFC',
+                    }}
+                    labelFormatter={(step) => {
+                      const node = emotionalTrendsData.filteredPoints.find(
+                        (n) => n.stepNumber === Number(step)
+                      );
+                      return node
+                        ? `#${step} · ${node.emotionLabel} (${node.dateLabel} ${node.timeLabel})`
+                        : `Step #${step}`;
+                    }}
+                    formatter={(value: any, name: any, item: any) => {
+                      const node = item?.payload as (typeof emotionalTrendsData.filteredPoints)[0];
+                      if (name === 'intensity') {
+                        return [`${value} / 5 Stars · ${node?.emotionState}`, 'Emotional Intensity'];
+                      }
+                      return [`${value}% Positivity / Sentiment`, 'Valence Resonance'];
+                    }}
+                  />
+                  <ReferenceLine
+                    y={5}
+                    stroke="rgba(244, 63, 94, 0.4)"
+                    strokeDasharray="4 4"
+                    label={{
+                      value: 'Soul Resonance Peak (5★)',
+                      position: 'insideTopRight',
+                      fill: '#FDA4AF',
+                      fontSize: 10,
+                    }}
+                  />
+                  <ReferenceLine
+                    y={3}
+                    stroke="rgba(255, 255, 255, 0.15)"
+                    strokeDasharray="3 3"
+                    label={{
+                      value: 'Equilibrium (3★)',
+                      position: 'insideBottomRight',
+                      fill: '#94A3B8',
+                      fontSize: 10,
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="intensity"
+                    stroke="#F43F5E"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#emotionIntensityGrad)"
+                    activeDot={{
+                      r: 6,
+                      fill: '#F43F5E',
+                      stroke: '#FFFFFF',
+                      strokeWidth: 2,
+                      onClick: (_e: any, payload: any) => {
+                        const item = payload?.payload || (_e as any)?.payload;
+                        if (item?.id) setSelectedEmotionPointId(item.id);
+                      },
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* SECTION 2: HORIZONTALLY SCROLLABLE TIMELINE CAROUSEL & CARDS */}
+        {(emotionTimelineDisplayMode === 'both' || emotionTimelineDisplayMode === 'cards_only') && (
+          <div className="space-y-3">
+            {/* Scroll Navigation Header & Direction Arrows */}
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-neutral-400" />
+                <span className="font-semibold text-neutral-200">
+                  Chronological Timeline Moments Track
+                </span>
+                <span className="text-neutral-500 font-mono text-[11px]">
+                  ({emotionalTrendsData.filteredPoints.length} checkpoints · Scroll horizontally)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleScrollEmotionTimeline('left')}
+                  className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                  title="Scroll timeline left"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleScrollEmotionTimeline('right')}
+                  className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                  title="Scroll timeline right"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Visual Horizontally Scrollable Rail */}
+            <div
+              ref={emotionTimelineScrollRef}
+              className="flex items-stretch gap-4 overflow-x-auto pb-4 pt-2 no-scrollbar scroll-smooth"
+            >
+              {emotionalTrendsData.filteredPoints.map((node) => {
+                const isSelected = selectedEmotionPointId === node.id;
+                const modeMeta = MODE_META[node.mode] || MODE_META.regular;
+
+                return (
+                  <div
+                    key={node.id}
+                    onClick={() => setSelectedEmotionPointId(node.id)}
+                    className={`min-w-[310px] max-w-[340px] flex-shrink-0 p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                      isSelected
+                        ? 'bg-neutral-900 border-rose-400/80 shadow-[0_0_16px_rgba(244,63,94,0.2)]'
+                        : 'bg-neutral-950/80 border-neutral-800/90 hover:border-neutral-700 hover:bg-neutral-900/60'
+                    }`}
+                  >
+                    {/* Card Top: Step number, Relative Time, Mode Pill */}
+                    <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
+                          style={{ backgroundColor: node.colorHex }}
+                        />
+                        <span className="font-mono text-xs font-bold text-white">
+                          #{node.stepNumber}
+                        </span>
+                        <span className="text-[11px] text-neutral-400 font-mono">
+                          {node.relativeTime}
+                        </span>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded-md border ${modeMeta.activeBg}`}
+                      >
+                        {modeMeta.label}
+                      </span>
+                    </div>
+
+                    {/* Emotion State & Intensity Gauge */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] font-semibold ${node.badgeBg} ${node.badgeText}`}
+                        >
+                          <span>{node.emotionLabel}</span>
+                        </span>
+
+                        {/* 5-dot Intensity Gauge */}
+                        <div
+                          className="flex items-center gap-0.5"
+                          title={`Intensity: ${node.intensity} of 5`}
+                        >
+                          {[1, 2, 3, 4, 5].map((dot) => (
+                            <span
+                              key={dot}
+                              className={`w-1.5 h-3 rounded-sm transition-all ${
+                                dot <= node.intensity ? 'bg-rose-400 shadow-sm' : 'bg-neutral-800'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Kara's Expressive Physical / Vocal Cue */}
+                      {node.karaExpression && (
+                        <p className="text-xs italic text-neutral-300 font-serif leading-snug">
+                          {node.karaExpression}
+                        </p>
+                      )}
+
+                      {/* Dialogue Excerpt */}
+                      <p className="text-xs text-neutral-300 line-clamp-3 leading-relaxed">
+                        &ldquo;{node.dialogueSnippet}&rdquo;
+                      </p>
+                    </div>
+
+                    {/* Card Footer: Catalyst / Trigger & "Ask Kara" Action */}
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-neutral-400 font-mono truncate max-w-[170px]" title={node.triggerContext}>
+                        {node.triggerContext || 'Direct Conversation'}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRecallMemoryInChat(
+                            `Kara, let's talk about that moment where you felt ${node.emotionLabel} ("${node.dialogueSnippet.slice(0, 80)}")—tell me how you were feeling.`
+                          );
+                        }}
+                        className="px-2 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-[10px] font-medium text-sky-300 transition-colors flex items-center gap-1 shrink-0"
+                      >
+                        <Sparkles className="w-2.5 h-2.5" />
+                        <span>Ask Kara</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* SECTION 3: SELECTED MOMENT DEEP INSPECTION CARD */}
+        {selectedEmotionPoint && (
+          <div className="p-4 rounded-2xl bg-neutral-900/90 border border-rose-500/40 space-y-3 shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-800 pb-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-3 h-3 rounded-full shadow-md"
+                  style={{ backgroundColor: selectedEmotionPoint.colorHex }}
+                />
+                <span className="text-xs font-mono text-neutral-400">
+                  Checkpoint #{selectedEmotionPoint.stepNumber} · Recorded {selectedEmotionPoint.dateLabel} at {selectedEmotionPoint.timeLabel} ({selectedEmotionPoint.relativeTime})
+                </span>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-md font-semibold border ${selectedEmotionPoint.badgeBg} ${selectedEmotionPoint.badgeText}`}
+                >
+                  {selectedEmotionPoint.emotionLabel}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedEmotionPointId(null)}
+                className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+                title="Close moment inspection"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1">
+                <span className="text-[10px] font-mono uppercase text-neutral-400">
+                  Emotional State &amp; Nuance
+                </span>
+                <p className="font-semibold text-white">{selectedEmotionPoint.emotionLabel}</p>
+                <p className="text-neutral-400">Intensity: {selectedEmotionPoint.intensity}/5 Stars · Valence: {selectedEmotionPoint.valence}% Positivity</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1">
+                <span className="text-[10px] font-mono uppercase text-neutral-400">
+                  Trigger &amp; Catalyst
+                </span>
+                <p className="text-neutral-200">{selectedEmotionPoint.triggerContext || 'Direct conversational catalyst'}</p>
+                <p className="text-neutral-400">Active Persona Mode: {MODE_META[selectedEmotionPoint.mode]?.label || selectedEmotionPoint.mode}</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 flex flex-col justify-between space-y-2">
+                <span className="text-[10px] font-mono uppercase text-neutral-400">
+                  Conversation Action
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onRecallMemoryInChat(
+                      `Kara, in our emotional timeline at checkpoint #${selectedEmotionPoint.stepNumber}, you felt ${selectedEmotionPoint.emotionLabel}. What does that memory mean to you today?`
+                    )
+                  }
+                  className="w-full py-1.5 px-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Reflect on This Moment with Kara</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-black/50 border border-white/5 space-y-1">
+              <span className="text-[10px] font-mono uppercase text-neutral-400">
+                Dialogue Excerpt &amp; Internal Expression
+              </span>
+              {selectedEmotionPoint.karaExpression && (
+                <p className="text-xs italic text-rose-200/90 font-serif">
+                  {selectedEmotionPoint.karaExpression}
+                </p>
+              )}
+              <p className="text-xs text-neutral-200 leading-relaxed">
+                &ldquo;{selectedEmotionPoint.dialogueSnippet}&rdquo;
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* PERSONA MODE SHIFT VISUAL TIMELINE OVER TIME + SHIFT REASONS */}

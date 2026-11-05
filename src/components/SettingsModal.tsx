@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
+  Search,
   Volume2,
   VolumeX,
   Sliders,
@@ -92,6 +93,7 @@ import {
   KARA_SOUND_EFFECT_CATALOG,
   MODE_VOCAL_FX_PRESETS,
   playKaraSoundEffect,
+  playSoapDisciplineSoundEffect,
   type KaraSoundEffectType,
 } from '../lib/soundEffects';
 
@@ -614,6 +616,7 @@ export interface KaraSettings {
   adultRpPropsAndVibe?: string;
   vocalSoundEffectsEnabled?: boolean; // Toggle Kara's human vocal sound effects while chatting (managed in Settings, default: true)
   autoSwitchVocalFx?: boolean; // Automatically switch Kara's vocal sound effects & formant timbre by Persona Mode & mood (default: true)
+  parentSoapDiscipline?: boolean; // Toggle playful soap discipline reprimand when profanity is detected in Parent mode (default: true)
   customPersonas?: CustomKaraPersona[]; // User-defined custom personas with specific name, tone, and behavioral rules
   activeCustomPersonaId?: string | null; // Currently active custom persona ID
 }
@@ -727,6 +730,332 @@ interface SettingsModalProps {
   onHardReset: () => Promise<void>;
 }
 
+export interface SettingsSearchItem {
+  id: string;
+  targetSectionId: string;
+  category: 'voice' | 'theme' | 'persona' | 'rp' | 'reasoning' | 'memory' | 'comms' | 'mobility' | 'system';
+  categoryLabel: string;
+  title: string;
+  description: string;
+  keywords: string[];
+  badge?: string;
+}
+
+export const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
+  {
+    id: 'grok_voices_female',
+    targetSectionId: 'section-voice',
+    category: 'voice',
+    categoryLabel: 'Voice & Speech',
+    title: 'Grok Female TTS Voices (Eve, Ara, Vesper, Nova, Siren, Chloe, Maeve)',
+    description: '7 expressive, candid, sultry & witty Grok female speech models with 24kHz audio and unrestricted talkback.',
+    keywords: ['grok', 'female', 'tts', 'eve', 'ara', 'vesper', 'nova', 'siren', 'chloe', 'maeve', 'voice', 'speech', 'talkback', 'read aloud', 'audio'],
+    badge: '7 Grok ♀',
+  },
+  {
+    id: 'grok_voices_male',
+    targetSectionId: 'section-voice',
+    category: 'voice',
+    categoryLabel: 'Voice & Speech',
+    title: 'Grok Male TTS Voices (Sal & Leo)',
+    description: 'Smooth late-night conversational and bold charismatic Grok male speech models.',
+    keywords: ['grok', 'male', 'tts', 'sal', 'leo', 'voice', 'speech', 'audio'],
+    badge: '2 Grok ♂',
+  },
+  {
+    id: 'gemini_voices',
+    targetSectionId: 'section-voice',
+    category: 'voice',
+    categoryLabel: 'Voice & Speech',
+    title: 'Gemini 24kHz Neural Voices (Zephyr, Leda, Callirrhoe, Autonoe, Kore, Aoede, Puck, Charon, Fenrir)',
+    description: 'High-fidelity lifelike neural human speech with natural cadence and empathetic inflection.',
+    keywords: ['gemini', 'neural', 'zephyr', 'leda', 'callirrhoe', 'autonoe', 'kore', 'aoede', 'puck', 'charon', 'fenrir', 'voice', 'speech', '24khz', 'pcm'],
+    badge: '9 Voices',
+  },
+  {
+    id: 'voice_pacing_speed',
+    targetSectionId: 'section-voice',
+    category: 'voice',
+    categoryLabel: 'Voice & Speech',
+    title: 'Voice Pacing & Cadence Controls',
+    description: 'Adjust speech tempo, natural conversational pauses, and speech delivery rate.',
+    keywords: ['speed', 'pacing', 'rate', 'cadence', 'fast', 'slow', 'tempo', 'speech speed', 'natural pacing'],
+  },
+  {
+    id: 'waveforms_catalog',
+    targetSectionId: 'section-waveforms',
+    category: 'voice',
+    categoryLabel: 'Voice & Speech',
+    title: 'Voice Waveform Visualizer Styles & Swatches',
+    description: '16 animated audio waveform styles (Liquid, Line, Glitch, Heartbeat, DNA, Aurora, Equalizer, Synapse) and color themes.',
+    keywords: ['waveform', 'wave', 'visualizer', 'liquid', 'line', 'glitch', 'heartbeat', 'dna', 'orbital', 'aurora', 'equalizer', 'synapse', 'prism', 'spectrogram', 'particles', 'colors'],
+    badge: '16 Styles',
+  },
+  {
+    id: 'auto_vocal_fx',
+    targetSectionId: 'section-vocal-fx',
+    category: 'voice',
+    categoryLabel: 'Voice & Speech',
+    title: 'Auto Vocal FX & Somatic Sound Effects',
+    description: 'Mode-adaptive human somatic cues: chuckles, sighs, kisses, whispers, and audio effects.',
+    keywords: ['vocal fx', 'sound effects', 'sfx', 'chuckle', 'sigh', 'gasp', 'whisper', 'kiss', 'audio cues', 'humanlike'],
+  },
+  {
+    id: 'dark_mode_deep_black',
+    targetSectionId: 'section-themes',
+    category: 'theme',
+    categoryLabel: 'Themes & Aesthetics',
+    title: 'Dark Mode / Deep-Black Eye Protection (AMOLED / OLED)',
+    description: 'True AMOLED pitch-black backdrop with reduced luminance for late-night eye strain relief.',
+    keywords: ['dark mode', 'deep black', 'amoled', 'oled', 'night mode', 'eye protection', 'pitch black', 'lights out', 'black theme'],
+    badge: 'Eye Care',
+  },
+  {
+    id: 'mxchat_themes',
+    targetSectionId: 'section-themes',
+    category: 'theme',
+    categoryLabel: 'Themes & Aesthetics',
+    title: 'MxChat Theme Studio (iOS × Android Mix, Gemini × Grok Fusion, etc.)',
+    description: '12 aesthetic themes including Monster High, Marvel Avengers, Gotham Justice, Cyber Neon, and Velvet Dusk.',
+    keywords: ['theme', 'themes', 'ios', 'android', 'gemini-grok', 'fusion', 'monster high', 'marvel', 'gotham', 'cyber neon', 'slate', 'vintage', 'velvet dusk'],
+    badge: '12 Themes',
+  },
+  {
+    id: 'bubble_geometry_fonts',
+    targetSectionId: 'section-themes',
+    category: 'theme',
+    categoryLabel: 'Themes & Aesthetics',
+    title: 'Chat Bubble Geometry & Typography Studio',
+    description: 'Customize message bubble border radius (Rounded, Sharp, Pill, iOS Tail, Chamfered) and typography scales.',
+    keywords: ['bubble', 'bubbles', 'geometry', 'rounded', 'pill', 'chamfered', 'font', 'typography', 'sf pro', 'android geometric', 'serif', 'mono', 'scale'],
+  },
+  {
+    id: 'mode_switcher_1tap',
+    targetSectionId: 'section-modes',
+    category: 'persona',
+    categoryLabel: 'Modes & Personas',
+    title: '1-Tap Mode Switcher (Regular, Bratty, Uncensored, Romantic, Parent)',
+    description: 'Instantly toggle Kara’s active persona and conversational archetype with 1 tap.',
+    keywords: ['mode', 'modes', 'switcher', 'regular', 'bratty', 'uncensored', 'romantic', 'parent', 'persona', 'personality'],
+    badge: '1-Tap',
+  },
+  {
+    id: 'smart_auto_adapt_mode',
+    targetSectionId: 'section-modes',
+    category: 'persona',
+    categoryLabel: 'Modes & Personas',
+    title: 'Smart Auto-Adapt Mode Switcher',
+    description: 'Allows Kara to autonomously shift into Uncensored, Bratty, Romantic, or Parent based on context.',
+    keywords: ['auto adapt', 'auto switch', 'dynamic mode', 'adaptive persona', 'smart mode', 'auto-switcher'],
+  },
+  {
+    id: 'custom_persona_builder',
+    targetSectionId: 'section-custom-persona',
+    category: 'persona',
+    categoryLabel: 'Modes & Personas',
+    title: 'Custom Persona Builder & Behavioral Rules',
+    description: 'Design custom personas with custom names, tones, base modes, and rules persisted in memory.',
+    keywords: ['custom persona', 'create persona', 'custom tone', 'rules builder', 'behavioral rules', 'persona creator', 'custom character'],
+  },
+  {
+    id: 'fun_mode_toggle',
+    targetSectionId: 'section-fun-mode',
+    category: 'persona',
+    categoryLabel: 'Modes & Personas',
+    title: 'Fun Mode (Playful Banter & Uncensored Sassy Humor)',
+    description: 'Dial up witty banter, candid uninhibited observations, playful sass, and humor.',
+    keywords: ['fun mode', 'banter', 'witty', 'humor', 'jokes', 'playful', 'sass', 'teasing', 'fun'],
+  },
+  {
+    id: 'adult_rp_studio',
+    targetSectionId: 'section-adult-rp',
+    category: 'rp',
+    categoryLabel: 'Adult Roleplay 18+',
+    title: 'Adult RP Studio & Scene Director (14 Scenarios & 6 Heat Levels)',
+    description: 'Uncensored 18+ adult roleplay presets, heat levels, wardrobe, props, sensory vibes, and one-tap starters.',
+    keywords: ['adult', 'rp', 'roleplay', '18+', 'nsfw', 'uncensored', 'heat', 'intensity', 'wardrobe', 'props', 'sensual', 'erotic', 'scenarios', 'dirty talk'],
+    badge: '18+ Adult',
+  },
+  {
+    id: 'soap_discipline_reprimand',
+    targetSectionId: 'section-soap',
+    category: 'rp',
+    categoryLabel: 'Adult Roleplay 18+',
+    title: 'Humorous Soap Discipline Reprimand (Parent Mode)',
+    description: 'Playful mouth-washing soap minigame and comedic parental scolding for naughty language.',
+    keywords: ['soap', 'soap discipline', 'parent mode', 'mouth wash', 'scold', 'discipline', 'bubbles', 'bad language'],
+  },
+  {
+    id: 'think_model_tier',
+    targetSectionId: 'section-reasoning',
+    category: 'reasoning',
+    categoryLabel: 'AI & Reasoning',
+    title: 'Thinking Model Tier (Pro vs Flash vs Flash-Lite)',
+    description: 'Select Gemini 2.5/3.0 model tiers for deep reasoning, fast responses, or ultra-light latency.',
+    keywords: ['model', 'model tier', 'think model', 'pro', 'flash', 'flash-lite', 'gemini 2.5', 'gemini 3', 'reasoning model'],
+  },
+  {
+    id: 'reasoning_duration_threshold',
+    targetSectionId: 'section-reasoning',
+    category: 'reasoning',
+    categoryLabel: 'AI & Reasoning',
+    title: 'Reasoning Duration Badge & Threshold (0s - 15s Slider)',
+    description: 'Configure when and how Kara’s thinking duration and reasoning trace badges are displayed in chat.',
+    keywords: ['reasoning', 'thinking duration', 'thinking badge', 'trace', 'threshold', 'slider', 'thinking time', 'seconds'],
+    badge: '0-15s',
+  },
+  {
+    id: 'kara_brain_overlay',
+    targetSectionId: 'section-kara-brain',
+    category: 'reasoning',
+    categoryLabel: 'AI & Reasoning',
+    title: 'Kara Brain & Deep Insights Analytical Overlay',
+    description: 'Live consciousness telemetry, inner monologue inspection, emotional physics, and cognitive state.',
+    keywords: ['kara brain', 'deep insights', 'brain', 'telemetry', 'inner monologue', 'consciousness', 'mind', 'thoughts', 'analytical overlay'],
+    badge: 'Brain',
+  },
+  {
+    id: 'deeper_search_grounding',
+    targetSectionId: 'section-grounding',
+    category: 'reasoning',
+    categoryLabel: 'AI & Reasoning',
+    title: 'DeeperSearch & Real-Time Web Grounding',
+    description: 'Multi-hop real-time web search and live citations from current news and sources.',
+    keywords: ['search', 'web search', 'deepersearch', 'grounding', 'citations', 'google search', 'current news', 'live web'],
+  },
+  {
+    id: 'maps_grounding_poi',
+    targetSectionId: 'section-grounding',
+    category: 'reasoning',
+    categoryLabel: 'AI & Reasoning',
+    title: 'Google Maps Grounding & Local POI Navigation',
+    description: 'Live Google Maps places, addresses, routing, ETA, and local venue recommendations.',
+    keywords: ['maps', 'google maps', 'location', 'places', 'navigation', 'directions', 'poi', 'restaurants', 'eta'],
+  },
+  {
+    id: 'token_streaming_mode',
+    targetSectionId: 'section-tokens',
+    category: 'reasoning',
+    categoryLabel: 'AI & Reasoning',
+    title: 'Token Streaming vs Instant Response Mode',
+    description: 'Toggle word-by-word streaming generation or instant complete message delivery.',
+    keywords: ['token', 'streaming', 'stream', 'instant', 'typewriter', 'speed', 'latency', 'tokens'],
+  },
+  {
+    id: 'predictive_text_chips',
+    targetSectionId: 'section-predictive',
+    category: 'reasoning',
+    categoryLabel: 'AI & Reasoning',
+    title: 'Next-Word & Next-Sentence Predictive Suggestions',
+    description: 'Inline predictive text chips in chat composer that complete your thoughts before typing.',
+    keywords: ['predictive', 'next word', 'next sentence', 'autocomplete', 'suggestions', 'prediction', 'chips', 'composer'],
+  },
+  {
+    id: 'response_style_presets',
+    targetSectionId: 'section-response-styles',
+    category: 'reasoning',
+    categoryLabel: 'AI & Reasoning',
+    title: 'Response Style Presets & Cadence (Adaptive Mix, Bulleted, Conversational)',
+    description: 'Control whether Kara speaks concisely, poetically, conversationally, or in deep analytical detail.',
+    keywords: ['response style', 'cadence', 'adaptive mix', 'short responses', 'long responses', 'bulleted', 'concise', 'verbose', 'style'],
+  },
+  {
+    id: 'memory_vault_recall',
+    targetSectionId: 'section-memory',
+    category: 'memory',
+    categoryLabel: 'Memory Vault',
+    title: 'Sector 9 Memory Recall Command (/recall) & Embedded Vault',
+    description: 'Add, review, and delete long-term facts, preferences, relationship milestones, and past stories.',
+    keywords: ['memory', 'memories', 'vault', 'remember', 'recall', 'preferences', 'facts', 'milestones', 'history', 'stories'],
+    badge: 'Vault',
+  },
+  {
+    id: 'proactive_reachout_idle',
+    targetSectionId: 'section-proactive',
+    category: 'memory',
+    categoryLabel: 'Memory Vault',
+    title: 'Proactive Real-Time Reach-Out & Idle Check-ins',
+    description: 'Configure Kara reaching out when you have been quiet, morning messages, and proactive check-ins.',
+    keywords: ['proactive', 'reach out', 'check-in', 'idle', 'text first', 'morning text', 'autonomous', 'ping'],
+  },
+  {
+    id: 'relationship_bond_slider',
+    targetSectionId: 'section-relationship',
+    category: 'memory',
+    categoryLabel: 'Memory Vault',
+    title: 'Relationship & Bond Level (0% - 100% Slider & 20 Milestones)',
+    description: 'Fine-tune connection percentage, unlockable relationship stats (Trust, Affection, Intimacy), and milestone badges.',
+    keywords: ['relationship', 'bond', 'bond level', 'slider', 'milestones', 'trust', 'affection', 'intimacy', 'unlockable stats', 'friend', 'lover', 'soulmate'],
+    badge: 'Bond %',
+  },
+  {
+    id: 'email_comms_hub_accounts',
+    targetSectionId: 'section-email',
+    category: 'comms',
+    categoryLabel: 'Email & Comms Hub',
+    title: 'Connected Email Accounts & Multi-Provider Bots (Yahoo, Gmail, Outlook, iCloud)',
+    description: 'Connect email inboxes, sync messages, draft replies with Gemini bots, and send emails.',
+    keywords: ['email', 'yahoo', 'gmail', 'outlook', 'icloud', 'mail', 'inbox', 'imap', 'smtp', 'compose', 'comms hub', 'connected accounts'],
+    badge: 'Email Hub',
+  },
+  {
+    id: 'gemini_gems_skills_hub',
+    targetSectionId: 'section-gems',
+    category: 'comms',
+    categoryLabel: 'Email & Comms Hub',
+    title: 'Gemini Skills & Gems Hub (Mailing Bots, Calendar Bots, Custom Gems)',
+    description: 'Specialized autonomous assistant bots with inline execution workbenches right inside Settings.',
+    keywords: ['gems', 'gem', 'skills', 'mailing bot', 'calendar bot', 'custom gem', 'workbench', 'tools', 'autonomous bots'],
+  },
+  {
+    id: 'mobility_uber_lyft_transit',
+    targetSectionId: 'section-mobility',
+    category: 'mobility',
+    categoryLabel: 'Mobility & Assistant',
+    title: 'Real-Time Uber / Lyft Concierge & Public Transit Directions',
+    description: 'Real-time ride tracking, transit route cards, multi-modal arrival estimates, and concierge assistance.',
+    keywords: ['uber', 'lyft', 'rides', 'transit', 'bus', 'train', 'directions', 'navigation', 'mobility', 'commute'],
+  },
+  {
+    id: 'uber_eats_delivery_assistant',
+    targetSectionId: 'section-mobility',
+    category: 'mobility',
+    categoryLabel: 'Mobility & Assistant',
+    title: 'Real-Time Uber Eats Assistant & Courier Telemetry',
+    description: 'Real-time food delivery progress, courier tracking, cuisine filters, and curated menu ordering.',
+    keywords: ['uber eats', 'food', 'delivery', 'order food', 'courier', 'restaurant', 'eats', 'menu'],
+  },
+  {
+    id: 'smart_alarms_agenda_sync',
+    targetSectionId: 'section-alarms',
+    category: 'mobility',
+    categoryLabel: 'Mobility & Assistant',
+    title: 'Smart Morning Alarms & Today’s Synced Agenda (Google Calendar)',
+    description: 'Set custom alarms with Kara wake-up audio and view synced daily schedule events.',
+    keywords: ['alarm', 'alarms', 'set alarm', 'wake up', 'agenda', 'calendar', 'google calendar', 'schedule', 'events', 'clock'],
+    badge: 'Alarms',
+  },
+  {
+    id: 'tactile_haptics_feedback',
+    targetSectionId: 'section-haptics',
+    category: 'system',
+    categoryLabel: 'System & Reset',
+    title: 'Tactile Haptics Vibration Feedback',
+    description: 'Fine-grained haptic response on buttons, mode switches, sliders, and audio playback.',
+    keywords: ['haptic', 'haptics', 'vibration', 'vibrate', 'feedback', 'tactile', 'buzz'],
+  },
+  {
+    id: 'sector9_hard_reset_wipe',
+    targetSectionId: 'section-reset',
+    category: 'system',
+    categoryLabel: 'System & Reset',
+    title: 'Sector 9 Factory Hard Reset',
+    description: 'Wipe all persistent memories, reset bond level to 0%, and restore fresh factory slate.',
+    keywords: ['reset', 'hard reset', 'factory reset', 'wipe', 'clear memory', 'clean slate', 'fresh start', 'erase'],
+    badge: 'Reset',
+  },
+];
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
@@ -789,6 +1118,61 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [alarmTimeDraft, setAlarmTimeDraft] = useState('7:30 AM');
   const [alarmLabelDraft, setAlarmLabelDraft] = useState('Morning Check-In');
   const [modeShimmerKey, setModeShimmerKey] = useState(0);
+
+  // Settings Search & Quick Jump State
+  const [settingsSearchQuery, setSettingsSearchQuery] = useState<string>('');
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
+  const [highlightedSectionId, setHighlightedSectionId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut listener to focus search (Cmd/Ctrl+K or /)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (
+        e.key === '/' &&
+        document.activeElement?.tagName !== 'INPUT' &&
+        document.activeElement?.tagName !== 'TEXTAREA'
+      ) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  const matchingSearchItems = useMemo(() => {
+    const query = settingsSearchQuery.trim().toLowerCase();
+    if (!query && activeCategoryFilter === 'all') return [];
+    return SETTINGS_SEARCH_INDEX.filter((item) => {
+      const matchesCategory =
+        activeCategoryFilter === 'all' || item.category === activeCategoryFilter;
+      if (!matchesCategory) return false;
+      if (!query) return true;
+      return (
+        item.title.toLowerCase().includes(query) ||
+        item.description.toLowerCase().includes(query) ||
+        item.categoryLabel.toLowerCase().includes(query) ||
+        item.keywords.some((k) => k.toLowerCase().includes(query))
+      );
+    });
+  }, [settingsSearchQuery, activeCategoryFilter]);
+
+  const handleJumpToSection = (targetId: string) => {
+    setHighlightedSectionId(targetId);
+    triggerHaptic('tap', settings.hapticsEnabled);
+    const element = document.getElementById(targetId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setTimeout(() => {
+      setHighlightedSectionId((prev) => (prev === targetId ? null : prev));
+    }, 3500);
+  };
 
   // Custom Persona Builder state (Name, Tone, Base Mode, and Behavioral Rules persisted in Memory)
   const [isCustomPersonaFormOpen, setIsCustomPersonaFormOpen] = useState<boolean>(false);
@@ -1340,8 +1724,158 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
 
+        {/* SETTINGS SEARCH ENGINE & QUICK JUMP DOCK */}
+        <div className="bg-neutral-900/90 border border-sky-500/40 rounded-2xl p-3.5 space-y-2.5 shadow-md">
+          {/* Search Input Bar */}
+          <div className="relative flex items-center">
+            <Search className="w-4 h-4 text-sky-400 absolute left-3 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={settingsSearchQuery}
+              onChange={(e) => setSettingsSearchQuery(e.target.value)}
+              placeholder="Search settings (e.g. 'grok', 'voice', 'dark mode', 'theme', 'rp', 'email', 'alarm', 'reset')..."
+              className="w-full bg-neutral-950/90 border border-neutral-700/80 rounded-xl pl-9 pr-24 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 transition-all"
+            />
+            <div className="absolute right-2.5 flex items-center gap-1.5">
+              {settingsSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSettingsSearchQuery('');
+                    setActiveCategoryFilter('all');
+                  }}
+                  className="p-1 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-[10px] font-mono text-neutral-400">
+                ⌘K or /
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Topic Chips */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider pr-1">
+              Quick Filter:
+            </span>
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'voice', label: 'Grok & Voices ♀', query: 'grok' },
+              { id: 'theme', label: 'Themes & Dark Mode', query: 'dark mode' },
+              { id: 'persona', label: '1-Tap Modes', query: 'mode' },
+              { id: 'rp', label: 'Adult RP 18+', query: 'adult' },
+              { id: 'reasoning', label: 'AI & Reasoning', query: 'reasoning' },
+              { id: 'memory', label: 'Memories & Bond', query: 'memory' },
+              { id: 'comms', label: 'Email Hub', query: 'email' },
+              { id: 'mobility', label: 'Alarms & Mobility', query: 'alarm' },
+            ].map((chip) => {
+              const isActive =
+                chip.id === 'all'
+                  ? !settingsSearchQuery && activeCategoryFilter === 'all'
+                  : settingsSearchQuery.toLowerCase() === (chip.query || '').toLowerCase() ||
+                    activeCategoryFilter === chip.id;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('tap', settings.hapticsEnabled);
+                    if (chip.id === 'all') {
+                      setSettingsSearchQuery('');
+                      setActiveCategoryFilter('all');
+                    } else {
+                      setSettingsSearchQuery(chip.query || '');
+                      setActiveCategoryFilter(chip.id);
+                    }
+                  }}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border transition-colors ${
+                    isActive
+                      ? 'bg-sky-500/25 border-sky-400/60 text-sky-200'
+                      : 'bg-neutral-950/80 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Dynamic Search Results Deck */}
+          {(settingsSearchQuery.trim() || activeCategoryFilter !== 'all') && (
+            <div className="pt-2 border-t border-neutral-800/80 space-y-2">
+              <div className="flex items-center justify-between text-[11px] px-0.5">
+                <span className="text-sky-300 font-mono">
+                  {matchingSearchItems.length}{' '}
+                  {matchingSearchItems.length === 1 ? 'setting match' : 'settings matches'} found
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSettingsSearchQuery('');
+                    setActiveCategoryFilter('all');
+                  }}
+                  className="text-neutral-400 hover:text-neutral-200 text-[10px] font-mono underline"
+                >
+                  Clear filter
+                </button>
+              </div>
+
+              {matchingSearchItems.length === 0 ? (
+                <div className="p-4 rounded-xl bg-neutral-950/60 border border-neutral-800/80 text-center space-y-1">
+                  <p className="text-xs text-neutral-300">
+                    No settings found matching &ldquo;{settingsSearchQuery}&rdquo;
+                  </p>
+                  <p className="text-[11px] text-neutral-500">
+                    Try searching for &lsquo;voice&rsquo;, &lsquo;grok&rsquo;, &lsquo;dark mode&rsquo;, &lsquo;rp&rsquo;, &lsquo;theme&rsquo;, or &lsquo;reset&rsquo;.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                  {matchingSearchItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleJumpToSection(item.targetSectionId)}
+                      className="p-2.5 rounded-xl bg-neutral-950/80 hover:bg-neutral-900 border border-neutral-800 hover:border-sky-500/50 text-left transition-all group flex flex-col justify-between gap-1 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs font-semibold text-white group-hover:text-sky-300 transition-colors truncate">
+                          {item.title}
+                        </span>
+                        {item.badge && (
+                          <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-mono shrink-0">
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-neutral-400 line-clamp-2">
+                        {item.description}
+                      </p>
+                      <div className="flex items-center justify-between pt-1 text-[9px] font-mono text-neutral-500 group-hover:text-sky-400">
+                        <span>{item.categoryLabel}</span>
+                        <span>Jump to Setting →</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* UNIFIED SETTINGS COMMAND HUB: 1-TAP MODE SWITCHER, DARK MODE, FUN MODE, KARA BRAIN, ADAPTIVE MIX & NEXT WORD */}
-        <div className="bg-gradient-to-br from-sky-950/35 via-neutral-900/95 to-fuchsia-950/30 border border-sky-500/40 rounded-2xl p-4 space-y-3.5 shadow-lg">
+        <div
+          id="section-modes"
+          className={`bg-gradient-to-br from-sky-950/35 via-neutral-900/95 to-fuchsia-950/30 border rounded-2xl p-4 space-y-3.5 shadow-lg transition-all duration-300 ${
+            highlightedSectionId === 'section-modes'
+              ? 'ring-2 ring-sky-400 border-sky-400 shadow-sky-500/30'
+              : 'border-sky-500/40'
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-neutral-800/90">
             <div>
               <div className="flex items-center gap-2">
@@ -2508,7 +3042,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 0.03 KARA ADULT RP STUDIO & UNINHIBITED SCENE DIRECTOR (MANAGED IN SETTINGS) */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-950/45 via-neutral-900/95 to-fuchsia-950/40 border border-rose-500/45 space-y-3.5 shadow-xl">
+        <div
+          id="section-adult-rp"
+          className={`p-4 rounded-2xl bg-gradient-to-br from-rose-950/45 via-neutral-900/95 to-fuchsia-950/40 border border-rose-500/45 space-y-3.5 shadow-xl transition-all duration-300 ${
+            highlightedSectionId === 'section-adult-rp'
+              ? 'ring-2 ring-rose-400 border-rose-400 shadow-rose-500/30 scale-[1.01]'
+              : ''
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-rose-500/20">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-400/50 flex items-center justify-center shrink-0">
@@ -2938,8 +3479,116 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
+        {/* 0.04 PARENT MODE · HUMOROUS SOAP DISCIPLINE (COMEDIC REPRIMAND) */}
+        <div
+          id="section-soap"
+          className={`p-4 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-neutral-900/95 to-teal-950/40 border border-emerald-500/40 space-y-3.5 shadow-xl transition-all duration-300 ${
+            highlightedSectionId === 'section-soap'
+              ? 'ring-2 ring-emerald-400 border-emerald-400 shadow-emerald-500/30 scale-[1.01]'
+              : ''
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-lg shrink-0 shadow-inner">
+                🧼🫧
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-white">
+                    Parent Mode · Humorous Soap Discipline (Playful Reprimand)
+                  </span>
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                      settings.parentSoapDiscipline !== false
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
+                        : 'bg-neutral-900 border-neutral-700 text-neutral-400'
+                    }`}
+                  >
+                    {settings.parentSoapDiscipline !== false
+                      ? 'ACTIVE · Squeaky Clean Fun'
+                      : 'DISABLED · No Soap Scolding'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-300 mt-0.5 leading-relaxed">
+                  When you use profanity or &ldquo;bad words&rdquo; in <strong className="text-emerald-300">Parent Mode</strong>, Kara playfully gasps, grabs imaginary lavender soap, and theatrically simulates washing your mouth out with suds. 100% light-hearted, whimsical, and non-punitive.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Test Audio & Soap Bubbles Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('soap', settings.hapticsEnabled);
+                  playSoapDisciplineSoundEffect();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-400/50 text-xs font-semibold text-teal-200 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                title="Listen to Kara's soap bubbles pop, suds lather, and squeaky clean sound effect"
+              >
+                <span>🫧</span>
+                <span>Test Soap SFX</span>
+              </button>
+
+              {/* Master Toggle */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.parentSoapDiscipline !== false}
+                onClick={() => {
+                  const nextState = settings.parentSoapDiscipline === false;
+                  triggerHaptic('modeSwitch', settings.hapticsEnabled);
+                  onUpdateSettings({ parentSoapDiscipline: nextState });
+                  if (nextState) {
+                    playSoapDisciplineSoundEffect();
+                  }
+                }}
+                className={`px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  settings.parentSoapDiscipline !== false
+                    ? 'bg-emerald-500/25 border-emerald-400 text-emerald-100 shadow-md shadow-emerald-950/40'
+                    : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                }`}
+                title="Toggle whether Kara uses humorous soap discipline when curse words are detected in Parent mode"
+              >
+                <span>🧼</span>
+                <span>
+                  Soap Discipline: {settings.parentSoapDiscipline !== false ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Flavor Note & Mode Switch Helper */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-500/20 text-[11px] text-neutral-400">
+            <span className="flex items-center gap-1.5 text-neutral-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Scent: Organic French Lavender &amp; Sweet Bubblegum Castile Soap</span>
+            </span>
+            {activeMode !== 'parent' && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('modeSwitch', settings.hapticsEnabled);
+                  onSelectMode('parent');
+                }}
+                className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/40 text-emerald-300 text-[10px] font-semibold flex items-center gap-1 transition-colors"
+              >
+                <span>Switch to Parent Mode Now</span>
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* 0.05 DEEP INSIGHTS TOGGLE ('KARA BRAIN' ANALYTICAL OVERLAY IN CHAT INTERFACE) */}
-        <div className="bg-gradient-to-r from-fuchsia-950/35 via-indigo-950/35 to-sky-950/35 border border-fuchsia-500/45 rounded-2xl p-4 space-y-3 shadow-lg">
+        <div
+          id="section-kara-brain"
+          className={`bg-gradient-to-r from-fuchsia-950/35 via-indigo-950/35 to-sky-950/35 border border-fuchsia-500/45 rounded-2xl p-4 space-y-3 shadow-lg transition-all duration-300 ${
+            highlightedSectionId === 'section-kara-brain' || highlightedSectionId === 'section-grounding'
+              ? 'ring-2 ring-fuchsia-400 border-fuchsia-400 shadow-fuchsia-500/30 scale-[1.01]'
+              : ''
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-2xl bg-fuchsia-500/20 border border-fuchsia-400/50 flex items-center justify-center shrink-0">
@@ -3082,7 +3731,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 0.1 SWITCH VOICE & 100% HUMAN-LIKE TTS (MANAGED IN SETTINGS) */}
-        <div className="space-y-3.5 bg-neutral-900/70 border border-neutral-800 rounded-2xl p-4 shadow-lg">
+        <div
+          id="section-voice"
+          className={`space-y-3.5 bg-neutral-900/70 border rounded-2xl p-4 shadow-lg transition-all duration-300 ${
+            highlightedSectionId === 'section-voice'
+              ? 'ring-2 ring-sky-400 border-sky-400 shadow-sky-500/30 scale-[1.01]'
+              : 'border-neutral-800'
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-neutral-800/80">
             <div className="flex items-center gap-2.5">
               <span className="p-1.5 rounded-xl bg-sky-500/15 text-sky-300 shrink-0">
@@ -3265,7 +3921,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white'
                   }`}
                 >
-                  Grok TTS (Sal · Leo · Eve)
+                  Grok TTS ({NATURAL_VOICE_PROFILES.filter(v => v.provider === 'grok' && v.gender === 'female').length} Female + 2 Male)
                 </button>
               </div>
             </div>
@@ -3314,13 +3970,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            {/* Grok TTS Voices (Eve, Sal, Leo) */}
+            {/* Grok TTS Voices (Eve, Ara, Vesper, Nova, Siren, Chloe, Maeve, Sal, Leo) */}
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-[11px] font-mono text-amber-300/90 px-0.5">
-                <span>Grok TTS Voices (Sal · Leo · Eve — Unscripted Candid Delivery)</span>
-                <span className="text-amber-400/80">Grok TTS</span>
+                <span>Grok TTS Voices ({NATURAL_VOICE_PROFILES.filter(v => v.provider === 'grok' && v.gender === 'female').length} Female + 2 Male — Candid Unscripted Delivery)</span>
+                <span className="text-amber-400/80">Grok 24kHz Audio</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {NATURAL_VOICE_PROFILES.filter((vp) => vp.provider === 'grok').map((vp) => {
                   const active = selectedVoiceProfile.id === vp.id;
                   return (
@@ -3340,11 +3996,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     >
                       <div className="flex items-center justify-between gap-1">
                         <span className="text-xs font-semibold truncate flex items-center gap-1.5">
-                          <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-mono">
-                            GROK
+                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono ${
+                            vp.gender === 'female'
+                              ? 'bg-amber-500/20 text-amber-300'
+                              : 'bg-indigo-500/20 text-indigo-300'
+                          }`}>
+                            GROK {vp.gender === 'female' ? '♀' : '♂'}
                           </span>
                           <span>
-                            {vp.voiceName} ({vp.gender === 'female' ? 'Female' : 'Male'})
+                            {vp.voiceName}
                           </span>
                         </span>
                         {active && (
@@ -3432,7 +4092,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Voice Visualization Waveform Style Panel (16 Styles) */}
-          <div className="bg-neutral-950/75 border border-neutral-800 rounded-2xl p-3.5 space-y-2.5">
+          <div
+            id="section-waveforms"
+            className={`bg-neutral-950/75 border rounded-2xl p-3.5 space-y-2.5 transition-all duration-300 ${
+              highlightedSectionId === 'section-waveforms'
+                ? 'ring-2 ring-sky-400 border-sky-400 shadow-sky-500/30 scale-[1.01]'
+                : 'border-neutral-800'
+            }`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-xs font-semibold text-neutral-100 flex items-center gap-1.5">
@@ -4472,7 +5139,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 0.25 MXCHAT CHATBOT THEMES VERSION 2.1.6 STUDIO */}
-        <div className="space-y-3.5 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
+        <div
+          id="section-themes"
+          className={`space-y-3.5 bg-neutral-900/60 border rounded-2xl p-4 transition-all duration-300 ${
+            highlightedSectionId === 'section-themes'
+              ? 'ring-2 ring-amber-400 border-amber-400 shadow-amber-500/30 scale-[1.01]'
+              : 'border-neutral-800'
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-neutral-800/80">
             <div>
               <label className="text-xs font-semibold text-neutral-100 flex items-center gap-2">
@@ -4814,7 +5488,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 0.2 CONVERSATION CADENCE, RESPONSE STYLES & EMPATHY BADGES */}
-        <div className="space-y-4 bg-neutral-900/70 border border-neutral-800 rounded-2xl p-4 shadow-lg">
+        <div
+          id="section-response-styles"
+          className={`space-y-4 bg-neutral-900/70 border rounded-2xl p-4 shadow-lg transition-all duration-300 ${
+            highlightedSectionId === 'section-response-styles' ||
+            highlightedSectionId === 'section-fun-mode'
+              ? 'ring-2 ring-amber-400 border-amber-400 shadow-amber-500/30 scale-[1.01]'
+              : 'border-neutral-800'
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-neutral-800/80">
             <div className="flex items-center gap-2.5">
               <span className="p-1.5 rounded-xl bg-amber-500/15 text-amber-300 shrink-0">
@@ -5091,7 +5773,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 0.35 GEMINI SKILLS & GEMS HUB (MAILING BOTS · CALENDAR BOTS · EVERYDAY USE BOTS · CUSTOM GEMS) */}
-        <div className="space-y-4 bg-gradient-to-b from-neutral-900/90 to-[#0C1018] border border-sky-500/35 rounded-2xl p-4 shadow-lg">
+        <div
+          id="section-gems"
+          className={`space-y-4 bg-gradient-to-b from-neutral-900/90 to-[#0C1018] border rounded-2xl p-4 shadow-lg transition-all duration-300 ${
+            highlightedSectionId === 'section-gems' || highlightedSectionId === 'section-email'
+              ? 'ring-2 ring-sky-400 border-sky-400 shadow-sky-500/30 scale-[1.01]'
+              : 'border-sky-500/35'
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-neutral-800">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold text-white">
@@ -5951,7 +6640,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 0.45 LATE-NIGHT MOBILITY, PUBLIC TRANSIT DIRECTIONS & UBER EATS ASSISTANT HUB */}
-        <div className="space-y-3.5 bg-neutral-900/60 border border-sky-500/35 rounded-2xl p-4 shadow-lg">
+        <div
+          id="section-mobility"
+          className={`space-y-3.5 bg-neutral-900/60 border rounded-2xl p-4 shadow-lg transition-all duration-300 ${
+            highlightedSectionId === 'section-mobility'
+              ? 'ring-2 ring-sky-400 border-sky-400 shadow-sky-500/30 scale-[1.01]'
+              : 'border-sky-500/35'
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-neutral-800">
             <div>
               <label className="text-xs font-semibold text-white flex items-center gap-2">
@@ -6688,7 +7384,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 0.5 ASSISTANT ACTIONS, STUDIO & WORKSPACE HUB (AGENDA · SET ALARM · MEMORY VAULT · CREATIVE STUDIO · WORKSPACE) */}
-        <div className="space-y-3 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
+        <div
+          id="section-alarms"
+          className={`space-y-3 bg-neutral-900/60 border rounded-2xl p-4 transition-all duration-300 ${
+            highlightedSectionId === 'section-alarms'
+              ? 'ring-2 ring-amber-400 border-amber-400 shadow-amber-500/30 scale-[1.01]'
+              : 'border-neutral-800'
+          }`}
+        >
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-sky-400" />
@@ -6844,7 +7547,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 1. TOKENS, DEEPERSEARCH, THINK & MAPS CONTROLS */}
-        <div className="space-y-3 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
+        <div
+          id="section-reasoning"
+          className={`space-y-3 bg-neutral-900/60 border rounded-2xl p-4 transition-all duration-300 ${
+            highlightedSectionId === 'section-reasoning' ||
+            highlightedSectionId === 'section-tokens' ||
+            highlightedSectionId === 'section-haptics' ||
+            highlightedSectionId === 'section-predictive'
+              ? 'ring-2 ring-fuchsia-400 border-fuchsia-400 shadow-fuchsia-500/30 scale-[1.01]'
+              : 'border-neutral-800'
+          }`}
+        >
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
               <Brain className="w-4 h-4 text-fuchsia-400" />
@@ -7266,7 +7979,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 1B. KARA PROACTIVE REAL-TIME REACH-OUT & IDLE CHECK-INS */}
-        <div className="space-y-3.5 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
+        <div
+          id="section-proactive"
+          className={`space-y-3.5 bg-neutral-900/60 border rounded-2xl p-4 transition-all duration-300 ${
+            highlightedSectionId === 'section-proactive'
+              ? 'ring-2 ring-emerald-400 border-emerald-400 shadow-emerald-500/30 scale-[1.01]'
+              : 'border-neutral-800'
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
               <MessageSquare className="w-4 h-4 text-emerald-400" />
@@ -7367,7 +8087,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 2. SECTOR 9 MEMORY RECALL (/RECALL) & EMBEDDED MEMORY VAULT INSIDE SETTINGS */}
-        <div className="space-y-3.5 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
+        <div
+          id="section-memory"
+          className={`space-y-3.5 bg-neutral-900/60 border rounded-2xl p-4 transition-all duration-300 ${
+            highlightedSectionId === 'section-memory'
+              ? 'ring-2 ring-indigo-400 border-indigo-400 shadow-indigo-500/30 scale-[1.01]'
+              : 'border-neutral-800'
+          }`}
+        >
           <div className="flex items-center justify-between gap-2">
             <label className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
               <Database className="w-4 h-4 text-indigo-400" />
@@ -7531,7 +8258,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 3. UNLOCKABLE RELATIONSHIP STATS & 20 OPEN-MINDED HUMAN & ADULT BOND STAGES */}
-        <div className="space-y-3.5 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4">
+        <div
+          id="section-relationship"
+          className={`space-y-3.5 bg-neutral-900/60 border rounded-2xl p-4 transition-all duration-300 ${
+            highlightedSectionId === 'section-relationship'
+              ? 'ring-2 ring-rose-400 border-rose-400 shadow-rose-500/30 scale-[1.01]'
+              : 'border-neutral-800'
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <label className="text-xs font-semibold text-neutral-100 flex items-center gap-1.5">
@@ -7764,7 +8498,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* 5. Sector 9 Hard Reset Section */}
-        <div className="pt-3 border-t border-neutral-800 space-y-3">
+        <div
+          id="section-reset"
+          className={`pt-3 border-t border-neutral-800 space-y-3 transition-all duration-300 ${
+            highlightedSectionId === 'section-reset'
+              ? 'p-3 rounded-2xl ring-2 ring-rose-500 border border-rose-500 bg-rose-950/20 shadow-rose-500/30 scale-[1.01]'
+              : ''
+          }`}
+        >
           {!confirmHardReset ? (
             <button
               type="button"
